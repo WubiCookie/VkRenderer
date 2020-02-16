@@ -1,0 +1,116 @@
+cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+
+project(VkRenderer)
+
+unset(PROJECTS_BINARIES_OUTPUT_DIR)
+
+message("==============================================")
+message("                     GLFW                     ")
+message("==============================================")
+SET(BUILD_SHARED_LIBS OFF)
+SET(GLFW_BUILD_DOCS OFF)
+SET(GLFW_BUILD_EXAMPLES OFF)
+SET(GLFW_BUILD_TESTS OFF)
+SET(GLFW_INSTALL OFF)
+SET(GLFW_USE_HYBRID_HPG OFF)
+SET(GLFW_VULKAN_STATIC OFF)
+add_subdirectory(third_party/glfw)
+
+message("==============================================")
+message("                     Assimp                   ")
+message("==============================================")
+SET(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF)
+SET(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT ON)
+SET(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
+SET(ASSIMP_BUILD_SAMPLES OFF)
+SET(ASSIMP_BUILD_TESTS OFF)
+SET(ASSIMP_INSTALL OFF)
+SET(ASSIMP_INSTALL_PDB OFF)
+SET(ASSIMP_NO_EXPORT ON)
+SET(BUILD_DOCS OFF)
+SET(BUILD_FRAMEWORK OFF)
+add_subdirectory(third_party/assimp)
+
+message("==============================================")
+message("                 ShaderWriter                 ")
+message("==============================================")
+set(SDW_BUILD_EXPORTER_GLSL OFF)
+set(SDW_BUILD_EXPORTER_HLSL OFF)
+set(SDW_BUILD_EXPORTER_SPIRV ON)
+set(SDW_BUILD_TESTS OFF)
+set(SDW_BUILD_SDW OFF)
+set(SDW_GENERATE_SOURCE OFF)
+set(PROJECTS_PACKAGE_WIX OFF)
+set(PROJECTS_USE_PRETTY_PRINTING OFF)
+add_subdirectory(third_party/ShaderWriter)
+
+message("==============================================")
+message("                  VkRenderer                  ")
+message("==============================================")
+add_library(VkRenderer STATIC
+	src/VkRenderer/CommandBuffer.cpp
+	src/VkRenderer/Framebuffer.cpp
+	src/VkRenderer/Image.cpp
+	src/VkRenderer/ImageView.cpp
+	src/VkRenderer/Renderer.cpp
+	src/VkRenderer/RenderPass.cpp
+	src/VkRenderer/RenderWindow.cpp
+	src/VkRenderer/VulkanDevice.cpp
+	src/VkRenderer/Material.cpp
+
+	include/VkRenderer/CommandBuffer.hpp
+	include/VkRenderer/CommandBuffer.inl
+	include/VkRenderer/Framebuffer.hpp
+	include/VkRenderer/Image.hpp
+	include/VkRenderer/ImageView.hpp
+	include/VkRenderer/Renderer.hpp
+	include/VkRenderer/RenderPass.hpp
+	include/VkRenderer/RenderWindow.hpp
+	include/VkRenderer/VulkanDevice.hpp
+	include/VkRenderer/VulkanDevice.inl
+	include/VkRenderer/Material.hpp
+)
+
+target_include_directories(VkRenderer
+	PUBLIC
+		include/VkRenderer
+
+	PRIVATE
+		"$ENV{VULKAN_SDK}/Include"
+		third_party/include
+		third_party/glfw/include
+		third_party/assimp/include
+		third_party/ShaderWriter/include
+)
+
+target_link_libraries(VkRenderer PRIVATE glfw assimp ShaderWriter CompilerSpirV)
+set_target_properties(VkRenderer PROPERTIES CXX_STANDARD 17)
+
+if(MSVC)
+	target_compile_options(VkRenderer PRIVATE "/MP")
+endif()
+
+message("==============================================")
+message("                   MainTest                   ")
+message("==============================================")
+add_executable(MainTest test/main_test/main.cpp)
+target_include_directories(MainTest
+	PRIVATE
+		include/VkRenderer
+		"$ENV{VULKAN_SDK}/Include"
+		third_party/include
+		third_party/ShaderWriter/include
+)
+
+target_link_libraries(MainTest PRIVATE VkRenderer ShaderWriter CompilerSpirV)
+set_target_properties(MainTest PROPERTIES CXX_STANDARD 17)
+
+if(MSVC)
+	target_compile_options(MainTest PRIVATE "/MP")
+endif()
+
+#message(ok)
+
+unset(PROJECTS_BINARIES_OUTPUT_DIR)
+
+add_compile_definitions(_AMD64_)
