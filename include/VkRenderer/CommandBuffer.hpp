@@ -4,10 +4,12 @@
 
 #include <array>
 
+namespace cdm
+{
 class CommandBuffer final : public VulkanDeviceObject
 {
-	cdm::Moveable<VkCommandPool> m_parentCommandPool;
-	cdm::Moveable<VkCommandBuffer> m_commandBuffer;
+	Moveable<VkCommandPool> m_parentCommandPool;
+	Moveable<VkCommandBuffer> m_commandBuffer;
 
 public:
 	CommandBuffer(
@@ -28,7 +30,7 @@ public:
 	inline VkResult begin(const cdm::vk::CommandBufferBeginInfo& beginInfo);
 	inline void beginQuery(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags);
 	inline void beginRenderPass(const cdm::vk::RenderPassBeginInfo& renderPassInfo, VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE);
-	inline void beginRenderPass2(const cdm::vk::RenderPassBeginInfo & renderPassInfo, const cdm::vk::SubpassBeginInfo& subpassInfo);
+	inline void beginRenderPass2(const cdm::vk::RenderPassBeginInfo& renderPassInfo, const cdm::vk::SubpassBeginInfo& subpassInfo);
 	inline void bindDescriptorSets(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount = 0, const uint32_t* pDynamicOffsets = nullptr);
 	inline void bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, VkDescriptorSet descriptorSet, uint32_t dynamicOffsetCount = 0, const uint32_t* pDynamicOffsets = nullptr);
 	inline void bindIndexBuffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType indexType);
@@ -122,5 +124,6 @@ private:
 	bool outdated() const;
 	void recreate();
 };
+}  // namespace cdm
 
 #include "CommandBuffer.inl"

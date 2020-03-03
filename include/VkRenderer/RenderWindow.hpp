@@ -10,6 +10,8 @@
 #include <memory>
 #include <vector>
 
+namespace cdm
+{
 class VulkanDevice;
 class ImageView;
 
@@ -24,6 +26,9 @@ class RenderWindow
 	VkCommandPool m_commandPool = nullptr;
 	VkCommandPool m_oneTimeCommandPool = nullptr;
 
+	uint32_t m_imageIndex = -1;
+	size_t m_currentFrame = 0;
+
 public:
 	RenderWindow(int width, int height, bool layers = false);
 	RenderWindow(const RenderWindow&) = delete;
@@ -34,6 +39,17 @@ public:
 	RenderWindow& operator=(RenderWindow&&) = delete;
 
 	void pollEvents();
+	void prerender();
+	bool present();
+	// void presentImage(VkImage image);
+
+	uint32_t imageIndex() const;
+	size_t currentFrame() const;
+
+	VkSemaphore currentImageAvailableSemaphore() const;
+	VkFence currentInFlightFences() const;
+
+	void pushPresentWaitSemaphore(VkSemaphore semaphore);
 
 	void show();
 	void hide();
@@ -68,3 +84,4 @@ public:
 	VkCommandPool commandPool() const;
 	// VkCommandPool oneTimeCommandPool() const;
 };
+}  // namespace cdm

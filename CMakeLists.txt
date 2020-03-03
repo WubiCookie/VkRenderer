@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set_property(GLOBAL PROPERTY FOLDER "Third Party")
+
 project(VkRenderer)
 
 unset(PROJECTS_BINARIES_OUTPUT_DIR)
@@ -71,6 +74,17 @@ add_library(VkRenderer STATIC
 	include/VkRenderer/Material.hpp
 )
 
+set_target_properties(VkRenderer PROPERTIES FOLDER "")
+
+message("==============================================")
+message("                   shaderc                    ")
+message("==============================================")
+set(gtest_force_shared_crt OFF)
+set(SHADERC_ENABLE_NV_EXTENSIONS OFF)
+set(SHADERC_SKIP_INSTALL ON)
+set(SHADERC_SKIP_TESTS ON)
+add_subdirectory("$ENV{VULKAN_SDK}/shaderc" "${CMAKE_CURRENT_BINARY_DIR}-shaderc")
+
 target_include_directories(VkRenderer
 	PUBLIC
 		include/VkRenderer
@@ -83,7 +97,7 @@ target_include_directories(VkRenderer
 		third_party/ShaderWriter/include
 )
 
-target_link_libraries(VkRenderer PRIVATE glfw assimp ShaderWriter CompilerSpirV)
+target_link_libraries(VkRenderer PRIVATE glfw assimp ShaderWriter CompilerSpirV PUBLIC shaderc)
 set_target_properties(VkRenderer PROPERTIES CXX_STANDARD 17)
 
 if(MSVC)
@@ -104,6 +118,7 @@ target_include_directories(MainTest
 
 target_link_libraries(MainTest PRIVATE VkRenderer ShaderWriter CompilerSpirV)
 set_target_properties(MainTest PROPERTIES CXX_STANDARD 17)
+set_target_properties(MainTest PROPERTIES FOLDER "")
 
 if(MSVC)
 	target_compile_options(MainTest PRIVATE "/MP")

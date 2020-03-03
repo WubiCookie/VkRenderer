@@ -2,6 +2,8 @@
 
 #include "VulkanDevice.hpp"
 
+namespace cdm
+{
 inline void VulkanDeviceBase::destroySurface(VkSurfaceKHR surface) const
 {
 	DestroySurfaceKHR(instance(), surface, nullptr);
@@ -334,3 +336,4 @@ inline void VulkanDevice::destroy(VkSwapchainKHR swapchain) const
 {
 	destroySwapchain(swapchain);
 }
+}  // namespace cdm

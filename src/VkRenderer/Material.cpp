@@ -1,10 +1,13 @@
 #include "Material.hpp"
+#include "CommandBuffer.hpp"
 #include "RenderPass.hpp"
 #include "RenderWindow.hpp"
 
 #include <array>
 #include <iostream>
 
+namespace cdm
+{
 Material::Material(RenderWindow& renderWindow, RenderPass& renderPass)
     : VulkanDeviceObject(renderWindow.device()),
       rw(renderWindow),
@@ -24,8 +27,6 @@ Material::~Material()
 
 bool Material::setVertexShaderBytecode(std::vector<uint32_t> bytecode)
 {
-	using namespace cdm;
-
 	auto& vk = this->device();
 
 	vk::ShaderModuleCreateInfo createInfo;
@@ -41,6 +42,7 @@ bool Material::setVertexShaderBytecode(std::vector<uint32_t> bytecode)
 	}
 
 	m_vertexShaderBytecode = std::move(bytecode);
+	m_vertexShaderGLSL.clear();
 
 	vk.destroy(m_vertexModule.get());
 	m_vertexModule = shaderModule;
@@ -50,8 +52,6 @@ bool Material::setVertexShaderBytecode(std::vector<uint32_t> bytecode)
 
 bool Material::setFragmentShaderBytecode(std::vector<uint32_t> bytecode)
 {
-	using namespace cdm;
-
 	auto& vk = this->device();
 
 	vk::ShaderModuleCreateInfo createInfo;
@@ -67,11 +67,66 @@ bool Material::setFragmentShaderBytecode(std::vector<uint32_t> bytecode)
 	}
 
 	m_fragmentShaderBytecode = std::move(bytecode);
+	m_fragmentShaderGLSL.clear();
 
 	vk.destroy(m_fragmentModule.get());
 	m_fragmentModule = shaderModule;
 
 	return true;
+}
+
+bool Material::setVertexShaderGLSL(std::string code)
+{
+	auto vertexCompileResult = m_compiler.CompileGlslToSpv(
+	    code, shaderc_shader_kind::shaderc_vertex_shader, "Vertex Shader");
+
+	shaderc_compilation_status vertexStatus =
+	    vertexCompileResult.GetCompilationStatus();
+	if (vertexStatus !=
+	    shaderc_compilation_status::shaderc_compilation_status_success)
+	{
+		std::cerr << vertexCompileResult.GetErrorMessage() << std::endl;
+		return false;
+	}
+
+	std::vector<uint32_t> vertexBytecode;
+	for (uint32_t i : vertexCompileResult)
+		vertexBytecode.push_back(i);
+
+	if (setVertexShaderBytecode(std::move(vertexBytecode)))
+	{
+		m_vertexShaderGLSL = std::move(code);
+		return true;
+	}
+
+	return false;
+}
+
+bool Material::setFragmentShaderGLSL(std::string code)
+{
+	auto fragmentCompileResult = m_compiler.CompileGlslToSpv(
+	    code, shaderc_shader_kind::shaderc_fragment_shader, "Fragment Shader");
+
+	shaderc_compilation_status fragmentStatus =
+	    fragmentCompileResult.GetCompilationStatus();
+	if (fragmentStatus !=
+	    shaderc_compilation_status::shaderc_compilation_status_success)
+	{
+		std::cerr << fragmentCompileResult.GetErrorMessage() << std::endl;
+		return false;
+	}
+
+	std::vector<uint32_t> fragmentBytecode;
+	for (uint32_t i : fragmentCompileResult)
+		fragmentBytecode.push_back(i);
+
+	if (setFragmentShaderBytecode(std::move(fragmentBytecode)))
+	{
+		m_fragmentShaderGLSL = std::move(code);
+		return true;
+	}
+
+	return false;
 }
 
 const std::vector<uint32_t>& Material::vertexShaderBytecode() const
@@ -84,11 +139,18 @@ const std::vector<uint32_t>& Material::fragmentShaderBytecode() const
 	return m_fragmentShaderBytecode;
 }
 
+std::string Material::vertexShaderGLSL() const { return m_vertexShaderGLSL; }
+
+std::string Material::fragmentShaderGLSL() const
+{
+	return m_fragmentShaderGLSL;
+}
+
 void Material::setRenderPass(RenderPass& renderPass)
 {
 	m_renderPass = renderPass;
 
-	resetCreationTime();
+	setCreationTime();
 }
 
 bool Material::buildPipeline()
@@ -100,8 +162,6 @@ bool Material::buildPipeline()
 		    << std::endl;
 		return false;
 	}
-
-	using namespace cdm;
 
 	auto& vk = this->device();
 
@@ -245,7 +305,15 @@ bool Material::buildPipeline()
 	return true;
 }
 
-VkPipelineLayout Material::pipelineLayout() const { return m_pipelineLayout.get(); }
+void Material::bind(CommandBuffer& commandBuffer)
+{
+	commandBuffer.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline());
+}
+
+VkPipelineLayout Material::pipelineLayout() const
+{
+	return m_pipelineLayout.get();
+}
 
 VkPipeline Material::pipeline()
 {
@@ -269,3 +337,4 @@ void Material::recreate()
 
 	buildPipeline();
 }
+}  // namespace cdm

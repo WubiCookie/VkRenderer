@@ -16,6 +16,8 @@
 #define VULKAN_BASE_FUNCTIONS_VISIBILITY protected
 #define VULKAN_FUNCTIONS_VISIBILITY private
 
+namespace cdm
+{
 struct QueueFamilyIndices
 {
 	std::optional<uint32_t> graphicsFamily;
@@ -164,11 +166,11 @@ public:
 	}
 
 	using VulkanDeviceBase::create;
-	using VulkanDeviceBase::destroy;
 	using VulkanDeviceBase::createSurface;
+	using VulkanDeviceBase::destroy;
 	using VulkanDeviceBase::destroySurface;
 
-	// clang-format of
+	// clang-format off
 	PFN_vkCreateHeadlessSurfaceEXT CreateHeadlessSurfaceEXT;
 	PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT GetPhysicalDeviceCalibrateableTimeDomainsEXT;
 	PFN_vkGetPhysicalDeviceMultisamplePropertiesEXT GetPhysicalDeviceMultisamplePropertiesEXT;
@@ -341,7 +343,7 @@ public:                                                                         
 	DEFINE_DEVICE_CREATE(Semaphore);
 	DEFINE_DEVICE_CREATE(ShaderModule);
 
-VULKAN_FUNCTIONS_VISIBILITY :
+VULKAN_FUNCTIONS_VISIBILITY:
 	PFN_vkDestroyDevice DestroyDevice;
 public:
 	inline void destroyDevice() const;
@@ -790,7 +792,7 @@ class VulkanDeviceObject
 
 protected:
 	void setCreationTime();
-	void resetCreationTime() { m_creationTime = 0.0; }
+	//void resetCreationTime() { m_creationTime = 0.0; }
 
 public:
 	VulkanDeviceObject(const VulkanDevice& device) : vkDevice(device) {}
@@ -798,5 +800,6 @@ public:
 	const VulkanDevice& device() const { return vkDevice.get(); }
 	double creationTime() const { return m_creationTime; }
 };
+}  // namespace cdm
 
 #include "VulkanDevice.inl"

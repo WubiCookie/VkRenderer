@@ -2,8 +2,10 @@
 
 #include "CommandBuffer.hpp"
 
+namespace cdm
+{
 inline VkResult CommandBuffer::begin(
-    const cdm::vk::CommandBufferBeginInfo& beginInfo)
+    const vk::CommandBufferBeginInfo& beginInfo)
 {
 	return device().BeginCommandBuffer(m_commandBuffer.get(), &beginInfo);
 }
@@ -15,7 +17,7 @@ inline void CommandBuffer::beginQuery(VkQueryPool queryPool, uint32_t query,
 }
 
 inline void CommandBuffer::beginRenderPass(
-    const cdm::vk::RenderPassBeginInfo& renderPassInfo,
+    const vk::RenderPassBeginInfo& renderPassInfo,
     VkSubpassContents contents)
 {
 	device().CmdBeginRenderPass(m_commandBuffer.get(), &renderPassInfo,
@@ -23,8 +25,8 @@ inline void CommandBuffer::beginRenderPass(
 }
 
 inline void CommandBuffer::beginRenderPass2(
-    const cdm::vk::RenderPassBeginInfo& renderPassInfo,
-    const cdm::vk::SubpassBeginInfo& subpassInfo)
+    const vk::RenderPassBeginInfo& renderPassInfo,
+    const vk::SubpassBeginInfo& subpassInfo)
 {
 	device().CmdBeginRenderPass2(m_commandBuffer.get(), &renderPassInfo,
 	                             &subpassInfo);
@@ -326,7 +328,7 @@ inline void CommandBuffer::endRenderPass()
 }
 
 inline void CommandBuffer::endRenderPass2(
-    const cdm::vk::SubpassEndInfo& subpassEndInfo)
+    const vk::SubpassEndInfo& subpassEndInfo)
 {
 	device().CmdEndRenderPass2(m_commandBuffer.get(), &subpassEndInfo);
 }
@@ -357,8 +359,8 @@ inline void CommandBuffer::nextSubpass(VkSubpassContents contents)
 }
 
 inline void CommandBuffer::nextSubpass2(
-    const cdm::vk::SubpassBeginInfo& subpassBeginInfo,
-    const cdm::vk::SubpassEndInfo& subpassEndInfo)
+    const vk::SubpassBeginInfo& subpassBeginInfo,
+    const vk::SubpassEndInfo& subpassEndInfo)
 {
 	device().CmdNextSubpass2(m_commandBuffer.get(), &subpassBeginInfo,
 	                         &subpassEndInfo);
@@ -718,3 +720,4 @@ inline VkResult CommandBuffer::reset(VkCommandBufferResetFlags flags)
 {
 	device().ResetCommandBuffer(m_commandBuffer.get(), flags);
 }
+}  // namespace cdm

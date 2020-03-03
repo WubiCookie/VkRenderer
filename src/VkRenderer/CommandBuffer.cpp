@@ -2,14 +2,14 @@
 
 #include <stdexcept>
 
+namespace cdm
+{
 CommandBuffer::CommandBuffer(const VulkanDevice& device_,
                              VkCommandPool parentCommandPool,
                              VkCommandBufferLevel level)
     : VulkanDeviceObject(device_),
       m_parentCommandPool(parentCommandPool)
 {
-	using namespace cdm;
-
 	auto& vk = this->device();
 
 	if (m_parentCommandPool.get() == nullptr)
@@ -63,3 +63,4 @@ VkCommandBuffer CommandBuffer::commandBuffer()
 bool CommandBuffer::outdated() const { return false; }
 
 void CommandBuffer::recreate() {}
+}  // namespace cdm

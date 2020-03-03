@@ -2,11 +2,11 @@
 
 #include <stdexcept>
 
+namespace cdm
+{
 RenderPass::RenderPass(const VulkanDevice& device_, VkFormat format)
     : VulkanDeviceObject(device_)
 {
-	using namespace cdm;
-
 	auto& vk = this->device();
 
 	VkAttachmentDescription colorAttachment = {};
@@ -37,8 +37,7 @@ RenderPass::RenderPass(const VulkanDevice& device_, VkFormat format)
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
 	                           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	vk::RenderPassCreateInfo renderPassInfo;
 	renderPassInfo.attachmentCount = 1;
 	renderPassInfo.pAttachments = &colorAttachment;
 	renderPassInfo.subpassCount = 1;
@@ -64,3 +63,4 @@ RenderPass::~RenderPass()
 VkRenderPass RenderPass::renderPass() { return m_renderPass.get(); }
 
 RenderPass::operator VkRenderPass() { return renderPass(); }
+}  // namespace cdm

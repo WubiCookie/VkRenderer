@@ -3,6 +3,8 @@
 
 #include <stdexcept>
 
+namespace cdm
+{
 ImageView::ImageView(const VulkanDevice& device_, Image& image_)
     : VulkanDeviceObject(device_),
       m_image(image_),
@@ -24,16 +26,16 @@ void ImageView::setImage(Image& image_)
 {
 	m_image = image_;
 	m_format = image_.format();
-
-	resetCreationTime();
+	
+	setCreationTime();
 }
 
 void ImageView::setImage(Image& image_, VkFormat format)
 {
 	m_image = image_;
 	m_format = format;
-
-	resetCreationTime();
+	
+	setCreationTime();
 }
 
 VkImageView ImageView::imageView()
@@ -51,8 +53,6 @@ bool ImageView::outdated() const
 
 void ImageView::recreate()
 {
-	using namespace cdm;
-
 	auto& vk = device();
 
 	vk::ImageViewCreateInfo createInfo;
@@ -76,3 +76,4 @@ void ImageView::recreate()
 
 	setCreationTime();
 }
+}  // namespace cdm

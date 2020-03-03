@@ -4,8 +4,11 @@
 
 #include <vector>
 
+namespace cdm
+{
 class AbstractImage : public VulkanDeviceObject
 {
+protected:
 	VkFormat m_format;
 
 public:
@@ -25,8 +28,6 @@ class Image : public AbstractImage
 {
 	cdm::Moveable<VkImage> m_image;
 
-	VkFormat m_format;
-
 public:
 	Image(const VulkanDevice& device_, VkFormat format);
 	~Image();
@@ -41,9 +42,7 @@ private:
 
 class SwapchainImage final : public Image
 {
-	cdm::Moveable<VkImage> m_image = nullptr;
-
-	VkFormat m_format;
+	Moveable<VkImage> m_image = nullptr;
 
 public:
 	SwapchainImage(const VulkanDevice& device_, VkImage image_,
@@ -51,7 +50,9 @@ public:
 	~SwapchainImage();
 
 	void setImage(VkImage image_);
+	void setFormat(VkFormat format_);
 
 	VkImage image() override { return m_image.get(); }
 	operator VkImage() override { return image(); }
 };
+}  // namespace cdm

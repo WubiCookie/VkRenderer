@@ -3,6 +3,8 @@
 #include <cassert>
 #include <stdexcept>
 
+namespace cdm
+{
 Image::Image(const VulkanDevice& device_, VkFormat format)
     : AbstractImage(device_, format)
 {
@@ -51,3 +53,11 @@ void SwapchainImage::setImage(VkImage image_)
 
 	setCreationTime();
 }
+
+void SwapchainImage::setFormat(VkFormat format_)
+{
+	m_format = format_;
+
+	setCreationTime();
+}
+}  // namespace cdm

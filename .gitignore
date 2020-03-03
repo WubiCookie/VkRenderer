@@ -1,4 +1,5 @@
 build/
+build-shaderc/
 
 *.exe
 *.log

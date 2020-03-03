@@ -5,10 +5,15 @@
 #define VK_NO_PROTOTYPES
 #include "cdm_vulkan.hpp"
 
+#include <shaderc/shaderc.hpp>
+
 #include <vector>
 
+namespace cdm
+{
 class RenderWindow;
 class RenderPass;
+class CommandBuffer;
 
 class Material final : public VulkanDeviceObject
 {
@@ -17,13 +22,18 @@ class Material final : public VulkanDeviceObject
 	std::vector<uint32_t> m_vertexShaderBytecode;
 	std::vector<uint32_t> m_fragmentShaderBytecode;
 
-	cdm::Moveable<VkShaderModule> m_vertexModule;
-	cdm::Moveable<VkShaderModule> m_fragmentModule;
+	std::string m_vertexShaderGLSL;
+	std::string m_fragmentShaderGLSL;
 
-	cdm::Moveable<VkPipelineLayout> m_pipelineLayout;
-	cdm::Moveable<VkPipeline> m_pipeline;
+	Moveable<VkShaderModule> m_vertexModule;
+	Moveable<VkShaderModule> m_fragmentModule;
+
+	Moveable<VkPipelineLayout> m_pipelineLayout;
+	Moveable<VkPipeline> m_pipeline;
 
 	std::reference_wrapper<RenderPass> m_renderPass;
+
+	static inline shaderc::Compiler m_compiler;
 
 public:
 	Material(RenderWindow& rw, RenderPass& renderPass);
@@ -32,11 +42,19 @@ public:
 	bool setVertexShaderBytecode(std::vector<uint32_t> bytecode);
 	bool setFragmentShaderBytecode(std::vector<uint32_t> bytecode);
 
+	bool setVertexShaderGLSL(std::string code);
+	bool setFragmentShaderGLSL(std::string code);
+
 	const std::vector<uint32_t>& vertexShaderBytecode() const;
 	const std::vector<uint32_t>& fragmentShaderBytecode() const;
 
+	std::string vertexShaderGLSL() const;
+	std::string fragmentShaderGLSL() const;
+
 	void setRenderPass(RenderPass& renderPass);
 	bool buildPipeline();
+
+	void bind(CommandBuffer& commandBuffer);
 
 	VkPipelineLayout pipelineLayout() const;
 	VkPipeline pipeline();
@@ -45,3 +63,4 @@ private:
 	bool outdated() const;
 	void recreate();
 };
+}  // namespace cdm

@@ -1,7 +1,7 @@
 #include "RenderWindow.hpp"
-#include "VulkanDevice.hpp"
-#include "ImageView.hpp"
 #include "Image.hpp"
+#include "ImageView.hpp"
+#include "VulkanDevice.hpp"
 
 #define VK_NO_PROTOTYPES
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -16,11 +16,14 @@
 #include <limits>
 #include <vector>
 
+namespace cdm
+{
 void VulkanDeviceObject::setCreationTime() { m_creationTime = glfwGetTime(); }
+// void VulkanDeviceObject::setCreationTime() { m_creationTime++; }
 
 struct SwapChainSupportDetails
 {
-	cdm::vk::SurfaceCapabilities2KHR capabilities{};
+	vk::SurfaceCapabilities2KHR capabilities{};
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
 };
@@ -36,15 +39,22 @@ struct RenderWindowPrivate
 
 	VulkanDevice vulkanDevice;
 
-	GLFWwindow* window;
+	GLFWwindow* window = nullptr;
 
-	VkSurfaceKHR surface;
-	VkSwapchainKHR swapchain;
+	VkSurfaceKHR surface = nullptr;
+	VkSwapchainKHR swapchain = nullptr;
 
 	std::vector<SwapchainImage> swapchainImages;
 	std::vector<std::unique_ptr<ImageView>> swapchainImageViews;
 	VkFormat swapchainImageFormat;
 	VkExtent2D swapchainExtent;
+
+	std::vector<VkSemaphore> imageAvailableSemaphores;
+	// std::vector<VkSemaphore> renderFinishedSemaphores;
+	std::vector<VkFence> inFlightFences;
+	std::vector<VkFence> imagesInFlight;
+
+	std::vector<VkSemaphore> presentWaitSemaphores;
 
 	SwapChainSupportDetails swapChainSupport;
 
@@ -152,7 +162,7 @@ static SwapChainSupportDetails querySwapChainSupport(
 {
 	SwapChainSupportDetails details;
 
-	cdm::vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo;
+	vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo;
 	surfaceInfo.surface = surface;
 
 	vk.GetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice, &surfaceInfo,
@@ -189,9 +199,9 @@ static VkSurfaceFormatKHR chooseSwapSurfaceFormat(
 {
 	for (const auto& availableFormat : availableFormats)
 	{
-		 if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
-		 availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-		//if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
+		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
+		    availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		// if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
 		//    availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 		{
 			return availableFormat;
@@ -243,8 +253,6 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
                                          bool layers) noexcept
     : vulkanDevice(layers)
 {
-	using namespace cdm;
-
 	auto& vk = vulkanDevice;
 
 	if (!glfwInit())
@@ -309,6 +317,9 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
 
 	glfwGetFramebufferSize(window, &width, &height);
 
+	recreateSwapchain(width, height);
+
+	/*
 	VkSurfaceFormatKHR surfaceFormat =
 	    chooseSwapSurfaceFormat(swapChainSupport.formats);
 	VkPresentModeKHR presentMode =
@@ -327,8 +338,8 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
 	    imageCount >
 	        swapChainSupport.capabilities.surfaceCapabilities.maxImageCount)
 	{
-		imageCount =
-		    swapChainSupport.capabilities.surfaceCapabilities.maxImageCount;
+	    imageCount =
+	        swapChainSupport.capabilities.surfaceCapabilities.maxImageCount;
 	}
 
 	vk::SwapchainCreateInfoKHR swapchainCreateInfo;
@@ -341,19 +352,19 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
 	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(),
-		                              indices.presentFamily.value() };
+	                                  indices.presentFamily.value() };
 
 	if (indices.graphicsFamily != indices.presentFamily)
 	{
-		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-		swapchainCreateInfo.queueFamilyIndexCount = 2;
-		swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+	    swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+	    swapchainCreateInfo.queueFamilyIndexCount = 2;
+	    swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
 	}
 	else
 	{
-		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		swapchainCreateInfo.queueFamilyIndexCount = 0;      // Optional
-		swapchainCreateInfo.pQueueFamilyIndices = nullptr;  // Optional
+	    swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	    swapchainCreateInfo.queueFamilyIndexCount = 0;      // Optional
+	    swapchainCreateInfo.pQueueFamilyIndices = nullptr;  // Optional
 	}
 
 	swapchainCreateInfo.preTransform =
@@ -365,8 +376,8 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
 
 	if (vk.create(swapchainCreateInfo, swapchain) != VK_SUCCESS)
 	{
-		std::cerr << "error: failed to create swapchain" << std::endl;
-		exit(1);
+	    std::cerr << "error: failed to create swapchain" << std::endl;
+	    exit(1);
 	}
 
 	vk.GetSwapchainImagesKHR(vk.vkDevice(), swapchain, &imageCount, nullptr);
@@ -376,15 +387,28 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
 	vk.GetSwapchainImagesKHR(vk.vkDevice(), swapchain, &imageCount,
 	                         vkImages.data());
 	for (uint32_t i = 0; i < imageCount; i++)
-		swapchainImages.emplace_back(SwapchainImage(vk, vkImages[i], surfaceFormat.format));
+	    swapchainImages.emplace_back(SwapchainImage(vk, vkImages[i],
+	surfaceFormat.format));
 
 	createImageViews();
+	//*/
 }
 
 RenderWindowPrivate::~RenderWindowPrivate()
 {
 	auto& vk = vulkanDevice;
 	auto instance = vk.instance();
+
+	for (auto imageAvailableSemaphore : imageAvailableSemaphores)
+	{
+		vk.destroy(imageAvailableSemaphore);
+	}
+	imageAvailableSemaphores.clear();
+
+	for (auto inFlightFence : inFlightFences)
+	{
+		vk.destroy(inFlightFence);
+	}
 
 	swapchainImageViews.clear();
 
@@ -404,44 +428,64 @@ RenderWindowPrivate::~RenderWindowPrivate()
 
 void RenderWindowPrivate::createImageViews()
 {
-	using namespace cdm;
-
 	auto& vk = vulkanDevice;
-	
-	swapchainImageViews.resize(std::max(swapchainImages.size(), swapchainImageViews.size()));
 
-	for (size_t i = 0; i < swapchainImages.size(); i++)
+	vk.wait();
+
+	if (swapchainImageViews.size() != swapchainImages.size())
 	{
-		if (swapchainImageViews[i] == nullptr)
+		swapchainImageViews.resize(
+		    std::max(swapchainImages.size(), swapchainImageViews.size()));
+
+		for (size_t i = 0; i < swapchainImages.size(); i++)
 		{
-			swapchainImageViews[i] = std::make_unique<ImageView>(vk, swapchainImages[i], swapchainImageFormat);
-		}
-		else
-		{
-			swapchainImageViews[i]->setImage(swapchainImages[i], swapchainImageFormat);
+			if (swapchainImageViews[i] == nullptr)
+			{
+				swapchainImageViews[i] = std::make_unique<ImageView>(
+				    vk, swapchainImages[i], swapchainImageFormat);
+			}
+			// else
+			//{
+			//	swapchainImageViews[i]->setImage(swapchainImages[i],
+			//	                                 swapchainImageFormat);
+			//}
 		}
 	}
 }
 
 void RenderWindowPrivate::recreateSwapchain(int width, int height)
 {
-	using namespace cdm;
-
 	auto& vk = vulkanDevice;
 
 	vk.wait();
 
-	//for (auto imageView : swapchainImageViews)
+	for (auto imageAvailableSemaphore : imageAvailableSemaphores)
+	{
+		vk.destroy(imageAvailableSemaphore);
+	}
+	imageAvailableSemaphores.clear();
+
+	// for (auto renderFinishedSemaphore : renderFinishedSemaphores)
 	//{
-	//	vk.destroy(imageView);
+	//	vk.destroy(renderFinishedSemaphore);
 	//}
 
-	vk.destroy(swapchain);
+	for (auto inFlightFence : inFlightFences)
+	{
+		vk.destroy(inFlightFence);
+	}
+	inFlightFences.clear();
 
 	QueueFamilyIndices indices =
 	    findQueueFamilies(vk.physicalDevice(), surface, vk);
 
 	glfwGetFramebufferSize(window, &width, &height);
+
+	vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo;
+	surfaceInfo.surface = surface;
+
+	vk.GetPhysicalDeviceSurfaceCapabilities2KHR(
+	    vk.physicalDevice(), &surfaceInfo, &swapChainSupport.capabilities);
 
 	VkSurfaceFormatKHR surfaceFormat =
 	    chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -495,7 +539,9 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapchainCreateInfo.presentMode = presentMode;
 	swapchainCreateInfo.clipped = true;
-	swapchainCreateInfo.oldSwapchain = nullptr;
+	swapchainCreateInfo.oldSwapchain = swapchain;
+
+	auto oldSwapchain = swapchain;
 
 	if (vk.create(swapchainCreateInfo, swapchain) != VK_SUCCESS)
 	{
@@ -503,16 +549,62 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 		exit(1);
 	}
 
+	vk.destroy(oldSwapchain);
+
 	vk.GetSwapchainImagesKHR(vk.vkDevice(), swapchain, &imageCount, nullptr);
-	//swapchainImages.resize(imageCount);
-	swapchainImages.clear();
-	std::vector<VkImage> vkImages(imageCount);
-	vk.GetSwapchainImagesKHR(vk.vkDevice(), swapchain, &imageCount,
-	                         vkImages.data());
-	for (uint32_t i = 0; i < imageCount; i++)
-		swapchainImages.emplace_back(SwapchainImage(vk, vkImages[i], surfaceFormat.format));
+
+	if (swapchainImages.empty())
+	{
+		std::vector<VkImage> vkImages(imageCount);
+		vk.GetSwapchainImagesKHR(vk.vkDevice(), swapchain, &imageCount,
+		                         vkImages.data());
+		for (uint32_t i = 0; i < imageCount; i++)
+			swapchainImages.emplace_back(
+			    SwapchainImage(vk, vkImages[i], surfaceFormat.format));
+	}
+	else
+	{
+		if (swapchainImages.size() == imageCount)
+		{
+			std::vector<VkImage> vkImages(imageCount);
+			vk.GetSwapchainImagesKHR(vk.vkDevice(), swapchain, &imageCount,
+			                         vkImages.data());
+			for (uint32_t i = 0; i < imageCount; i++)
+			{
+				swapchainImages[i].setImage(vkImages[i]);
+				swapchainImages[i].setFormat(surfaceFormat.format);
+			}
+		}
+		else
+		{
+			std::cerr << "error: unhandled case, imageCount has changed"
+			          << std::endl;
+			exit(1);
+		}
+	}
 
 	createImageViews();
+
+	imagesInFlight.clear();
+	imagesInFlight.resize(swapchainImageViews.size());
+
+	for (auto& view : swapchainImageViews)
+	{
+		VkSemaphore imageAvailableSemaphore;
+		VkFence inFlightFence;
+		vk::SemaphoreCreateInfo semaphoreInfo;
+		vk::FenceCreateInfo fenceInfo;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+		if (vk.create(semaphoreInfo, imageAvailableSemaphore) != VK_SUCCESS ||
+		    vk.create(fenceInfo, inFlightFence) != VK_SUCCESS)
+		{
+			throw std::runtime_error(
+			    "error: failed to create semaphores or fence");
+		}
+
+		imageAvailableSemaphores.push_back(imageAvailableSemaphore);
+		inFlightFences.push_back(inFlightFence);
+	}
 }
 
 void RenderWindowPrivate::keyCallback(GLFWwindow* window, int key,
@@ -571,8 +663,6 @@ void RenderWindowPrivate::maximizeCallback(bool maximized) {}
 RenderWindow::RenderWindow(int width, int height, bool layers)
     : p(std::make_unique<RenderWindowPrivate>(width, height, layers))
 {
-	using namespace cdm;
-
 	auto& vk = p->vulkanDevice;
 
 	QueueFamilyIndices queueFamilyIndices =
@@ -607,6 +697,112 @@ RenderWindow::~RenderWindow()
 }
 
 void RenderWindow::pollEvents() { glfwPollEvents(); }
+
+void RenderWindow::prerender()
+{
+	const auto& vk = device();
+
+	vk.wait(p->inFlightFences[m_currentFrame]);
+
+	VkResult result = vk.AcquireNextImageKHR(
+	    vk.vkDevice(), swapchain(), UINT64_MAX,
+	    p->imageAvailableSemaphores[m_currentFrame], nullptr, &m_imageIndex);
+
+	if (p->imagesInFlight[m_imageIndex] != nullptr)
+	{
+		vk.wait(p->imagesInFlight[m_imageIndex]);
+	}
+
+	p->imagesInFlight[m_imageIndex] = p->inFlightFences[m_currentFrame];
+}
+
+bool RenderWindow::present()
+{
+	const auto& vk = device();
+
+	vk::PresentInfoKHR presentInfo;
+	presentInfo.waitSemaphoreCount = uint32_t(p->presentWaitSemaphores.size());
+	presentInfo.pWaitSemaphores = p->presentWaitSemaphores.data();
+
+	VkSwapchainKHR swapChains[] = { swapchain() };
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &m_imageIndex;
+	presentInfo.pResults = nullptr;
+
+	VkResult result = vk.QueuePresentKHR(vk.presentQueue(), &presentInfo);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+	{
+		int width, height;
+		glfwGetFramebufferSize(p->window, &width, &height);
+
+		p->recreateSwapchain(width, height);
+
+		return false;
+	}
+	else if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("error: failed to present");
+	}
+
+	m_currentFrame = (m_currentFrame + 1) % p->swapchainImages.size();
+
+	return true;
+}
+
+/*
+void RenderWindow::presentImage(VkImage image)
+{
+    const auto& vk = device();
+
+
+
+    vk::PresentInfoKHR presentInfo;
+    presentInfo.waitSemaphoreCount = uint32_t(p->presentWaitSemaphores.size());
+    presentInfo.pWaitSemaphores = p->presentWaitSemaphores.data();
+
+    VkSwapchainKHR swapChains[] = { swapchain() };
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &m_imageIndex;
+    presentInfo.pResults = nullptr;
+
+    VkResult result = vk.QueuePresentKHR(vk.presentQueue(), &presentInfo);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+    {
+        int width, height;
+        glfwGetFramebufferSize(p->window, &width, &height);
+
+        p->recreateSwapchain(width, height);
+
+        if (vk.QueuePresentKHR(vk.presentQueue(), &presentInfo) != VK_SUCCESS)
+        {
+            throw std::runtime_error("error: failed to present");
+        }
+    }
+
+    m_currentFrame = (m_currentFrame + 1) % p->swapchainImages.size();
+}
+//*/
+
+uint32_t RenderWindow::imageIndex() const { return m_imageIndex; }
+
+size_t RenderWindow::currentFrame() const { return m_currentFrame; }
+
+VkSemaphore RenderWindow::currentImageAvailableSemaphore() const
+{
+	return p->imageAvailableSemaphores[m_currentFrame];
+}
+
+VkFence RenderWindow::currentInFlightFences() const
+{
+	return p->inFlightFences[m_currentFrame];
+}
+
+void RenderWindow::pushPresentWaitSemaphore(VkSemaphore semaphore)
+{
+	p->presentWaitSemaphores.push_back(semaphore);
+}
 
 void RenderWindow::show() { glfwShowWindow(p->window); }
 
@@ -694,8 +890,8 @@ std::vector<std::reference_wrapper<ImageView>>
 RenderWindow::swapchainImageViews() const
 {
 	std::vector<std::reference_wrapper<ImageView>> res;
-	
-	//for (auto& iv : p->swapchainImageViews)
+
+	// for (auto& iv : p->swapchainImageViews)
 	for (size_t i = 0; i < p->swapchainImages.size(); i++)
 	{
 		auto& iv = p->swapchainImageViews[i];
@@ -711,3 +907,4 @@ VkCommandPool RenderWindow::commandPool() const { return m_commandPool; }
 //{
 //	return m_oneTimeCommandPool;
 //}
+}  // namespace cdm

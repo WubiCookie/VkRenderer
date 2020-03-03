@@ -5,16 +5,8 @@
 
 #include <stdexcept>
 
-// AbstractFramebuffer::AbstractFramebuffer(
-//    RenderWindow& renderWindow, const RenderPass& renderPass,
-//    std::vector<std::reference_wrapper<const ImageView>> imageViews)
-//    : VulkanDeviceObject(renderWindow.device()),
-//      rw(renderWindow),
-//      rp(renderPass),
-//      ivs(std::move(imageViews))
-//{
-//}
-
+namespace cdm
+{
 Framebuffer::Framebuffer(
     RenderWindow& renderWindow, RenderPass& renderPass,
     std::vector<std::reference_wrapper<ImageView>> imageViews)
@@ -56,8 +48,6 @@ bool Framebuffer::outdated() const
 
 void Framebuffer::recreate()
 {
-	using namespace cdm;
-
 	auto& vk = device();
 	auto& rw = this->rw.get();
 
@@ -69,7 +59,9 @@ void Framebuffer::recreate()
 	std::vector<VkImageView> vkImageViews;
 	vkImageViews.reserve(m_imageViews.size());
 	for (ImageView& i : m_imageViews)
-		vkImageViews.push_back(i.imageView());
+	{
+		vkImageViews.push_back(i);
+	}
 
 	vk::FramebufferCreateInfo framebufferInfo;
 	framebufferInfo.renderPass = m_renderPass.get().renderPass();
@@ -86,3 +78,4 @@ void Framebuffer::recreate()
 
 	setCreationTime();
 }
+}  // namespace cdm

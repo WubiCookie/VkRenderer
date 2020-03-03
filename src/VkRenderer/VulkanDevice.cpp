@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <vector>
 
+namespace cdm
+{
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDeviceBase::DebugReportCallback(
     VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType,
     uint64_t object, size_t location, int32_t messageCode,
@@ -73,8 +75,6 @@ VulkanDeviceBase::VulkanDeviceBase(bool layers) noexcept : m_layers(layers)
 
 #undef LOAD
 
-	using namespace cdm;
-
 	vk::ApplicationInfo appInfo;
 	appInfo.apiVersion = VK_API_VERSION_1_2;
 	appInfo.applicationVersion = 0;
@@ -87,8 +87,8 @@ VulkanDeviceBase::VulkanDeviceBase(bool layers) noexcept : m_layers(layers)
 	if (layers)
 	{
 		validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-		// validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
-		// validationLayers.push_back("VK_LAYER_LUNARG_api_dump");
+		//validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+		 //validationLayers.push_back("VK_LAYER_LUNARG_api_dump");
 
 		uint32_t layerCount;
 		EnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -391,8 +391,6 @@ static void pickPhysicalDevice(
 
 VulkanDevice::VulkanDevice(bool layers) noexcept : VulkanDeviceBase(layers)
 {
-	using namespace cdm;
-
 	uint32_t deviceCount = 0;
 	EnumeratePhysicalDevices(instance(), &deviceCount, nullptr);
 
@@ -426,8 +424,6 @@ VulkanDevice::~VulkanDevice()
 void VulkanDevice::createDevice(VkSurfaceKHR surface,
                                 QueueFamilyIndices queueFamilyIndices)
 {
-	using namespace cdm;
-
 	m_queueFamilyIndices = queueFamilyIndices;
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -775,3 +771,4 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	GetDeviceQueue(m_device, m_queueFamilyIndices.presentFamily.value(), 0,
 	               &m_presentQueue);
 }
+}  // namespace cdm

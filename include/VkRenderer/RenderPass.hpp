@@ -2,9 +2,11 @@
 
 #include "VulkanDevice.hpp"
 
+namespace cdm
+{
 class RenderPass final : public VulkanDeviceObject
 {
-	cdm::Moveable<VkRenderPass> m_renderPass;
+	Moveable<VkRenderPass> m_renderPass;
 
 public:
 	RenderPass(const VulkanDevice& device_, VkFormat format);
@@ -13,3 +15,4 @@ public:
 	VkRenderPass renderPass();
 	operator VkRenderPass();
 };
+}  // namespace cdm
