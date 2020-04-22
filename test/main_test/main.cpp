@@ -1,5 +1,6 @@
 #include "CommandBuffer.hpp"
 #include "Framebuffer.hpp"
+#include "Mandelbulb.hpp"
 #include "Material.hpp"
 #include "RenderPass.hpp"
 #include "RenderWindow.hpp"
@@ -9,158 +10,210 @@
 #include <iostream>
 #include <vector>
 
-#include "CompilerSpirV/compileSpirV.hpp"
-#include "ShaderWriter/Intrinsics/Intrinsics.hpp"
-#include "ShaderWriter/Source.hpp"
-
-static std::vector<uint32_t> readFile(const std::string& filename)
-{
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-	if (!file.is_open())
-	{
-		throw std::runtime_error("failed to open file!");
-	}
-
-	size_t fileSize = (size_t)file.tellg();
-	std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
-
-	file.seekg(0);
-	file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
-
-	file.close();
-
-	return buffer;
-}
-
 int main()
 {
 	using namespace cdm;
 
-	RenderWindow rw(800, 600, true);
+	RenderWindow rw(1280, 720, true);
+
+	rw.prerender();
+	rw.present();
 
 	auto& vk = rw.device();
-	auto device = vk.vkDevice();
+	// auto device = vk.vkDevice();
 
 	Renderer ren(rw);
 
-	// std::vector<CommandBuffer> commandBuffers;
-	// std::vector<Framebuffer> framebuffers;
-	//
-	// std::vector<VkSemaphore> imageAvailableSemaphores;
-	// std::vector<VkSemaphore> renderFinishedSemaphores;
-	// std::vector<VkFence> inFlightFences;
-	// std::vector<VkFence> imagesInFlight(rw.swapchainImageViews().size(),
-	//                                    nullptr);
-	//
-	// for (ImageView& view : rw.swapchainImageViews())
+	Mandelbulb mandelbulb(rw);
+
+	// CommandBuffer transitionCB(vk, rw.commandPool());
+
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	// transitionCB.begin(beginInfo);
+	// vk::ImageMemoryBarrier barrier;
+	// barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	// barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	// barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	// barrier.image = mandelbulb.outputImage();
+	// barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	// barrier.subresourceRange.baseMipLevel = 0;
+	// barrier.subresourceRange.levelCount = 1;
+	// barrier.subresourceRange.baseArrayLayer = 0;
+	// barrier.subresourceRange.layerCount = 1;
+	// barrier.srcAccessMask = 0;
+	// barrier.dstAccessMask = 0;
+	// transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	// VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_DEVICE_GROUP_BIT,
+	// barrier); if (transitionCB.end() != VK_SUCCESS)
 	//{
-	//	framebuffers.push_back(Framebuffer(rw, rp, { view }));
-	// commandBuffers.push_back(CommandBuffer(vk, rw.commandPool()));
-	//
-	// VkSemaphore imageAvailableSemaphore;
-	// VkSemaphore renderFinishedSemaphore;
-	// VkFence inFlightFence;
-	// vk::SemaphoreCreateInfo semaphoreInfo;
-	// vk::FenceCreateInfo fenceInfo;
-	// fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-	// if (vk.create(semaphoreInfo, imageAvailableSemaphore) != VK_SUCCESS ||
-	//    vk.create(semaphoreInfo, renderFinishedSemaphore) != VK_SUCCESS ||
-	//    vk.create(fenceInfo, inFlightFence) != VK_SUCCESS)
-	//{
-	//	throw std::runtime_error(
-	//	    "error: failed to create semaphores or fence");
-	//}
-	//
-	// imageAvailableSemaphores.push_back(imageAvailableSemaphore);
-	// renderFinishedSemaphores.push_back(renderFinishedSemaphore);
-	// inFlightFences.push_back(inFlightFence);
+	//	std::cerr << "error: failed to record command buffer" << std::endl;
+	//	abort();
 	//}
 
-	// size_t currentFrame = 0;
-	// uint32_t imageIndex;
-	while (!rw.shouldClose())
+	vk::SubmitInfo submitInfo;
+
+	//// VkSemaphore waitSemaphores[] = {
+	////	rw.get().currentImageAvailableSemaphore()
+	////};
+	//// VkPipelineStageFlags waitStages[] = {
+	////	VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+	////};
+	//// submitInfo.waitSemaphoreCount = 1;
+	//// submitInfo.pWaitSemaphores = waitSemaphores;
+	//// submitInfo.pWaitDstStageMask = waitStages;
+
+	//// auto cb = m_commandBuffers[rw.get().imageIndex()].commandBuffer();
+	// auto cb = transitionCB.commandBuffer();
+	submitInfo.commandBufferCount = 1;
+	// submitInfo.pCommandBuffers = &cb;
+	//// VkSemaphore signalSemaphores[] = {
+	////	m_renderFinishedSemaphores[rw.get().currentFrame()]
+	////};
+	//// submitInfo.signalSemaphoreCount = 1;
+	//// submitInfo.pSignalSemaphores = signalSemaphores;
+
+	//// VkFence inFlightFence = rw.get().currentInFlightFences();
+
+	//// vk.ResetFences(vk.vkDevice(), 1, &inFlightFence);
+
+	// if (vk.queueSubmit(vk.graphicsQueue(), submitInfo) != VK_SUCCESS)
+	//{
+	//	std::cerr << "error: failed to submit draw command buffer"
+	//	          << std::endl;
+	//	abort();
+	//}
+
+	CommandBuffer renderCB(vk, rw.commandPool());
+
+	renderCB.begin(beginInfo);
+	mandelbulb.render(renderCB);
+	if (renderCB.end() != VK_SUCCESS)
 	{
-		//vk.wait();
-		
-
-		// vk.wait(inFlightFences[currentFrame]);
-		//
-		// VkResult result = vk.AcquireNextImageKHR(
-		//    device, rw.swapchain(), UINT64_MAX,
-		//    imageAvailableSemaphores[currentFrame], nullptr, &imageIndex);
-		//
-		//// Check if a previous frame is using this image (i.e. there is its
-		//// fence to wait on)
-		// if (imagesInFlight[imageIndex] != nullptr)
-		//{
-		//	vk.wait(imagesInFlight[imageIndex]);
-		//}
-		//// Mark the image as now being in use by this frame
-		// imagesInFlight[imageIndex] = inFlightFences[currentFrame];
-		//
-		// vk::SubmitInfo submitInfo;
-		//
-		// VkSemaphore waitSemaphores[] = {
-		//	imageAvailableSemaphores[currentFrame]
-		//};
-		// VkPipelineStageFlags waitStages[] = {
-		//	VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-		//};
-		// submitInfo.waitSemaphoreCount = 1;
-		// submitInfo.pWaitSemaphores = waitSemaphores;
-		// submitInfo.pWaitDstStageMask = waitStages;
-		// submitInfo.commandBufferCount = 1;
-		// auto cb = commandBuffers[imageIndex].commandBuffer();
-		// submitInfo.pCommandBuffers = &cb;
-		// VkSemaphore signalSemaphores[] = {
-		//	renderFinishedSemaphores[currentFrame]
-		//};
-		// submitInfo.signalSemaphoreCount = 1;
-		// submitInfo.pSignalSemaphores = signalSemaphores;
-		//
-		// vk.ResetFences(device, 1, &inFlightFences[currentFrame]);
-		//
-		// if (vk.QueueSubmit(vk.graphicsQueue(), 1, &submitInfo,
-		//                   inFlightFences[currentFrame]) != VK_SUCCESS)
-		//{
-		//	throw std::runtime_error(
-		//	    "error failed to submit draw command buffer");
-		//}
-		//
-		// vk::PresentInfoKHR presentInfo;
-		// presentInfo.waitSemaphoreCount = 1;
-		// presentInfo.pWaitSemaphores = signalSemaphores;
-		//
-		// VkSwapchainKHR swapChains[] = { rw.swapchain() };
-		// presentInfo.swapchainCount = 1;
-		// presentInfo.pSwapchains = swapChains;
-		// presentInfo.pImageIndices = &imageIndex;
-		// presentInfo.pResults = nullptr;  // Optional
-		//
-		// vk.QueuePresentKHR(vk.presentQueue(), &presentInfo);
-		//// vk.QueueWaitIdle(ctx.presentQueue());
-		//
-		// currentFrame = (currentFrame + 1) % 2;
-
-		ren.render();
-		rw.pollEvents();
+		std::cerr << "error: failed to record command buffer" << std::endl;
+		abort();
 	}
 
-	vk.wait();
+	vk.wait(vk.graphicsQueue());
 
-	// for (auto imageAvailableSemaphore : imageAvailableSemaphores)
-	//{
-	//	vk.destroy(imageAvailableSemaphore);
-	//}
+	auto cb = renderCB.commandBuffer();
+	submitInfo.pCommandBuffers = &cb;
 
-	// for (auto renderFinishedSemaphore : renderFinishedSemaphores)
-	//{
-	//	vk.destroy(renderFinishedSemaphore);
-	//}
+	if (vk.queueSubmit(vk.graphicsQueue(), submitInfo) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit draw command buffer"
+		          << std::endl;
+		abort();
+	}
 
-	// for (auto inFlightFence : inFlightFences)
-	//{
-	//	vk.destroy(inFlightFence);
-	//}
+	auto swapImages = rw.swapchainImages();
+
+	CommandBuffer copyCB(vk, rw.commandPool());
+
+	copyCB.begin(beginInfo);
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = mandelbulb.outputImage();
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
+	copyCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, barrier);
+
+	for (auto swapImage : swapImages)
+	{
+		vk::ImageMemoryBarrier swapBarrier = barrier;
+		swapBarrier.image = swapImage;
+		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		copyCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+		                       swapBarrier);
+
+		VkImageCopy copy{};
+		copy.extent.width = 1280;
+		copy.extent.height = 720;
+		copy.extent.depth = 1;
+		copy.srcSubresource.aspectMask =
+		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+		copy.srcSubresource.baseArrayLayer = 0;
+		copy.srcSubresource.layerCount = 1;
+		copy.srcSubresource.mipLevel = 0;
+		copy.dstSubresource.aspectMask =
+		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+		copy.dstSubresource.baseArrayLayer = 0;
+		copy.dstSubresource.layerCount = 1;
+		copy.dstSubresource.mipLevel = 0;
+
+		copyCB.copyImage(mandelbulb.outputImage(),
+		                 // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		                 // swapImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, copy);
+		                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapImage,
+		                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy);
+
+		//VkImageBlit blit{};
+		//blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		//blit.srcSubresource.baseArrayLayer = 0;
+		//blit.srcSubresource.layerCount = 1;
+		//blit.srcSubresource.mipLevel = 0;
+		//blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		//blit.dstSubresource.baseArrayLayer = 0;
+		//blit.dstSubresource.layerCount = 1;
+		//blit.dstSubresource.mipLevel = 0;
+
+		//copyCB.blitImage(mandelbulb.outputImage(),
+		//	// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		//	// swapImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, copy);
+		//	VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapImage,
+		//	VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit, VK_FILTER_NEAREST);
+
+		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		swapBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		copyCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+		                       swapBarrier);
+	}
+
+	vk::ImageMemoryBarrier barrier2 = barrier;
+	barrier2.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier2.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	copyCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, barrier2);
+
+	if (copyCB.end() != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to record command buffer" << std::endl;
+		abort();
+	}
+
+	vk.wait(vk.graphicsQueue());
+
+	cb = copyCB.commandBuffer();
+	submitInfo.pCommandBuffers = &cb;
+
+	if (vk.queueSubmit(vk.graphicsQueue(), submitInfo) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit draw command buffer"
+		          << std::endl;
+		abort();
+	}
+
+	vk.wait(vk.graphicsQueue());
+
+	while (!rw.shouldClose())
+	{
+		// ren.render();
+		rw.prerender();
+		rw.present();
+		rw.pollEvents();
+	}
 }

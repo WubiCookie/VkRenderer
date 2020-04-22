@@ -296,7 +296,8 @@ bool Material::buildPipeline()
 	pipelineInfo.basePipelineHandle = nullptr;  // Optional
 	pipelineInfo.basePipelineIndex = -1;        // Optional
 
-	if (vk.create(pipelineInfo, m_pipeline.get()) != VK_SUCCESS)
+	VkResult res = vk.create(pipelineInfo, m_pipeline.get());
+	if (res != VK_SUCCESS)
 	{
 		std::cerr << "error: failed to create graphics pipeline" << std::endl;
 		return false;

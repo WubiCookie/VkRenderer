@@ -443,7 +443,10 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	}
 
 	std::vector<const char*> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
+		VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
+		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
 	};
 
 	uint32_t extensionCount;
@@ -573,12 +576,15 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	LOAD(BeginCommandBuffer);
 	LOAD(BindBufferMemory);
 	LOAD(BindBufferMemory2);
+	LOAD(BindBufferMemory2KHR);
 	LOAD(BindImageMemory);
 	LOAD(BindImageMemory2);
+	LOAD(BindImageMemory2KHR);
 
 	LOAD(CmdBeginQuery);
 	LOAD(CmdBeginRenderPass);
-	// LOAD(CmdBeginRenderPass2);
+	 //LOAD(CmdBeginRenderPass2);
+	 LOAD(CmdBeginRenderPass2KHR);
 	LOAD(CmdBindDescriptorSets);
 	LOAD(CmdBindIndexBuffer);
 	LOAD(CmdBindPipeline);
@@ -603,7 +609,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	// LOAD(CmdDrawIndirectCount);
 	LOAD(CmdEndQuery);
 	LOAD(CmdEndRenderPass);
-	// LOAD(CmdEndRenderPass2);
+	 //LOAD(CmdEndRenderPass2);
+	 LOAD(CmdEndRenderPass2KHR);
 	LOAD(CmdExecuteCommands);
 	LOAD(CmdFillBuffer);
 	LOAD(CmdNextSubpass);
@@ -645,7 +652,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	LOAD(CreatePipelineLayout);
 	LOAD(CreateQueryPool);
 	LOAD(CreateRenderPass);
-	// LOAD(CreateRenderPass2);
+	 //LOAD(CreateRenderPass2);
+	 LOAD(CreateRenderPass2KHR);
 	LOAD(CreateSampler);
 	LOAD(CreateSamplerYcbcrConversion);
 	LOAD(CreateSemaphore);
@@ -683,7 +691,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	LOAD(FreeMemory);
 	// LOAD(GetBufferDeviceAddress);
 	LOAD(GetBufferMemoryRequirements);
-	// LOAD(GetBufferMemoryRequirements2);
+	 LOAD(GetBufferMemoryRequirements2);
+	 LOAD(GetBufferMemoryRequirements2KHR);
 	// LOAD(GetBufferOpaqueCaptureAddress);
 	LOAD(GetDescriptorSetLayoutSupport);
 	LOAD(GetDeviceGroupPeerMemoryFeatures);
@@ -694,7 +703,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	LOAD(GetEventStatus);
 	LOAD(GetFenceStatus);
 	LOAD(GetImageMemoryRequirements);
-	// LOAD(GetImageMemoryRequirements2);
+	 LOAD(GetImageMemoryRequirements2);
+	 LOAD(GetImageMemoryRequirements2KHR);
 	LOAD(GetImageSparseMemoryRequirements);
 	// LOAD(GetImageSparseMemoryRequirements2);
 	LOAD(GetImageSubresourceLayout);

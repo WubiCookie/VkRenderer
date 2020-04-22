@@ -174,7 +174,7 @@ inline VkResult VulkanDevice::createRenderPass2(
     const cdm::vk::RenderPassCreateInfo2& createInfo,
     VkRenderPass& outRenderPass) const
 {
-	return CreateRenderPass2(vkDevice(), &createInfo, nullptr, &outRenderPass);
+	return CreateRenderPass2KHR(vkDevice(), &createInfo, nullptr, &outRenderPass);
 }
 
 inline VkResult VulkanDevice::create(
@@ -259,6 +259,18 @@ inline void VulkanDevice::freeMemory(VkDeviceMemory aDeviceMemory) const
 inline void VulkanDevice::free(VkDeviceMemory aDeviceMemory) const
 {
 	freeMemory(aDeviceMemory);
+}
+
+inline VkResult VulkanDevice::queueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* submits, VkFence fence) const
+{
+	return QueueSubmit(queue, submitCount, submits, fence);
+}
+
+inline VkResult VulkanDevice::queueSubmit(VkQueue queue,
+                                          const VkSubmitInfo& submit,
+                                          VkFence fence) const
+{
+	return queueSubmit(queue, 1, &submit, fence);
 }
 
 inline VkResult VulkanDevice::queueWaitIdle(VkQueue queue) const

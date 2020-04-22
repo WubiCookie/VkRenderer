@@ -91,6 +91,7 @@ using FormatProperties2                    = CreateInfo<VkFormatProperties2,    
 using FramebufferCreateInfo                = CreateInfo<VkFramebufferCreateInfo,                VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO>;
 using GraphicsPipelineCreateInfo           = CreateInfo<VkGraphicsPipelineCreateInfo,           VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO>;
 using ImageCreateInfo                      = CreateInfo<VkImageCreateInfo,                      VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO>;
+using ImageMemoryBarrier                   = CreateInfo<VkImageMemoryBarrier,                   VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER>;
 using ImageViewCreateInfo                  = CreateInfo<VkImageViewCreateInfo,                  VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO>;
 using InstanceCreateInfo                   = CreateInfo<VkInstanceCreateInfo,                   VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO>;
 using MemoryAllocateInfo                   = CreateInfo<VkMemoryAllocateInfo,                   VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO>;
@@ -131,13 +132,13 @@ template<typename T, auto DefaultValue = nullptr>
 class Moveable
 {
     T m_obj = DefaultValue;
-    
+
 public:
     Moveable() = default;
     Moveable(const Moveable&) = default;
     Moveable(Moveable&& obj) noexcept : m_obj(std::exchange(obj.m_obj, DefaultValue)) {}
     Moveable(T obj) noexcept : m_obj(obj) {}
-    
+
     Moveable& operator=(const Moveable&) = default;
     Moveable& operator=(Moveable&& ptr) noexcept
     {
@@ -149,7 +150,7 @@ public:
         m_obj = ptr;
         return *this;
     }
-    
+
     T& get() noexcept { return m_obj; }
     const T& get() const noexcept { return m_obj; }
 

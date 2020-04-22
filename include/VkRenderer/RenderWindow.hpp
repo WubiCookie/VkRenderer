@@ -23,9 +23,6 @@ class RenderWindow
 {
 	std::unique_ptr<RenderWindowPrivate> p;
 
-	VkCommandPool m_commandPool = nullptr;
-	VkCommandPool m_oneTimeCommandPool = nullptr;
-
 	uint32_t m_imageIndex = -1;
 	size_t m_currentFrame = 0;
 
@@ -79,6 +76,7 @@ public:
 	VkSwapchainKHR swapchain() const;
 	VkExtent2D swapchainExtent();
 	VkFormat swapchainImageFormat();
+	std::vector<VkImage> swapchainImages() const;
 	std::vector<std::reference_wrapper<ImageView>> swapchainImageViews() const;
 
 	VkCommandPool commandPool() const;

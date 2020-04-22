@@ -60,6 +60,7 @@ add_library(VkRenderer STATIC
 	src/VkRenderer/RenderWindow.cpp
 	src/VkRenderer/VulkanDevice.cpp
 	src/VkRenderer/Material.cpp
+	src/VkRenderer/Mandelbulb.cpp
 
 	include/VkRenderer/CommandBuffer.hpp
 	include/VkRenderer/CommandBuffer.inl
@@ -72,6 +73,7 @@ add_library(VkRenderer STATIC
 	include/VkRenderer/VulkanDevice.hpp
 	include/VkRenderer/VulkanDevice.inl
 	include/VkRenderer/Material.hpp
+	include/VkRenderer/Mandelbulb.hpp
 )
 
 set_target_properties(VkRenderer PROPERTIES FOLDER "")
@@ -97,7 +99,7 @@ target_include_directories(VkRenderer
 		third_party/ShaderWriter/include
 )
 
-target_link_libraries(VkRenderer PRIVATE glfw assimp ShaderWriter CompilerSpirV PUBLIC shaderc)
+target_link_libraries(VkRenderer PRIVATE glfw assimp sdwShaderWriter sdwCompilerSpirV PUBLIC shaderc)
 set_target_properties(VkRenderer PROPERTIES CXX_STANDARD 17)
 
 if(MSVC)
@@ -116,7 +118,7 @@ target_include_directories(MainTest
 		third_party/ShaderWriter/include
 )
 
-target_link_libraries(MainTest PRIVATE VkRenderer ShaderWriter CompilerSpirV)
+target_link_libraries(MainTest PRIVATE VkRenderer sdwShaderWriter sdwCompilerSpirV)
 set_target_properties(MainTest PROPERTIES CXX_STANDARD 17)
 set_target_properties(MainTest PROPERTIES FOLDER "")
 

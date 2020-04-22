@@ -3,6 +3,10 @@
 #include "Framebuffer.hpp"
 #include "RenderWindow.hpp"
 
+#include "CompilerSpirV/compileSpirV.hpp"
+#include "ShaderWriter/Intrinsics/Intrinsics.hpp"
+#include "ShaderWriter/Source.hpp"
+
 namespace cdm
 {
 Renderer::Renderer(RenderWindow& renderWindow)
@@ -13,82 +17,74 @@ Renderer::Renderer(RenderWindow& renderWindow)
 {
 	const auto& vk = renderWindow.device();
 
-	/*
+	//*
 	{
-	    using namespace sdw;
+		using namespace sdw;
 
-	    VertexWriter writer;
+		VertexWriter writer;
 
-	    // auto colors = writer.declConstantArray<Vec4>(
-	    //    "colors", std::vector<Vec4>{ vec4(0.0_f, 0.0f, 0.0f, 1.0f),
-	    //                                 vec4(1.0_f, 1.0f, 1.0f, 1.0f),
-	    //                                 vec4(0.0_f, 0.0f, 0.0f, 1.0f),
-	    //                                 vec4(0.0_f, 0.0f, 0.0f, 1.0f),
-	    //                                 vec4(1.0_f, 1.0f, 1.0f, 1.0f),
-	    //                                 vec4(1.0_f, 1.0f, 1.0f, 1.0f) });
+		auto positions = writer.declConstantArray<Vec2>(
+			"positions",
+			std::vector<Vec2>{
+				vec2(-1.0_f, -1.0_f), vec2(0.0_f, -1.0_f), vec2(1.0_f, -1.0_f),
+				vec2(-1.0_f, 0.0_f), vec2(0.0_f, 0.0_f), vec2(1.0_f, 0.0_f),
+				vec2(-1.0_f, 1.0_f), vec2(0.0_f, 1.0_f), vec2(1.0_f, 1.0_f) });
 
-	    // auto positions = writer.declLocaleArray(
-	    //    "positions", 6u,
-	    //    std::vector<Vec4>{ vec4(-1.0_f, -1.0f, 0.0f, 1.0f),
-	    //                       vec4(1.0_f, -1.0f, 0.0f, 1.0f),
-	    //                       vec4(-1.0_f, 1.0f, 0.0f, 1.0f),
-	    //                       vec4(-1.0_f, 1.0f, 0.0f, 1.0f),
-	    //                       vec4(1.0_f, -1.0f, 0.0f, 1.0f),
-	    //                       vec4(1.0_f, 1.0f, 0.0f, 1.0f) });
+		auto colors = writer.declConstantArray<Vec3>(
+			"colors", std::vector<Vec3>{
+							vec3(1.0_f, 0.0_f, 0.0_f), vec3(1.0_f, 1.0_f, 1.0_f),
+							vec3(0.0_f, 0.0_f, 1.0_f), vec3(1.0_f, 0.0_f, 0.0_f),
+							vec3(0.0_f, 1.0_f, 0.0_f), vec3(0.0_f, 0.0_f, 1.0_f),
+							vec3(0.0_f, 0.0_f, 0.0_f), vec3(0.0_f, 0.0_f, 0.0_f),
+							vec3(0.0_f, 0.0_f, 0.0_f) });
 
-	    // Shader inputs
-	    auto in = writer.getIn();
+		auto indices = writer.declConstantArray<Int>(
+			"indices", std::vector<Int>{ 0_i, 1_i, 6_i, 6_i, 1_i, 7_i, 1_i,
+											2_i, 7_i, 7_i, 2_i, 8_i });
 
-	    // Shader outputs
-	    auto outColor = writer.declOutput<Vec4>("outColor", 0u);
-	    auto out = writer.getOut();
+		auto in = writer.getIn();
 
-	    writer.implementFunction<void>("main", [&]() {
-	        auto positions = writer.declLocaleArray<Vec4>(
-	            "positions", 6,
-	            std::vector<Vec4>{ vec4(-1.0_f, -1.0f, 0.0f, 1.0f),
-	                               vec4(1.0_f, -1.0f, 0.0f, 1.0f),
-	                               vec4(-1.0_f, 1.0f, 0.0f, 1.0f),
-	                               vec4(-1.0_f, 1.0f, 0.0f, 1.0f),
-	                               vec4(1.0_f, -1.0f, 0.0f, 1.0f),
-	                               vec4(1.0_f, 1.0f, 0.0f, 1.0f) });
+		auto outColor = writer.declOutput<Vec4>("outColor", 0u);
+		auto out = writer.getOut();
 
-	        outColor = vec4(1.0_f);  // colors[in.gl_VertexID];
-	        // out.gl_out.gl_Position = positions[in.gl_VertexID];
-	        //// outColor = vec4(1.0_f, 0.0_f, 0.0_f, 1.0_f);
-	        //// out.gl_out.gl_Position = vec4(0.0_f, 0.0_f, 0.0_f, 1.0_f);
+		writer.implementFunction<void>("main", [&]() {
+			// out.gl_out.gl_Position.xy() =
+			// positions[indices[in.gl_VertexID]]; out.gl_out.gl_Position.z() =
+			// 0.0_f; out.gl_out.gl_Position.w() = 1.0_f;
+			out.vtx.position =
+				vec4(positions[indices[in.vertexIndex]], 0.0_f, 1.0_f);
+			outColor = vec4(colors[indices[in.vertexIndex]], 1.0_f);
+		});
 
-	        // outColor = colors[in.gl_VertexIndex];
-	        out.gl_out.gl_Position = positions[in.gl_VertexID];
-	    });
+		// std::cout << spirv::writeSpirv(writer.getShader()) << std::endl;
 
-	    // std::cout << spirv::writeSpirv(writer.getShader()) << std::endl;
-
-	    mtl.setVertexShaderBytecode(spirv::serialiseSpirv(writer.getShader()));
+		m_defaultMaterial.setVertexShaderBytecode(
+			spirv::serialiseSpirv(writer.getShader()));
 	}
 
 	{
-	    using namespace sdw;
+		using namespace sdw;
 
-	    FragmentWriter writer;
+		FragmentWriter writer;
 
-	    // Shader inputs
-	    auto color = writer.declInput<Vec4>("color", 0u);
+		// Shader inputs
+		auto color = writer.declInput<Vec4>("color", 0u);
 
-	    // Shader outputs
-	    auto outColor = writer.declOutput<Vec4>("fragColor", 0u);
+		// Shader outputs
+		auto outColor = writer.declOutput<Vec4>("fragColor", 0u);
 
-	    writer.implementFunction<void>("main", [&]() { outColor = color; });
+		writer.implementFunction<void>("main", [&]() { outColor = color; });
 
-	    // std::cout << spirv::writeSpirv(writer.getShader()) << std::endl;
+		// std::cout << spirv::writeSpirv(writer.getShader()) << std::endl;
 
-	    mtl.setFragmentShaderBytecode(
-	        spirv::serialiseSpirv(writer.getShader()));
+		m_defaultMaterial.setFragmentShaderBytecode(
+		    spirv::serialiseSpirv(writer.getShader()));
 	}
 	//*/
 
+	/*
 	{
-		m_defaultMaterial.setVertexShaderGLSL(R"(
+	    m_defaultMaterial.setVertexShaderGLSL(R"(
 #version 450
 
 layout(location = 0) out vec3 fragColor;
@@ -130,7 +126,7 @@ void main()
 
 )");
 
-		m_defaultMaterial.setFragmentShaderGLSL(R"(
+	    m_defaultMaterial.setFragmentShaderGLSL(R"(
 #version 450
 
 layout(location = 0) in vec3 fragColor;
@@ -144,6 +140,7 @@ void main()
 
 )");
 	}
+	//*/
 
 	m_defaultMaterial.buildPipeline();
 

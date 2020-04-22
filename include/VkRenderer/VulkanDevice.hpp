@@ -6,8 +6,9 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 
-#define VK_NO_PROTOTYPES
 #include <libloaderapi.h>
+
+#define VK_NO_PROTOTYPES
 #include "cdm_vulkan.hpp"
 
 #include <optional>
@@ -84,7 +85,6 @@ public:
 	PFN_vkGetPhysicalDeviceSparseImageFormatProperties2 GetPhysicalDeviceSparseImageFormatProperties2;
 
 	// VK_KHR_SURFACE_EXTENSION
-VULKAN_BASE_FUNCTIONS_VISIBILITY:
 	PFN_vkDestroySurfaceKHR DestroySurfaceKHR;
 public:
 	inline void destroySurface(VkSurfaceKHR surface) const;
@@ -96,11 +96,10 @@ public:
 	PFN_vkGetPhysicalDeviceSurfaceSupportKHR GetPhysicalDeviceSurfaceSupportKHR;
 
 	// VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-VULKAN_BASE_FUNCTIONS_VISIBILITY:
 	PFN_vkCreateWin32SurfaceKHR CreateWin32SurfaceKHR;
 public:
-	inline VkResult createSurface(const cdm::vk::Win32SurfaceCreateInfoKHR& createInfo, VkSurfaceKHR& outSurface) const;
-	inline VkResult create(const cdm::vk::Win32SurfaceCreateInfoKHR& createInfo, VkSurfaceKHR& outSurface) const;
+	inline VkResult createSurface(const vk::Win32SurfaceCreateInfoKHR& createInfo, VkSurfaceKHR& outSurface) const;
+	inline VkResult create(const vk::Win32SurfaceCreateInfoKHR& createInfo, VkSurfaceKHR& outSurface) const;
 
 	PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR GetPhysicalDeviceWin32PresentationSupportKHR;
 
@@ -205,23 +204,21 @@ public:
 	// GetPhysicalDeviceGeneratedCommandsPropertiesNVX;
 
 	// Device functions
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkAllocateCommandBuffers AllocateCommandBuffers;
 public:
-	inline VkResult allocateCommandBuffers(const cdm::vk::CommandBufferAllocateInfo& allocateInfo, VkCommandBuffer* pCommandBuffers) const;
-	inline VkResult allocate(const cdm::vk::CommandBufferAllocateInfo& allocateInfo, VkCommandBuffer* pCommandBuffers) const;
+	inline VkResult allocateCommandBuffers(const vk::CommandBufferAllocateInfo& allocateInfo, VkCommandBuffer* pCommandBuffers) const;
+	inline VkResult allocate(const vk::CommandBufferAllocateInfo& allocateInfo, VkCommandBuffer* pCommandBuffers) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
 	PFN_vkAllocateDescriptorSets AllocateDescriptorSets;
 public:
-	inline VkResult allocateDescriptorSets(const cdm::vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
-	inline VkResult allocate(const cdm::vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
+	inline VkResult allocateDescriptorSets(const vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
+	inline VkResult allocate(const vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
 	PFN_vkAllocateMemory AllocateMemory;
 public:
-	inline VkResult allocateMemory(const cdm::vk::MemoryAllocateInfo& allocateInfo, VkDeviceMemory& outDeviceMemory) const;
-	inline VkResult allocate(const cdm::vk::MemoryAllocateInfo& allocateInfo, VkDeviceMemory& outDeviceMemory) const;
+	inline VkResult allocateMemory(const vk::MemoryAllocateInfo& allocateInfo, VkDeviceMemory& outDeviceMemory) const;
+	inline VkResult allocate(const vk::MemoryAllocateInfo& allocateInfo, VkDeviceMemory& outDeviceMemory) const;
 
 	PFN_vkBindBufferMemory BindBufferMemory;
 	PFN_vkBindBufferMemory2 BindBufferMemory2;
@@ -284,41 +281,41 @@ public:
 	PFN_vkResetCommandBuffer ResetCommandBuffer;
 
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkCreateComputePipelines CreateComputePipelines;
 public:
 	inline VkResult createComputePipelines(uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
 	inline VkResult create(uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult createComputePipelines(uint32_t createInfoCount, const cdm::vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(uint32_t createInfoCount, const cdm::vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult createComputePipeline(const cdm::vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(const cdm::vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
+	inline VkResult createComputePipelines(uint32_t createInfoCount, const vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	inline VkResult create(uint32_t createInfoCount, const vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	inline VkResult createComputePipeline(const vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
+	inline VkResult create(const vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkCreateGraphicsPipelines CreateGraphicsPipelines;
 public:
 	inline VkResult createGraphicsPipelines(uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
 	inline VkResult create(uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult createGraphicsPipelines(uint32_t createInfoCount, const cdm::vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(uint32_t createInfoCount, const cdm::vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult createGraphicsPipeline(const cdm::vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(const cdm::vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
+	inline VkResult createGraphicsPipelines(uint32_t createInfoCount, const vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	inline VkResult create(uint32_t createInfoCount, const vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	inline VkResult createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
+	inline VkResult create(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkCreateRenderPass2 CreateRenderPass2;
 public:
-	inline VkResult createRenderPass2(const cdm::vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
-	inline VkResult create(const cdm::vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
+	inline VkResult createRenderPass2(const vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
+	inline VkResult create(const vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
 
 #define DEFINE_DEVICE_CREATE(ObjectName)                                                                                    \
-VULKAN_FUNCTIONS_VISIBILITY:                                                                                                \
+                                                                                                \
 	PFN_vkCreate##ObjectName Create##ObjectName;                                                                            \
 public:                                                                                                                     \
-	VkResult create##ObjectName(const cdm::vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const \
+	VkResult create##ObjectName(const vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const \
 	{                                                                                                                       \
 		return Create##ObjectName(vkDevice(), &createInfo, nullptr, &out##ObjectName);                                      \
 	}                                                                                                                       \
-	VkResult create(const cdm::vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const             \
+	VkResult create(const vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const             \
 	{                                                                                                                       \
 		return create##ObjectName(createInfo, out##ObjectName);                                                             \
 	}
@@ -343,14 +340,14 @@ public:                                                                         
 	DEFINE_DEVICE_CREATE(Semaphore);
 	DEFINE_DEVICE_CREATE(ShaderModule);
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkDestroyDevice DestroyDevice;
 public:
 	inline void destroyDevice() const;
 	inline void destroy() const;
 
 #define DEFINE_DEVICE_DESTROY(ObjectName)                        \
-VULKAN_FUNCTIONS_VISIBILITY:                                     \
+                                     \
 	PFN_vkDestroy##ObjectName Destroy##ObjectName;               \
 public:                                                          \
 	void destroy##ObjectName(Vk##ObjectName a##ObjectName) const \
@@ -383,7 +380,7 @@ public:                                                          \
 	DEFINE_DEVICE_DESTROY(Semaphore);
 	DEFINE_DEVICE_DESTROY(ShaderModule);
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkDeviceWaitIdle DeviceWaitIdle;
 public:
 	inline VkResult waitIdle() const;
@@ -392,7 +389,7 @@ public:
 	PFN_vkEnumerateInstanceVersion EnumerateInstanceVersion;
 	PFN_vkFlushMappedMemoryRanges FlushMappedMemoryRanges;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkFreeCommandBuffers FreeCommandBuffers;
 public:
 	inline void freeCommandBuffers(VkCommandPool commandPool, uint32_t commandBufferCount, const VkCommandBuffer* pCommandBuffers) const;
@@ -400,7 +397,7 @@ public:
 	inline void freeCommandBuffer(VkCommandPool commandPool, VkCommandBuffer CommandBuffer) const;
 	inline void free(VkCommandPool commandPool, VkCommandBuffer CommandBuffer) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkFreeDescriptorSets FreeDescriptorSets;
 public:
 	inline VkResult freeDescriptorSets(VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets) const;
@@ -408,7 +405,7 @@ public:
 	inline VkResult freeDescriptorSets(VkDescriptorPool descriptorPool, VkDescriptorSet DescriptorSet) const;
 	inline VkResult free(VkDescriptorPool descriptorPool, VkDescriptorSet DescriptorSet) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkFreeMemory FreeMemory;
 public:
 	inline void freeMemory(VkDeviceMemory aDeviceMemory) const;
@@ -440,8 +437,9 @@ public:
 	PFN_vkMergePipelineCaches MergePipelineCaches;
 	PFN_vkQueueBindSparse QueueBindSparse;
 	PFN_vkQueueSubmit QueueSubmit;
+	inline VkResult queueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* submits, VkFence fence = nullptr) const;
+	inline VkResult queueSubmit(VkQueue queue, const VkSubmitInfo& submit, VkFence fence = nullptr) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
 	PFN_vkQueueWaitIdle QueueWaitIdle;
 public:
 	inline VkResult queueWaitIdle(VkQueue queue) const;
@@ -460,7 +458,7 @@ public:
 	PFN_vkUpdateDescriptorSets UpdateDescriptorSets;
 	PFN_vkUpdateDescriptorSetWithTemplate UpdateDescriptorSetWithTemplate;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkWaitForFences WaitForFences;
 public:
 	inline VkResult waitForFences(uint32_t fenceCount, const VkFence* pFences, bool waitAll, uint64_t timeout = UINT64_MAX) const;
@@ -468,11 +466,11 @@ public:
 	inline VkResult waitForFence(VkFence fence, uint64_t timeout = UINT64_MAX) const;
 	inline VkResult wait(VkFence fence, uint64_t timeout = UINT64_MAX) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkWaitSemaphores WaitSemaphores;
 public:
-	inline VkResult waitSemaphores(cdm::vk::SemaphoreWaitInfo& waitInfo, uint64_t timeout = UINT64_MAX) const;
-	inline VkResult wait(cdm::vk::SemaphoreWaitInfo& waitInfo, uint64_t timeout = UINT64_MAX) const;
+	inline VkResult waitSemaphores(vk::SemaphoreWaitInfo& waitInfo, uint64_t timeout = UINT64_MAX) const;
+	inline VkResult wait(vk::SemaphoreWaitInfo& waitInfo, uint64_t timeout = UINT64_MAX) const;
 
 	// PFN_vkDestroySurfaceKHR DestroySurfaceKHR = nullptr;
 	// PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR
@@ -487,13 +485,13 @@ public:
 	PFN_vkAcquireNextImage2KHR AcquireNextImage2KHR = nullptr;
 	PFN_vkAcquireNextImageKHR AcquireNextImageKHR = nullptr;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkCreateSwapchainKHR CreateSwapchainKHR = nullptr;
 public:
-	inline VkResult createSwapchain(const cdm::vk::SwapchainCreateInfoKHR& createInfo, VkSwapchainKHR& outSwapchain) const;
-	inline VkResult create(const cdm::vk::SwapchainCreateInfoKHR& createInfo, VkSwapchainKHR& outSwapchain) const;
+	inline VkResult createSwapchain(const vk::SwapchainCreateInfoKHR& createInfo, VkSwapchainKHR& outSwapchain) const;
+	inline VkResult create(const vk::SwapchainCreateInfoKHR& createInfo, VkSwapchainKHR& outSwapchain) const;
 
-VULKAN_FUNCTIONS_VISIBILITY:
+
 	PFN_vkDestroySwapchainKHR DestroySwapchainKHR = nullptr;
 public:
 	inline void destroySwapchain(VkSwapchainKHR swapchain) const;

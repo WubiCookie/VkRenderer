@@ -2,6 +2,7 @@
 #include "Image.hpp"
 #include "ImageView.hpp"
 #include "VulkanDevice.hpp"
+#include "CommandBuffer.hpp"
 
 #define VK_NO_PROTOTYPES
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -43,6 +44,9 @@ struct RenderWindowPrivate
 
 	VkSurfaceKHR surface = nullptr;
 	VkSwapchainKHR swapchain = nullptr;
+
+	VkCommandPool commandPool = nullptr;
+	VkCommandPool oneTimeCommandPool = nullptr;
 
 	std::vector<SwapchainImage> swapchainImages;
 	std::vector<std::unique_ptr<ImageView>> swapchainImageViews;
@@ -317,6 +321,27 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
 
 	glfwGetFramebufferSize(window, &width, &height);
 
+	QueueFamilyIndices queueFamilyIndices =
+	    findQueueFamilies(vk.physicalDevice(), surface, vk);
+
+	vk::CommandPoolCreateInfo poolInfo;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	poolInfo.flags = 0;  // Optional
+
+	if (vk.create(poolInfo, commandPool) != VK_SUCCESS)
+	{
+		throw std::runtime_error("error: failed to create command pool");
+	}
+
+	poolInfo.flags = VkCommandPoolCreateFlagBits::
+	    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	if (vk.create(poolInfo, oneTimeCommandPool) != VK_SUCCESS)
+	{
+		throw std::runtime_error(
+		    "error: failed to create one time command pool");
+	}
+
 	recreateSwapchain(width, height);
 
 	/*
@@ -414,6 +439,9 @@ RenderWindowPrivate::~RenderWindowPrivate()
 
 	vk.destroy(swapchain);
 	vk.destroy(surface);
+
+	vk.destroy(oneTimeCommandPool);
+	vk.destroy(commandPool);
 
 	if (window)
 		glfwDestroyWindow(window);
@@ -516,7 +544,7 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 	swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
 	swapchainCreateInfo.imageExtent = extent;
 	swapchainCreateInfo.imageArrayLayers = 1;
-	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(),
 		                              indices.presentFamily.value() };
@@ -582,6 +610,71 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 			exit(1);
 		}
 	}
+
+	CommandBuffer transitionCB(vk, commandPool);
+
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	transitionCB.begin(beginInfo);
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
+
+	for (auto& image : swapchainImages)
+	{
+		barrier.image = image.image();
+		transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
+	}
+	if (transitionCB.end() != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to record command buffer" << std::endl;
+		abort();
+	}
+
+	vk::SubmitInfo submitInfo;
+
+	// VkSemaphore waitSemaphores[] = {
+	//	rw.get().currentImageAvailableSemaphore()
+	//};
+	// VkPipelineStageFlags waitStages[] = {
+	//	VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+	//};
+	// submitInfo.waitSemaphoreCount = 1;
+	// submitInfo.pWaitSemaphores = waitSemaphores;
+	// submitInfo.pWaitDstStageMask = waitStages;
+
+	// auto cb = m_commandBuffers[rw.get().imageIndex()].commandBuffer();
+	auto cb = transitionCB.commandBuffer();
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cb;
+	// VkSemaphore signalSemaphores[] = {
+	//	m_renderFinishedSemaphores[rw.get().currentFrame()]
+	//};
+	// submitInfo.signalSemaphoreCount = 1;
+	// submitInfo.pSignalSemaphores = signalSemaphores;
+
+	// VkFence inFlightFence = rw.get().currentInFlightFences();
+
+	// vk.ResetFences(vk.vkDevice(), 1, &inFlightFence);
+
+	if (vk.queueSubmit(vk.graphicsQueue(), submitInfo) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit draw command buffer"
+		          << std::endl;
+		abort();
+	}
+
+	vk.wait(vk.graphicsQueue());
 
 	createImageViews();
 
@@ -663,37 +756,10 @@ void RenderWindowPrivate::maximizeCallback(bool maximized) {}
 RenderWindow::RenderWindow(int width, int height, bool layers)
     : p(std::make_unique<RenderWindowPrivate>(width, height, layers))
 {
-	auto& vk = p->vulkanDevice;
-
-	QueueFamilyIndices queueFamilyIndices =
-	    findQueueFamilies(vk.physicalDevice(), p->surface, vk);
-
-	vk::CommandPoolCreateInfo poolInfo;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-	poolInfo.flags = 0;  // Optional
-
-	if (vk.create(poolInfo, m_commandPool) != VK_SUCCESS)
-	{
-		throw std::runtime_error("error: failed to create command pool");
-	}
-
-	poolInfo.flags = VkCommandPoolCreateFlagBits::
-	    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-	if (vk.create(poolInfo, m_oneTimeCommandPool) != VK_SUCCESS)
-	{
-		throw std::runtime_error(
-		    "error: failed to create one time command pool");
-	}
 }
 
 RenderWindow::~RenderWindow()
 {
-	auto& vk = p->vulkanDevice;
-	auto device = vk.vkDevice();
-
-	vk.destroy(m_oneTimeCommandPool);
-	vk.destroy(m_commandPool);
 }
 
 void RenderWindow::pollEvents() { glfwPollEvents(); }
@@ -886,6 +952,19 @@ VkFormat RenderWindow::swapchainImageFormat()
 	return p->swapchainImageFormat;
 }
 
+std::vector<VkImage> RenderWindow::swapchainImages() const
+{
+	std::vector<VkImage> res;
+
+	for (size_t i = 0; i < p->swapchainImages.size(); i++)
+	{
+		auto& image = p->swapchainImages[i];
+		res.emplace_back(image.image());
+	}
+
+	return res;
+}
+
 std::vector<std::reference_wrapper<ImageView>>
 RenderWindow::swapchainImageViews() const
 {
@@ -901,7 +980,7 @@ RenderWindow::swapchainImageViews() const
 	return res;
 }
 
-VkCommandPool RenderWindow::commandPool() const { return m_commandPool; }
+VkCommandPool RenderWindow::commandPool() const { return p->commandPool; }
 
 // VkCommandPool RenderWindow::oneTimeCommandPool() const
 //{

@@ -36,7 +36,8 @@ public:
 	inline void bindIndexBuffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType indexType);
 	inline void bindPipeline(VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline);
 	inline void bindVertexBuffers(uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* pBuffers, const VkDeviceSize* pOffsets);
-	inline void bindVertexBuffer(uint32_t firstBinding, VkBuffer buffer, VkDeviceSize offset);
+	inline void bindVertexBuffer(uint32_t firstBinding, VkBuffer buffer, VkDeviceSize offset = 0);
+	inline void bindVertexBuffer(VkBuffer buffer);
 	inline void blitImage(VkImage srcImage, VkImageLayout srcImageLayout, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkImageBlit* pRegions, VkFilter filter);
 	inline void blitImage(VkImage srcImage, VkImageLayout srcImageLayout, VkImage dstImage, VkImageLayout dstImageLayout, const VkImageBlit& region, VkFilter filter);
 	inline void clearAttachments(uint32_t attachmentCount, const VkClearAttachment* pAttachments, uint32_t rectCount, const VkClearRect* pRects);

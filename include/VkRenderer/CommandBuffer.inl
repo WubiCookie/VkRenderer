@@ -17,8 +17,7 @@ inline void CommandBuffer::beginQuery(VkQueryPool queryPool, uint32_t query,
 }
 
 inline void CommandBuffer::beginRenderPass(
-    const vk::RenderPassBeginInfo& renderPassInfo,
-    VkSubpassContents contents)
+    const vk::RenderPassBeginInfo& renderPassInfo, VkSubpassContents contents)
 {
 	device().CmdBeginRenderPass(m_commandBuffer.get(), &renderPassInfo,
 	                            contents);
@@ -28,7 +27,7 @@ inline void CommandBuffer::beginRenderPass2(
     const vk::RenderPassBeginInfo& renderPassInfo,
     const vk::SubpassBeginInfo& subpassInfo)
 {
-	device().CmdBeginRenderPass2(m_commandBuffer.get(), &renderPassInfo,
+	device().CmdBeginRenderPass2KHR(m_commandBuffer.get(), &renderPassInfo,
 	                             &subpassInfo);
 }
 
@@ -82,6 +81,11 @@ inline void CommandBuffer::bindVertexBuffer(uint32_t firstBinding,
                                             VkDeviceSize offset)
 {
 	bindVertexBuffers(firstBinding, 1, &buffer, &offset);
+}
+
+inline void CommandBuffer::bindVertexBuffer(VkBuffer buffer)
+{
+	bindVertexBuffer(0, buffer, 0);
 }
 
 inline void CommandBuffer::blitImage(
@@ -330,7 +334,7 @@ inline void CommandBuffer::endRenderPass()
 inline void CommandBuffer::endRenderPass2(
     const vk::SubpassEndInfo& subpassEndInfo)
 {
-	device().CmdEndRenderPass2(m_commandBuffer.get(), &subpassEndInfo);
+	device().CmdEndRenderPass2KHR(m_commandBuffer.get(), &subpassEndInfo);
 }
 
 inline void CommandBuffer::executeCommands(
