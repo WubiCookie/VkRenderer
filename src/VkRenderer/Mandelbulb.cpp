@@ -255,7 +255,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 			    Vec3 absorption = vec3(1.0_f);
 			    Vec3 volumeColor = vec3(0.0_f);
 			    Vec3 emissionColor = vec3(0.0_f);
-			    ;
 
 			    FOR(writer, Int, i, 0_i, i < MaxSteps, ++i)
 			    {
@@ -334,8 +333,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 						    // += 1.0/ShadowRaysPerStep * volumeColor *
 						    // directLight(rayPos);
 
-						    Float i_f = Float(i);
-						    //Float i_f = Float(0.0_f);
+						    Float i_f = writer.cast<Float>(i);
 
 						    IF(writer,
 						       mod(i_f, Float(StepsSkipShadow)) == 0.0_f)
@@ -384,10 +382,11 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 		auto sampleAperture = writer.implementFunction<Vec2>(
 		    "sampleAperture",
 		    [&](const Int& nbBlades, const Float& rotation) {
-			    Float alpha = 2.0_f * Pi / Float(nbBlades);
+			    Float alpha = 2.0_f * Pi / writer.cast<Float>(nbBlades);
 			    Float side = sin(alpha / 2.0_f);
 
-			    Int blade = Int(randomFloat() * Float(nbBlades));
+			    Int blade = writer.cast<Int>(randomFloat() *
+			                                 writer.cast<Float>(nbBlades));
 
 			    Vec2 tri = vec2(randomFloat(), -randomFloat());
 			    IF(writer, tri.x() + tri.y() > 0.0_f)
@@ -398,8 +397,9 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 			    tri.x() *= side;
 			    tri.y() *= sqrt(1.0_f - side * side);
 
-			    Float angle =
-			        rotation + Float(blade) / Float(nbBlades) * 2.0_f * Pi;
+			    Float angle = rotation + writer.cast<Float>(blade) /
+			                                 writer.cast<Float>(nbBlades) *
+			                                 2.0_f * Pi;
 
 			    writer.returnStmt(
 			        vec2(tri.x() * cos(angle) + tri.y() * sin(angle),
@@ -414,7 +414,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 		        Vec4& fragColor) {
 			    Vec2 fragCoord = fragCoord_arg;
 			    fragCoord -= vec2(0.5_f);
-			    IF(writer, fragCoord.y() == Float(index))
+			    IF(writer, fragCoord.y() == writer.cast<Float>(index))
 			    {
 				    IF(writer, fragCoord.x() == 0.0_f)
 				    {
