@@ -1,6 +1,3 @@
-#define VMA_IMPLEMENTATION
-//#include "vk_mem_alloc.h"
-
 #include "MandelBulb.hpp"
 
 #include "CompilerSpirV/compileSpirV.hpp"
@@ -9,14 +6,16 @@
 
 #include <array>
 #include <iostream>
-#include <random>
 #include <stdexcept>
 
-constexpr size_t POINT_COUNT = 100000;
+constexpr size_t POINT_COUNT = 50000;
 
 namespace cdm
 {
-Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
+Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
+    : rw(renderWindow),
+      gen(rd()),
+      dis(0.0f, 0.3f)
 {
 	uint32_t width = 1280;
 	uint32_t height = 720;
@@ -33,17 +32,38 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+	VkAttachmentDescription colorHDRAttachment = {};
+	colorHDRAttachment.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
+	colorHDRAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorHDRAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	colorHDRAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorHDRAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorHDRAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorHDRAttachment.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	colorHDRAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+	std::array colorAttachments{ colorAttachment, colorHDRAttachment };
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment = 0;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentReference colorHDRAttachmentRef = {};
+	colorHDRAttachmentRef.attachment = 1;
+	colorHDRAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	std::array colorAttachmentRefs{
+
+		colorAttachmentRef, colorHDRAttachmentRef
+	};
+
 	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentRef;
+	subpass.colorAttachmentCount = 2;
+	subpass.pColorAttachments = colorAttachmentRefs.data();
 	subpass.inputAttachmentCount = 0;
 	subpass.pInputAttachments = nullptr;
 	subpass.pResolveAttachments = nullptr;
@@ -62,8 +82,8 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 	                           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	vk::RenderPassCreateInfo renderPassInfo;
-	renderPassInfo.attachmentCount = 1;
-	renderPassInfo.pAttachments = &colorAttachment;
+	renderPassInfo.attachmentCount = 2;
+	renderPassInfo.pAttachments = colorAttachments.data();
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
 	renderPassInfo.dependencyCount = 1;
@@ -71,7 +91,8 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 
 	if (vk.create(renderPassInfo, m_renderPass.get()) != VK_SUCCESS)
 	{
-		throw std::runtime_error("error: failed to create render pass");
+		std::cerr << "error: failed to create render pass" << std::endl;
+		abort();
 	}
 #pragma endregion renderPass
 
@@ -86,7 +107,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 
 		auto out = writer.getOut();
 
-		writer.implementFunction<void>("main", [&]() {
+		writer.implementFunction<Void>("main", [&]() {
 			out.vtx.position = vec4(inPosition, 0.0_f, 1.0_f);
 			outColor = vec4(inPosition / 2.0_f + 0.5_f, 0.0_f, 1.0_f);
 		});
@@ -118,9 +139,19 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 		auto in = writer.getIn();
 
 		auto inPosition = writer.declInput<Vec4>("inPosition", 0u);
+		auto outColorHDR = writer.declOutput<Vec4>("outColorHDR", 1u);
 		auto outColor = writer.declOutput<Vec4>("outColor", 0u);
 
 		//*
+
+		// clang-format off
+#define LocaleMat3(name) Mat3 name = writer.declLocale<Mat3>(#name); name
+#define LocaleVec2(name) Vec2 name = writer.declLocale<Vec2>(#name); name
+#define LocaleVec3(name) Vec3 name = writer.declLocale<Vec3>(#name); name
+#define LocaleVec4(name) Vec4 name = writer.declLocale<Vec4>(#name); name
+#define LocaleFloat(name) Float name = writer.declLocale<Float>(#name); name
+#define LocaleInt(name) Int name = writer.declLocale<Int>(#name); name
+		// clang-format on
 
 #define Pi 3.14159265359_f
 
@@ -131,8 +162,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 #define MaxAbso 0.7_f
 #define MaxShadowAbso 0.7_f
 
-		auto CamPos =
-		    writer.declConstant<Vec3>("CamPos", vec3(0.0_f, 0.0_f, -15.0_f));
 		auto CamRot =
 		    writer.declConstant<Vec3>("CamRot", vec3(0.7_f, -2.4_f, 0.0_f));
 
@@ -148,29 +177,33 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 
 #define Density 500.0_f
 
-		Float StepSize = 0.0_f;
+#define StepSize min(1.0_f / (VolumePrecision * Density), SceneRadius / 2.0_f)
 
-		Float seed = 0.0_f;
-
-		auto randomFloat =
-		    writer.implementFunction<Float>("randomFloat", [&]() {
-			    Float res = fract(sin(seed) * 43758.5453_f);
-			    seed = seed + 1.0_f;  /// TODO: missing post increment on Float
+		auto randomFloat = writer.implementFunction<Float>(
+		    "randomFloat",
+		    [&](Float& seed) {
+			    LocaleFloat(res) = fract(sin(seed) * 43758.5453_f);
+			    seed = seed + 1.0_f;
 			    writer.returnStmt(res);
-		    });
+		    },
+		    InOutFloat{ writer, "seed" });
 
 		auto rotationMatrix = writer.implementFunction<Mat3>(
 		    "rotationMatrix",
 		    [&](const Vec3& rotEuler) {
-			    Float c = cos(rotEuler.x());
-			    Float s = sin(rotEuler.x());
-			    Mat3 rx = mat3(1.0_f, 0.0_f, 0.0_f, 0.0_f, c, -s, 0.0_f, s, c);
+			    LocaleFloat(c) = cos(rotEuler.x());
+			    LocaleFloat(s) = sin(rotEuler.x());
+			    LocaleMat3(rx) = mat3(vec3(1.0_f, 0.0_f, 0.0_f),
+			                          vec3(0.0_f, c, -s), vec3(0.0_f, s, c));
 			    c = cos(rotEuler.y());
 			    s = sin(rotEuler.y());
-			    Mat3 ry = mat3(c, 0.0_f, -s, 0.0_f, 1.0_f, 0.0_f, s, 0.0_f, c);
+			    LocaleMat3(ry) =
+			        mat3(vec3(c, 0.0_f, -s), vec3(0.0_f, 1.0_f, 0.0_f),
+			             vec3(s, 0.0_f, c));
 			    c = cos(rotEuler.z());
 			    s = sin(rotEuler.z());
-			    Mat3 rz = mat3(c, -s, 0.0_f, s, c, 0.0_f, 0.0_f, 0.0_f, 1.0_f);
+			    LocaleMat3(rz) = mat3(vec3(c, -s, 0.0_f), vec3(s, c, 0.0_f),
+			                          vec3(0.0_f, 0.0_f, 1.0_f));
 			    writer.returnStmt(rz * rx * ry);
 		    },
 		    InVec3{ writer, "rotEuler" });
@@ -178,18 +211,21 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 		auto maxV = writer.implementFunction<Float>(
 		    "maxV",
 		    [&](const Vec3& v) {
-			    writer.returnStmt(v.x() > v.y()
-			                          ? v.x() > v.z() ? v.x() : v.z()
-			                          : v.y() > v.z() ? v.y() : v.z());
+			    writer.returnStmt(writer.ternary(
+			        v.x() > v.y(), writer.ternary(v.x() > v.z(), v.x(), v.z()),
+			        writer.ternary(v.y() > v.z(), v.y(), v.z())));
 		    },
 		    InVec3{ writer, "v" });
 
-		auto randomDir = writer.implementFunction<Vec3>("randomDir", [&]() {
-			writer.returnStmt(
-			    vec3(1.0_f, 0.0_f, 0.0_f) *
-			    rotationMatrix(vec3(randomFloat() * 2.0_f * Pi, 0.0_f,
-			                        randomFloat() * 2.0_f * Pi)));
-		});
+		auto randomDir = writer.implementFunction<Vec3>(
+		    "randomDir",
+		    [&](Float& seed) {
+			    writer.returnStmt(
+			        vec3(1.0_f, 0.0_f, 0.0_f) *
+			        rotationMatrix(vec3(randomFloat(seed) * 2.0_f * Pi, 0.0_f,
+			                            randomFloat(seed) * 2.0_f * Pi)));
+		    },
+		    InOutFloat{ writer, "seed" });
 
 		auto backgroundColor = writer.implementFunction<Vec3>(
 		    "backgroundColor",
@@ -199,23 +235,37 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 		auto distanceEstimation = writer.implementFunction<Float>(
 		    "distanceEstimation",
 		    [&](const Vec3& pos_arg, Vec3& volumeColor, Vec3& emissionColor) {
-			    Vec3 pos = pos_arg;
-			    Vec3 basePos = vec3(0.0_f);
-			    Float scale = 1.0_f;
+			    // Vec3 pos = writer.declLocale<Vec3>("pos_local");
+			    LocaleVec3(pos) = pos_arg;
+			    LocaleVec3(basePos) = vec3(0.0_f);
+			    LocaleFloat(scale) = 1.0_f;
 
-			    pos /= scale;
-			    pos += basePos;
+			    // pos = pos_arg;
+			    // Vec3 basePos = writer.declLocale<Vec3>("basePos");
+			    //   basePos = vec3(0.0_f);
+			    //   Float scale = 1.0_f;
+
+			    //   pos /= scale;
+			    //   pos += basePos;
 
 			    volumeColor = vec3(0.0_f);
 			    emissionColor = vec3(0.0_f);
 
 			    pos.yz() = vec2(pos.z(), pos.y());
 
-			    Float r = length(pos);
-			    Vec3 z = pos;
-			    Vec3 c = pos;
-			    Float dr = 1.0_f, theta = 0.0_f, phi = 0.0_f;
-			    Vec3 orbitTrap = vec3(1.0_f);
+			    LocaleFloat(r) = length(pos);
+			    LocaleVec3(z) = pos;
+			    LocaleVec3(c) = pos;
+			    LocaleFloat(dr) = 1.0_f;
+			    LocaleFloat(theta) = 0.0_f;
+			    LocaleFloat(phi) = 0.0_f;
+			    LocaleVec3(orbitTrap) = vec3(1.0_f);
+
+			    // Float r = length(pos);
+			    // Vec3 z = pos;
+			    // Vec3 c = pos;
+			    // Float dr = 1.0_f, theta = 0.0_f, phi = 0.0_f;
+			    // Vec3 orbitTrap = vec3(1.0_f);
 
 			    FOR(writer, Int, i, 0_i, i < 8_i, ++i)
 			    {
@@ -235,7 +285,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 			    }
 			    ROF;
 
-			    Float dist = 0.5_f * log(r) * r / dr * scale;
+			    LocaleFloat(dist) = 0.5_f * log(r) * r / dr * scale;
 
 			    volumeColor = (1.0_f - orbitTrap) * 0.98_f;
 
@@ -244,31 +294,31 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 
 			    writer.returnStmt(dist);
 		    },
-		    InVec3{ writer, "pos" }, OutVec3{ writer, "volumeColor" },
+		    InVec3{ writer, "pos_arg" }, OutVec3{ writer, "volumeColor" },
 		    OutVec3{ writer, "emissionColor" });
 
 		auto directLight = writer.implementFunction<Vec3>(
 		    "directLight",
-		    [&](const Vec3& pos_arg) {
-			    Vec3 pos = pos_arg;
+		    [&](const Vec3& pos_arg, Float& seed) {
+			    LocaleVec3(pos) = pos_arg;
 
-			    Vec3 absorption = vec3(1.0_f);
-			    Vec3 volumeColor = vec3(0.0_f);
-			    Vec3 emissionColor = vec3(0.0_f);
+			    LocaleVec3(absorption) = vec3(1.0_f);
+			    LocaleVec3(volumeColor) = vec3(0.0_f);
+			    LocaleVec3(emissionColor) = vec3(0.0_f);
 
 			    FOR(writer, Int, i, 0_i, i < MaxSteps, ++i)
 			    {
-				    Float dist =
+				    LocaleFloat(dist) =
 				        distanceEstimation(pos, volumeColor, emissionColor);
 				    pos -= LightDir * max(dist, StepSize);
 
 				    IF(writer, dist < StepSize)
 				    {
-					    Float abStep = StepSize * randomFloat();
+					    LocaleFloat(abStep) = StepSize * randomFloat(seed);
 					    pos -= LightDir * (abStep - StepSize);
 					    IF(writer, dist < 0.0_f)
 					    {
-						    Float absorbance = exp(-Density * abStep);
+						    LocaleFloat(absorbance) = exp(-Density * abStep);
 						    absorption *= absorbance;
 						    IF(writer,
 						       maxV(absorption) < 1.0_f - MaxShadowAbso)
@@ -294,35 +344,35 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 			        max((absorption + MaxShadowAbso - 1.0_f) / MaxShadowAbso,
 			            vec3(0.0_f)));
 		    },
-		    InVec3{ writer, "pos" });
+		    InVec3{ writer, "pos_arg" }, InOutFloat{ writer, "seed" });
 
 		auto pathTrace = writer.implementFunction<Vec3>(
 		    "pathTrace",
-		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg) {
-			    Vec3 rayPos = rayPos_arg;
-			    Vec3 rayDir = rayDir_arg;
+		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg, Float& seed) {
+			    LocaleVec3(rayPos) = rayPos_arg;
+			    LocaleVec3(rayDir) = rayDir_arg;
 
 			    rayPos += rayDir * max(length(rayPos) - SceneRadius, 0.0_f);
 
-			    Vec3 outColor = vec3(0.0_f);
-			    Vec3 absorption = vec3(1.0_f);
+			    LocaleVec3(outColor) = vec3(0.0_f);
+			    LocaleVec3(absorption) = vec3(1.0_f);
 
-			    Vec3 volumeColor = vec3(0.0_f);
-			    Vec3 emissionColor = vec3(0.0_f);
+			    LocaleVec3(volumeColor) = vec3(0.0_f);
+			    LocaleVec3(emissionColor) = vec3(0.0_f);
 
 			    FOR(writer, Int, i, 0_i, i < MaxSteps, ++i)
 			    {
-				    Float dist =
+				    LocaleFloat(dist) =
 				        distanceEstimation(rayPos, volumeColor, emissionColor);
 				    rayPos += rayDir * max(dist, StepSize);
 				    IF(writer, dist < StepSize && length(rayPos) < SceneRadius)
 				    {
-					    Float abStep = StepSize * randomFloat();
+					    LocaleFloat(abStep) = StepSize * randomFloat(seed);
 					    rayPos += rayDir * (abStep - StepSize);
 					    IF(writer, dist < 0.0_f)
 					    {
-						    Float absorbance = exp(-Density * abStep);
-						    Float transmittance = 1.0_f - absorbance;
+						    LocaleFloat(absorbance) = exp(-Density * abStep);
+						    LocaleFloat(transmittance) = 1.0_f - absorbance;
 
 						    // surface glow for a nice additional effect
 						    // if(dist > -.0001) outColor += absorption *
@@ -333,14 +383,14 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 						    // += 1.0/ShadowRaysPerStep * volumeColor *
 						    // directLight(rayPos);
 
-						    Float i_f = writer.cast<Float>(i);
+						    LocaleFloat(i_f) = writer.cast<Float>(i);
 
 						    IF(writer,
 						       mod(i_f, Float(StepsSkipShadow)) == 0.0_f)
 						    {
 							    emissionColor += Float(StepsSkipShadow) *
 							                     volumeColor *
-							                     directLight(rayPos);
+							                     directLight(rayPos, seed);
 						    }
 						    FI;
 
@@ -353,9 +403,9 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 						    }
 						    FI;
 
-						    IF(writer, randomFloat() > absorbance)
+						    IF(writer, randomFloat(seed) > absorbance)
 						    {
-							    rayDir = randomDir();
+							    rayDir = randomDir(seed);
 							    absorption *= volumeColor;
 						    }
 						    FI;
@@ -376,19 +426,20 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 
 			    writer.returnStmt(outColor);
 		    },
-		    InVec3{ writer, "rayPos" }, InVec3{ writer, "rayDir" });
+		    InVec3{ writer, "rayPos_arg" }, InVec3{ writer, "rayDir_arg" },
+		    InOutFloat{ writer, "seed" });
 
 		// n-blade aperture
 		auto sampleAperture = writer.implementFunction<Vec2>(
 		    "sampleAperture",
-		    [&](const Int& nbBlades, const Float& rotation) {
-			    Float alpha = 2.0_f * Pi / writer.cast<Float>(nbBlades);
-			    Float side = sin(alpha / 2.0_f);
+		    [&](const Int& nbBlades, const Float& rotation, Float& seed) {
+			    LocaleFloat(alpha) = 2.0_f * Pi / writer.cast<Float>(nbBlades);
+			    LocaleFloat(side) = sin(alpha / 2.0_f);
 
-			    Int blade = writer.cast<Int>(randomFloat() *
-			                                 writer.cast<Float>(nbBlades));
+			    LocaleInt(blade) = writer.cast<Int>(
+			        randomFloat(seed) * writer.cast<Float>(nbBlades));
 
-			    Vec2 tri = vec2(randomFloat(), -randomFloat());
+			    LocaleVec2(tri) = vec2(randomFloat(seed), -randomFloat(seed));
 			    IF(writer, tri.x() + tri.y() > 0.0_f)
 			    {
 				    tri = vec2(tri.x() - 1.0_f, -1.0_f - tri.y());
@@ -397,50 +448,52 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 			    tri.x() *= side;
 			    tri.y() *= sqrt(1.0_f - side * side);
 
-			    Float angle = rotation + writer.cast<Float>(blade) /
-			                                 writer.cast<Float>(nbBlades) *
-			                                 2.0_f * Pi;
+			    LocaleFloat(angle) =
+			        rotation + writer.cast<Float>(blade) /
+			                       writer.cast<Float>(nbBlades) * 2.0_f * Pi;
 
 			    writer.returnStmt(
 			        vec2(tri.x() * cos(angle) + tri.y() * sin(angle),
 			             tri.y() * cos(angle) - tri.x() * sin(angle)));
 		    },
-		    InInt{ writer, "nbBlades" }, InFloat{ writer, "rotation" });
+		    InInt{ writer, "nbBlades" }, InFloat{ writer, "rotation" },
+		    InOutFloat{ writer, "seed" });
 
-		// used to store values in the unused alpha channel of the buffer
-		auto setVector = writer.implementFunction<Void>(
-		    "setVector",
-		    [&](const Int& index, const Vec4& v, const Vec2& fragCoord_arg,
-		        Vec4& fragColor) {
-			    Vec2 fragCoord = fragCoord_arg;
-			    fragCoord -= vec2(0.5_f);
-			    IF(writer, fragCoord.y() == writer.cast<Float>(index))
-			    {
-				    IF(writer, fragCoord.x() == 0.0_f)
-				    {
-					    fragColor.a() = v.x();
-				    }
-				    FI;
-				    IF(writer, fragCoord.x() == 1.0_f)
-				    {
-					    fragColor.a() = v.y();
-				    }
-				    FI;
-				    IF(writer, fragCoord.x() == 2.0_f)
-				    {
-					    fragColor.a() = v.z();
-				    }
-				    FI;
-				    IF(writer, fragCoord.x() == 3.0_f)
-				    {
-					    fragColor.a() = v.a();
-				    }
-				    FI;
-			    }
-			    FI;
-		    },
-		    InInt{ writer, "index" }, InVec4{ writer, "v" },
-		    InVec2{ writer, "fragCoord" }, InOutVec4{ writer, "fragColor" });
+		//// used to store values in the unused alpha channel of the buffer
+		// auto setVector = writer.implementFunction<Void>(
+		//    "setVector",
+		//    [&](const Int& index, const Vec4& v, const Vec2& fragCoord_arg,
+		//        Vec4& fragColor) {
+		//	    LocaleVec2(fragCoord) = fragCoord_arg;
+		//	    fragCoord -= vec2(0.5_f);
+		//	    IF(writer, fragCoord.y() == writer.cast<Float>(index))
+		//	    {
+		//		    IF(writer, fragCoord.x() == 0.0_f)
+		//		    {
+		//			    fragColor.a() = v.x();
+		//		    }
+		//		    FI;
+		//		    IF(writer, fragCoord.x() == 1.0_f)
+		//		    {
+		//			    fragColor.a() = v.y();
+		//		    }
+		//		    FI;
+		//		    IF(writer, fragCoord.x() == 2.0_f)
+		//		    {
+		//			    fragColor.a() = v.z();
+		//		    }
+		//		    FI;
+		//		    IF(writer, fragCoord.x() == 3.0_f)
+		//		    {
+		//			    fragColor.a() = v.a();
+		//		    }
+		//		    FI;
+		//	    }
+		//	    FI;
+		//    },
+		//    InInt{ writer, "index" }, InVec4{ writer, "v" },
+		//    InVec2{ writer, "fragCoord_arg" },
+		//    InOutVec4{ writer, "fragColor" });
 
 		//*/
 
@@ -456,7 +509,84 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 		//    InInt{ writer, "index" });
 
 		writer.implementFunction<Void>("main", [&]() {
-			outColor = in.fragCoord / vec4(1280.0_f, 720.0_f, 1.0_f, 1.0_f);
+			/*
+			LocaleFloat(seed) = cos(in.fragCoord.x()) + sin(in.fragCoord.y());
+
+			// outColor = vec4(0.0_f, 0.0_f, 0.0_f, 0.0_f);
+			// outColor = in.fragCoord / vec4(1280.0_f, 720.0_f, 1.0_f, 1.0_f);
+			// LocaleVec4(uv) = in.fragCoord / vec4(1280.0_f,
+			// 720.0_f, 1.0_f, 1.0_f);
+			// LocaleVec2(uv) = (in.fragCoord.xy() / vec2(1280.0_f, 720.0_f) -
+			//                  vec2(0.5_f));  // / vec2(720.0_f);
+			LocaleVec2(uv) = (in.fragCoord.xy() +
+			                  vec2(randomFloat(seed) / 1280.0_f,
+			                       randomFloat(seed) / 720.0_f) -
+			                  vec2(1280.0_f, 720.0_f) / 2.0_f) /
+			                 vec2(720.0_f);
+			// LocaleVec2(uv) = (in.fragCoord.xy() - vec2(1280.0_f, 720.0_f)
+			// / 2.0_f) / vec2(720.0_f);
+
+			// LocaleVec2(uv) = (in.fragCoord + vec2(randomFloat(),
+			// randomFloat()) - iResolution.xy / 2.0) / iResolution.y;
+
+			// float samples = texelFetch(iChannel0, ivec2(0, 0), 0).a;
+			// if (iFrame > 0)
+			// CamRot = getVector(1).xyz;
+			// vec4 prevMouse = getVector(2);
+
+			// fragColor = texelFetch(iChannel0, ivec2(fragCoord), 0);
+
+			// bool mouseDragged =
+			// iMouse.z >= 0.0 && prevMouse.z >= 0.0 && iMouse != prevMouse;
+
+			// if (mouseDragged)
+			// CamRot.yx += (prevMouse.xy - iMouse.xy) / iResolution.y * 2.0;
+
+			// if (iFrame == 0 || mouseDragged)
+			//{
+			//    fragColor = vec4(0.0);
+			//    samples = 0.0;
+			//}
+
+			// setVector(1, vec4(CamRot, 0), fragCoord, fragColor);
+			// setVector(2, iMouse, fragCoord, fragColor);
+
+			//   IF (writer, in.fragCoord - vec2(0.5_f) == vec2(0.0_f))
+			//{
+			//	fragColor.a = samples + 1.0;
+			//}
+			// FI
+
+			LocaleVec3(focalPoint) =
+			    vec3(uv * CamFocalDistance / CamFocalLength, CamFocalDistance);
+			LocaleVec3(aperture) =
+			    CamAperture * vec3(sampleAperture(6_i, 0.0_f, seed), 0.0_f);
+			LocaleVec3(rayDir) = normalize(focalPoint - aperture);
+
+			LocaleVec3(CamPos) = vec3(0.0_f, 0.0_f, -15.0_f);
+
+			LocaleMat3(CamMatrix) = rotationMatrix(CamRot);
+			CamPos = CamMatrix * CamPos;
+			rayDir = CamMatrix * rayDir;
+			aperture = CamMatrix * aperture;
+
+			outColorHDR.rgb() =
+			    pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
+			              rayDir, seed) /
+			    15.0_f;
+			outColorHDR.a() = 0.05_f;
+
+			outColor = outColorHDR;
+			//*/
+
+			outColor = vec4(1.0_f);
+			outColorHDR = vec4(1.0_f);
+
+			// mix(outColor.rgb,
+			//    pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
+			//    rayDir), 1.0_f / (samples + 1.0_f));
+
+			// outColor = in.fragCoord / vec4(1280.0_f, 720.0_f, 1.0_f, 1.0_f);
 		});
 		// writer.implementFunction<Void>("main", [&]() { outColor =
 		// vec4(in.pointCoord, 0.0_f, 1.0_f); });
@@ -631,22 +761,22 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 	colorBlendAttachment.colorWriteMask =
 	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
 	    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = false;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	// colorBlendAttachment.blendEnable = false;
+	// colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	// colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	// colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	// colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	// colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	// colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	colorBlendAttachment.blendEnable = true;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor =
+	    VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
 	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-	// colorBlendAttachment.blendEnable = true;
-	// colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	// colorBlendAttachment.dstColorBlendFactor =
-	// VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; colorBlendAttachment.colorBlendOp =
-	// VK_BLEND_OP_ADD; colorBlendAttachment.srcAlphaBlendFactor =
-	// VK_BLEND_FACTOR_ONE; colorBlendAttachment.dstAlphaBlendFactor =
-	// VK_BLEND_FACTOR_ZERO; colorBlendAttachment.alphaBlendOp =
-	// VK_BLEND_OP_ADD;
 
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
 	colorBlending.logicOpEnable = VK_FALSE;
@@ -690,62 +820,9 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 	}
 #pragma endregion pipeline
 
-#pragma region allocator
-	VmaVulkanFunctions vulkanFunction = {};
-	vulkanFunction.vkGetPhysicalDeviceProperties =
-	    vk.GetPhysicalDeviceProperties;
-	vulkanFunction.vkGetPhysicalDeviceMemoryProperties =
-	    vk.GetPhysicalDeviceMemoryProperties;
-	vulkanFunction.vkAllocateMemory = vk.AllocateMemory;
-	vulkanFunction.vkFreeMemory = vk.FreeMemory;
-	vulkanFunction.vkMapMemory = vk.MapMemory;
-	vulkanFunction.vkUnmapMemory = vk.UnmapMemory;
-	vulkanFunction.vkFlushMappedMemoryRanges = vk.FlushMappedMemoryRanges;
-	vulkanFunction.vkInvalidateMappedMemoryRanges =
-	    vk.InvalidateMappedMemoryRanges;
-	vulkanFunction.vkBindBufferMemory = vk.BindBufferMemory;
-	vulkanFunction.vkBindImageMemory = vk.BindImageMemory;
-	vulkanFunction.vkGetBufferMemoryRequirements =
-	    vk.GetBufferMemoryRequirements;
-	vulkanFunction.vkGetImageMemoryRequirements =
-	    vk.GetImageMemoryRequirements;
-	vulkanFunction.vkCreateBuffer = vk.CreateBuffer;
-	vulkanFunction.vkDestroyBuffer = vk.DestroyBuffer;
-	vulkanFunction.vkCreateImage = vk.CreateImage;
-	vulkanFunction.vkDestroyImage = vk.DestroyImage;
-	vulkanFunction.vkCmdCopyBuffer = vk.CmdCopyBuffer;
-	vulkanFunction.vkGetBufferMemoryRequirements2KHR =
-	    vk.GetBufferMemoryRequirements2KHR;
-	vulkanFunction.vkGetImageMemoryRequirements2KHR =
-	    vk.GetImageMemoryRequirements2KHR;
-	vulkanFunction.vkBindBufferMemory2KHR = vk.BindBufferMemory2KHR;
-	vulkanFunction.vkBindImageMemory2KHR = vk.BindImageMemory2KHR;
-	vulkanFunction.vkGetPhysicalDeviceMemoryProperties2KHR =
-	    vk.GetPhysicalDeviceMemoryProperties2KHR;
-
-	VmaAllocatorCreateInfo allocatorInfo = {};
-	allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
-	allocatorInfo.instance = vk.instance();
-	allocatorInfo.physicalDevice = vk.physicalDevice();
-	allocatorInfo.device = vk.vkDevice();
-	allocatorInfo.pVulkanFunctions = &vulkanFunction;
-
-	vmaCreateAllocator(&allocatorInfo, &m_allocator.get());
-#pragma endregion allocator
-
 #pragma region vertexBuffer
 	using Vertex = std::array<float, 2>;
-	std::array<Vertex, POINT_COUNT> vertices{
-		// Vertex{ -0.5f, -0.5f },
-		// Vertex{  0.5f, -0.5f },
-		// Vertex{ -0.5f,  0.5f },
-		// Vertex{  0.5f,  0.5f },
-		// Vertex{  0.0f,  0.0f },
-	};
-
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+	std::vector<Vertex> vertices(POINT_COUNT);
 
 	for (auto& vertex : vertices)
 	{
@@ -761,16 +838,21 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 
 	VmaAllocationCreateInfo vbAllocCreateInfo = {};
 	vbAllocCreateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-	vbAllocCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	// vbAllocCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 	vbAllocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
 	VmaAllocationInfo stagingVertexBufferAllocInfo = {};
-	vmaCreateBuffer(m_allocator.get(), &vbInfo, &vbAllocCreateInfo,
+	vmaCreateBuffer(vk.allocator(), &vbInfo, &vbAllocCreateInfo,
 	                &m_vertexBuffer.get(), &m_vertexBufferAllocation.get(),
 	                &stagingVertexBufferAllocInfo);
 
-	std::copy(vertices.begin(), vertices.end(),
-	          static_cast<Vertex*>(stagingVertexBufferAllocInfo.pMappedData));
+	void* data;
+
+	vmaMapMemory(vk.allocator(), m_vertexBufferAllocation.get(), &data);
+
+	std::copy(vertices.begin(), vertices.end(), static_cast<Vertex*>(data));
+
+	vmaUnmapMemory(vk.allocator(), m_vertexBufferAllocation.get());
 #pragma endregion vertexBuffer
 
 #pragma region outputImage
@@ -793,12 +875,16 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 	imageInfo.flags = 0;
 
 	VmaAllocationCreateInfo imageAllocCreateInfo = {};
-	imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
-	imageAllocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	imageAllocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	vmaCreateImage(m_allocator.get(), &imageInfo, &imageAllocCreateInfo,
+	vmaCreateImage(vk.allocator(), &imageInfo, &imageAllocCreateInfo,
 	               &m_outputImage.get(), &m_outputImageAllocation.get(),
 	               nullptr);
+
+	vk.debugMarkerSetObjectName(m_outputImage.get(),
+	                            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
+	                            "mandelbulb_output_image");
 
 	CommandBuffer transitionCB(vk, rw.get().commandPool());
 
@@ -808,7 +894,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 	transitionCB.begin(beginInfo);
 	vk::ImageMemoryBarrier barrier;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.image = m_outputImage.get();
@@ -878,16 +964,132 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 
 	if (vk.create(viewInfo, m_outputImageView.get()) != VK_SUCCESS)
 	{
-		std::cerr << "error: failed to create image views" << std::endl;
+		std::cerr << "error: failed to create image view" << std::endl;
 		abort();
 	}
 #pragma endregion outputImage
 
+#pragma region outputImageHDR
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = width;
+	imageInfo.extent.height = height;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	// imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	// VK_IMAGE_USAGE_SAMPLED_BIT;
+	imageInfo.usage =
+	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.flags = 0;
+
+	imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	imageAllocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	vmaCreateImage(vk.allocator(), &imageInfo, &imageAllocCreateInfo,
+	               &m_outputImageHDR.get(), &m_outputImageHDRAllocation.get(),
+	               nullptr);
+
+	vk.debugMarkerSetObjectName(m_outputImageHDR.get(),
+	                            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
+	                            "mandelbulb_output_image_HDR");
+
+	{
+		CommandBuffer transitionCB(vk, rw.get().commandPool());
+
+		vk::CommandBufferBeginInfo beginInfo;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		transitionCB.begin(beginInfo);
+		vk::ImageMemoryBarrier barrier;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = m_outputImageHDR.get();
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = 0;
+		transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		                             VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
+		if (transitionCB.end() != VK_SUCCESS)
+		{
+			std::cerr << "error: failed to record command buffer" << std::endl;
+			abort();
+		}
+
+		vk::SubmitInfo submitInfo;
+
+		// VkSemaphore waitSemaphores[] = {
+		//	rw.get().currentImageAvailableSemaphore()
+		//};
+		// VkPipelineStageFlags waitStages[] = {
+		//	VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+		//};
+		// submitInfo.waitSemaphoreCount = 1;
+		// submitInfo.pWaitSemaphores = waitSemaphores;
+		// submitInfo.pWaitDstStageMask = waitStages;
+
+		// auto cb = m_commandBuffers[rw.get().imageIndex()].commandBuffer();
+		auto cb = transitionCB.commandBuffer();
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cb;
+		// VkSemaphore signalSemaphores[] = {
+		//	m_renderFinishedSemaphores[rw.get().currentFrame()]
+		//};
+		// submitInfo.signalSemaphoreCount = 1;
+		// submitInfo.pSignalSemaphores = signalSemaphores;
+
+		// VkFence inFlightFence = rw.get().currentInFlightFences();
+
+		// vk.ResetFences(vk.vkDevice(), 1, &inFlightFence);
+
+		if (vk.queueSubmit(vk.graphicsQueue(), submitInfo) != VK_SUCCESS)
+		{
+			std::cerr << "error: failed to submit draw command buffer"
+			          << std::endl;
+			abort();
+		}
+		vk.wait(vk.graphicsQueue());
+	}
+
+	// vk::ImageViewCreateInfo viewInfo;
+	viewInfo.image = m_outputImageHDR.get();
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+
+	if (vk.create(viewInfo, m_outputImageHDRView.get()) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to create image view" << std::endl;
+		abort();
+	}
+#pragma endregion outputImageHDR
+
 #pragma region framebuffer
 	vk::FramebufferCreateInfo framebufferInfo;
 	framebufferInfo.renderPass = m_renderPass.get();
-	framebufferInfo.attachmentCount = 1;
-	framebufferInfo.pAttachments = &m_outputImageView.get();
+	framebufferInfo.attachmentCount = 2;
+	std::array attachments = { m_outputImageView.get(),
+		                       m_outputImageHDRView.get() };
+	framebufferInfo.pAttachments = attachments.data();
 	framebufferInfo.width = width;
 	framebufferInfo.height = height;
 	framebufferInfo.layers = 1;
@@ -898,18 +1100,19 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow) : rw(renderWindow)
 		abort();
 	}
 #pragma endregion framebuffer
-}
+}  // namespace cdm
 
 Mandelbulb::~Mandelbulb()
 {
 	auto& vk = rw.get().device();
 
 	vk.destroy(m_outputImageView.get());
-	vmaDestroyImage(m_allocator.get(), m_outputImage.get(),
+	vmaDestroyImage(vk.allocator(), m_outputImage.get(),
 	                m_outputImageAllocation.get());
-	vmaDestroyBuffer(m_allocator.get(), m_vertexBuffer.get(),
+	vmaDestroyImage(vk.allocator(), m_outputImageHDR.get(),
+	                m_outputImageHDRAllocation.get());
+	vmaDestroyBuffer(vk.allocator(), m_vertexBuffer.get(),
 	                 m_vertexBufferAllocation.get());
-	vmaDestroyAllocator(m_allocator.get());
 	vk.destroy(m_pipeline.get());
 	vk.destroy(m_pipelineLayout.get());
 	vk.destroy(m_vertexModule.get());
@@ -923,15 +1126,15 @@ void Mandelbulb::render(CommandBuffer& cb)
 	uint32_t width = 1280;
 	uint32_t height = 720;
 
-	VkClearValue clearValues = {};
+	std::array clearValues = { VkClearValue{}, VkClearValue{} };
 
 	vk::RenderPassBeginInfo rpInfo;
 	rpInfo.framebuffer = m_framebuffer.get();
 	rpInfo.renderPass = m_renderPass.get();
 	rpInfo.renderArea.extent.width = width;
 	rpInfo.renderArea.extent.height = height;
-	rpInfo.clearValueCount = 1;
-	rpInfo.pClearValues = &clearValues;
+	rpInfo.clearValueCount = 2;
+	rpInfo.pClearValues = clearValues.data();
 
 	vk::SubpassBeginInfo subpassBeginInfo;
 	subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
@@ -945,5 +1148,27 @@ void Mandelbulb::render(CommandBuffer& cb)
 	cb.draw(POINT_COUNT);
 
 	cb.endRenderPass2(subpassEndInfo);
+}
+
+void Mandelbulb::randomizePoints()
+{
+	auto& vk = rw.get().device();
+
+	using Vertex = std::array<float, 2>;
+	std::vector<Vertex> vertices(POINT_COUNT);
+
+	for (auto& vertex : vertices)
+	{
+		vertex[0] = dis(gen);
+		vertex[1] = dis(gen);
+	}
+
+	void* data;
+
+	vmaMapMemory(vk.allocator(), m_vertexBufferAllocation.get(), &data);
+
+	std::copy(vertices.begin(), vertices.end(), static_cast<Vertex*>(data));
+
+	vmaUnmapMemory(vk.allocator(), m_vertexBufferAllocation.get());
 }
 }  // namespace cdm

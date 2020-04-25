@@ -125,6 +125,9 @@ using SwapchainCreateInfoKHR               = CreateInfo<VkSwapchainCreateInfoKHR
 using Win32SurfaceCreateInfoKHR            = CreateInfo<VkWin32SurfaceCreateInfoKHR,            VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR>;
 using SubpassBeginInfo                     = CreateInfo<VkSubpassBeginInfo,                     VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO>;
 using SubpassEndInfo                       = CreateInfo<VkSubpassEndInfo,                       VK_STRUCTURE_TYPE_SUBPASS_END_INFO>;
+using DebugMarkerObjectTagInfoEXT          = CreateInfo<VkDebugMarkerObjectTagInfoEXT,          VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT>;
+using DebugMarkerObjectNameInfoEXT         = CreateInfo<VkDebugMarkerObjectNameInfoEXT,         VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT>;
+using DebugMarkerMarkerInfoEXT             = CreateInfo<VkDebugMarkerMarkerInfoEXT,             VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT>;
 
 } // namespace vk
 

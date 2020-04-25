@@ -22,6 +22,7 @@ public:
 	CommandBuffer& operator=(const CommandBuffer&) = delete;
 	CommandBuffer& operator=(CommandBuffer&& cb) noexcept;
 
+	VkCommandBuffer& get();
 	VkCommandBuffer commandBuffer();
 	// const VkCommandBuffer& commandBuffer();
 	operator VkCommandBuffer() { return commandBuffer(); }
@@ -57,6 +58,13 @@ public:
 	inline void copyImageToBuffer(VkImage srcImage, VkImageLayout srcImageLayout, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferImageCopy* pRegions);
 	inline void copyImageToBuffer(VkImage srcImage, VkImageLayout srcImageLayout, VkBuffer dstBuffer, const VkBufferImageCopy& region);
 	inline void copyQueryPoolResults(VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount, VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize stride, VkQueryResultFlags flags);
+	inline void debugMarkerBegin(const vk::DebugMarkerMarkerInfoEXT& markerInfo);
+	inline void debugMarkerBegin(std::string_view markerName, std::array<float, 4> color);
+	inline void debugMarkerBegin(std::string_view markerName, float colorR = 1.0f, float colorG = 1.0f, float colorB = 1.0f, float colorA = 1.0f);
+	inline void debugMarkerEnd();
+	inline void debugMarkerInsert(const vk::DebugMarkerMarkerInfoEXT& markerInfo);
+	inline void debugMarkerInsert(std::string_view markerName, std::array<float, 4> color);
+	inline void debugMarkerInsert(std::string_view markerName, float colorR = 1.0f, float colorG = 1.0f, float colorB = 1.0f, float colorA = 1.0f);
 	inline void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 	inline void dispatchBase(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 	inline void dispatchIndirect(VkBuffer buffer, VkDeviceSize offset);

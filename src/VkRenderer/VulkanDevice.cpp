@@ -1,8 +1,9 @@
+#define VMA_IMPLEMENTATION
 #include "VulkanDevice.hpp"
 
-#define VK_NO_PROTOTYPES
-#define VK_USE_PLATFORM_WIN32_KHR
-#include "cdm_vulkan.hpp"
+//#define VK_NO_PROTOTYPES
+//#define VK_USE_PLATFORM_WIN32_KHR
+//#include "cdm_vulkan.hpp"
 
 #include <iostream>
 #include <map>
@@ -87,8 +88,9 @@ VulkanDeviceBase::VulkanDeviceBase(bool layers) noexcept : m_layers(layers)
 	if (layers)
 	{
 		validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-		//validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
-		 //validationLayers.push_back("VK_LAYER_LUNARG_api_dump");
+		validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
+		// validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+		// validationLayers.push_back("VK_LAYER_LUNARG_api_dump");
 
 		uint32_t layerCount;
 		EnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -415,6 +417,8 @@ VulkanDevice::VulkanDevice(bool layers) noexcept : VulkanDeviceBase(layers)
 
 VulkanDevice::~VulkanDevice()
 {
+	vmaDestroyAllocator(m_allocator.get());
+
 	if (m_device && DestroyDevice)
 	{
 		DestroyDevice(m_device, nullptr);
@@ -442,12 +446,18 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
 
-	std::vector<const char*> deviceExtensions = {
+	std::vector<const char*> requiredDeviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
 		VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
 		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+		VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
 	};
+
+	/// TODO: add optional extensions
+	// std::vector<const char*> optionalDeviceExtensions = {
+	//	 VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+	//};
 
 	uint32_t extensionCount;
 	EnumerateDeviceExtensionProperties(physicalDevice(), nullptr,
@@ -458,8 +468,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	                                   &extensionCount,
 	                                   availableExtensions.data());
 
-	std::set<std::string> requiredExtensions(deviceExtensions.begin(),
-	                                         deviceExtensions.end());
+	std::set<std::string> requiredExtensions(requiredDeviceExtensions.begin(),
+	                                         requiredDeviceExtensions.end());
 
 	for (const auto& extension : availableExtensions)
 	{
@@ -481,8 +491,9 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	createInfo.queueCreateInfoCount = uint32_t(queueCreateInfos.size());
 	createInfo.pQueueCreateInfos = queueCreateInfos.data();
 	createInfo.pEnabledFeatures = &deviceFeatures;
-	createInfo.enabledExtensionCount = uint32_t(deviceExtensions.size());
-	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+	createInfo.enabledExtensionCount =
+	    uint32_t(requiredDeviceExtensions.size());
+	createInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
 
 	if (m_layers)
 	{
@@ -569,6 +580,12 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 		std::cerr << "Could not load vk" #func "!" << std::endl;              \
 		exit(1);                                                              \
 	}
+#define LOAD_OPTIONAL(func)                                                   \
+	func = (PFN_vk##func)GetDeviceProcAddr(vkDevice(), "vk" #func);           \
+	if (!func)                                                                \
+	{                                                                         \
+		std::cerr << "Could not load vk" #func "!" << std::endl;              \
+	}
 
 	LOAD(AllocateCommandBuffers);
 	LOAD(AllocateDescriptorSets);
@@ -583,8 +600,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 
 	LOAD(CmdBeginQuery);
 	LOAD(CmdBeginRenderPass);
-	 //LOAD(CmdBeginRenderPass2);
-	 LOAD(CmdBeginRenderPass2KHR);
+	// LOAD(CmdBeginRenderPass2);
+	LOAD(CmdBeginRenderPass2KHR);
 	LOAD(CmdBindDescriptorSets);
 	LOAD(CmdBindIndexBuffer);
 	LOAD(CmdBindPipeline);
@@ -609,8 +626,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	// LOAD(CmdDrawIndirectCount);
 	LOAD(CmdEndQuery);
 	LOAD(CmdEndRenderPass);
-	 //LOAD(CmdEndRenderPass2);
-	 LOAD(CmdEndRenderPass2KHR);
+	// LOAD(CmdEndRenderPass2);
+	LOAD(CmdEndRenderPass2KHR);
 	LOAD(CmdExecuteCommands);
 	LOAD(CmdFillBuffer);
 	LOAD(CmdNextSubpass);
@@ -652,8 +669,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	LOAD(CreatePipelineLayout);
 	LOAD(CreateQueryPool);
 	LOAD(CreateRenderPass);
-	 //LOAD(CreateRenderPass2);
-	 LOAD(CreateRenderPass2KHR);
+	// LOAD(CreateRenderPass2);
+	LOAD(CreateRenderPass2KHR);
 	LOAD(CreateSampler);
 	LOAD(CreateSamplerYcbcrConversion);
 	LOAD(CreateSemaphore);
@@ -691,8 +708,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	LOAD(FreeMemory);
 	// LOAD(GetBufferDeviceAddress);
 	LOAD(GetBufferMemoryRequirements);
-	 LOAD(GetBufferMemoryRequirements2);
-	 LOAD(GetBufferMemoryRequirements2KHR);
+	LOAD(GetBufferMemoryRequirements2);
+	LOAD(GetBufferMemoryRequirements2KHR);
 	// LOAD(GetBufferOpaqueCaptureAddress);
 	LOAD(GetDescriptorSetLayoutSupport);
 	LOAD(GetDeviceGroupPeerMemoryFeatures);
@@ -703,8 +720,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	LOAD(GetEventStatus);
 	LOAD(GetFenceStatus);
 	LOAD(GetImageMemoryRequirements);
-	 LOAD(GetImageMemoryRequirements2);
-	 LOAD(GetImageMemoryRequirements2KHR);
+	LOAD(GetImageMemoryRequirements2);
+	LOAD(GetImageMemoryRequirements2KHR);
 	LOAD(GetImageSparseMemoryRequirements);
 	// LOAD(GetImageSparseMemoryRequirements2);
 	LOAD(GetImageSubresourceLayout);
@@ -744,6 +761,12 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	LOAD(WaitForFences);
 	// LOAD(WaitSemaphores);
 
+	LOAD_OPTIONAL(CmdDebugMarkerBeginEXT);
+	LOAD_OPTIONAL(CmdDebugMarkerEndEXT);
+	LOAD_OPTIONAL(CmdDebugMarkerInsertEXT);
+	LOAD_OPTIONAL(DebugMarkerSetObjectNameEXT);
+	LOAD_OPTIONAL(DebugMarkerSetObjectTagEXT);
+
 	uint32_t extensionCount2;
 	std::vector<VkExtensionProperties> availableExtensions2;
 
@@ -775,10 +798,51 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	}
 
 #undef LOAD
+#undef LOAD_OPTIONAL
 
 	GetDeviceQueue(m_device, m_queueFamilyIndices.graphicsFamily.value(), 0,
 	               &m_graphicsQueue);
 	GetDeviceQueue(m_device, m_queueFamilyIndices.presentFamily.value(), 0,
 	               &m_presentQueue);
+
+#pragma region allocator
+	VmaVulkanFunctions vulkanFunction = {};
+	vulkanFunction.vkGetPhysicalDeviceProperties = GetPhysicalDeviceProperties;
+	vulkanFunction.vkGetPhysicalDeviceMemoryProperties =
+	    GetPhysicalDeviceMemoryProperties;
+	vulkanFunction.vkAllocateMemory = AllocateMemory;
+	vulkanFunction.vkFreeMemory = FreeMemory;
+	vulkanFunction.vkMapMemory = MapMemory;
+	vulkanFunction.vkUnmapMemory = UnmapMemory;
+	vulkanFunction.vkFlushMappedMemoryRanges = FlushMappedMemoryRanges;
+	vulkanFunction.vkInvalidateMappedMemoryRanges =
+	    InvalidateMappedMemoryRanges;
+	vulkanFunction.vkBindBufferMemory = BindBufferMemory;
+	vulkanFunction.vkBindImageMemory = BindImageMemory;
+	vulkanFunction.vkGetBufferMemoryRequirements = GetBufferMemoryRequirements;
+	vulkanFunction.vkGetImageMemoryRequirements = GetImageMemoryRequirements;
+	vulkanFunction.vkCreateBuffer = CreateBuffer;
+	vulkanFunction.vkDestroyBuffer = DestroyBuffer;
+	vulkanFunction.vkCreateImage = CreateImage;
+	vulkanFunction.vkDestroyImage = DestroyImage;
+	vulkanFunction.vkCmdCopyBuffer = CmdCopyBuffer;
+	vulkanFunction.vkGetBufferMemoryRequirements2KHR =
+	    GetBufferMemoryRequirements2KHR;
+	vulkanFunction.vkGetImageMemoryRequirements2KHR =
+	    GetImageMemoryRequirements2KHR;
+	vulkanFunction.vkBindBufferMemory2KHR = BindBufferMemory2KHR;
+	vulkanFunction.vkBindImageMemory2KHR = BindImageMemory2KHR;
+	vulkanFunction.vkGetPhysicalDeviceMemoryProperties2KHR =
+	    GetPhysicalDeviceMemoryProperties2KHR;
+
+	VmaAllocatorCreateInfo allocatorInfo = {};
+	allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+	allocatorInfo.instance = instance();
+	allocatorInfo.physicalDevice = physicalDevice();
+	allocatorInfo.device = vkDevice();
+	allocatorInfo.pVulkanFunctions = &vulkanFunction;
+
+	vmaCreateAllocator(&allocatorInfo, &m_allocator.get());
+#pragma endregion allocator
 }
 }  // namespace cdm

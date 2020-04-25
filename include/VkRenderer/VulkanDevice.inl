@@ -174,7 +174,8 @@ inline VkResult VulkanDevice::createRenderPass2(
     const cdm::vk::RenderPassCreateInfo2& createInfo,
     VkRenderPass& outRenderPass) const
 {
-	return CreateRenderPass2KHR(vkDevice(), &createInfo, nullptr, &outRenderPass);
+	return CreateRenderPass2KHR(vkDevice(), &createInfo, nullptr,
+	                            &outRenderPass);
 }
 
 inline VkResult VulkanDevice::create(
@@ -261,7 +262,9 @@ inline void VulkanDevice::free(VkDeviceMemory aDeviceMemory) const
 	freeMemory(aDeviceMemory);
 }
 
-inline VkResult VulkanDevice::queueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* submits, VkFence fence) const
+inline VkResult VulkanDevice::queueSubmit(VkQueue queue, uint32_t submitCount,
+                                          const VkSubmitInfo* submits,
+                                          VkFence fence) const
 {
 	return QueueSubmit(queue, submitCount, submits, fence);
 }
@@ -348,4 +351,51 @@ inline void VulkanDevice::destroy(VkSwapchainKHR swapchain) const
 {
 	destroySwapchain(swapchain);
 }
+
+inline VkResult VulkanDevice::debugMarkerSetObjectName(
+    const vk::DebugMarkerObjectNameInfoEXT& nameInfo) const
+{
+	if (DebugMarkerSetObjectNameEXT)
+		return DebugMarkerSetObjectNameEXT(vkDevice(), &nameInfo);
+	else
+		return VkResult::VK_ERROR_EXTENSION_NOT_PRESENT;
+}
+
+template <typename VkHandle>
+inline VkResult VulkanDevice::debugMarkerSetObjectName(
+    VkHandle object, VkDebugReportObjectTypeEXT objectType,
+    std::string_view objectName) const
+{
+	vk::DebugMarkerObjectNameInfoEXT nameInfo;
+	nameInfo.object = uint64_t(object);
+	nameInfo.objectType = objectType;
+	nameInfo.pObjectName = objectName.data();
+
+	return debugMarkerSetObjectName(nameInfo);
+}
+
+inline VkResult VulkanDevice::debugMarkerSetObjectTag(
+    const vk::DebugMarkerObjectTagInfoEXT& tagInfo) const
+{
+	if (DebugMarkerSetObjectNameEXT)
+		return DebugMarkerSetObjectTagEXT(vkDevice(), &tagInfo);
+	else
+		return VkResult::VK_ERROR_EXTENSION_NOT_PRESENT;
+}
+
+template <typename VkHandle, typename T>
+inline VkResult VulkanDevice::debugMarkerSetObjectTag(
+    VkHandle object, VkDebugReportObjectTypeEXT objectType, uint64_t tagName,
+    const T& tag) const
+{
+	vk::DebugMarkerObjectTagInfoEXT tagInfo;
+	tagInfo.object = uint64_t(object);
+	tagInfo.objectType = objectType;
+	tagInfo.tagName = tagName;
+	tagInfo.tagSize = sizeof(T);
+	tagInfo.pTag = &tag;
+
+	return debugMarkerSetObjectTag(tagInfo);
+}
+
 }  // namespace cdm

@@ -28,7 +28,7 @@ inline void CommandBuffer::beginRenderPass2(
     const vk::SubpassBeginInfo& subpassInfo)
 {
 	device().CmdBeginRenderPass2KHR(m_commandBuffer.get(), &renderPassInfo,
-	                             &subpassInfo);
+	                                &subpassInfo);
 }
 
 inline void CommandBuffer::bindDescriptorSets(
@@ -246,6 +246,80 @@ inline void CommandBuffer::copyQueryPoolResults(
 	device().CmdCopyQueryPoolResults(m_commandBuffer.get(), queryPool,
 	                                 firstQuery, queryCount, dstBuffer,
 	                                 dstOffset, stride, flags);
+}
+
+inline void CommandBuffer::debugMarkerBegin(
+    const vk::DebugMarkerMarkerInfoEXT& markerInfo)
+{
+	if (device().CmdDebugMarkerBeginEXT)
+		device().CmdDebugMarkerBeginEXT(m_commandBuffer.get(), &markerInfo);
+}
+
+inline void CommandBuffer::debugMarkerBegin(std::string_view markerName,
+                                            std::array<float, 4> color)
+{
+	vk::DebugMarkerMarkerInfoEXT markerInfo;
+	markerInfo.pMarkerName = markerName.data();
+	markerInfo.color[0] = color[0];
+	markerInfo.color[1] = color[1];
+	markerInfo.color[2] = color[2];
+	markerInfo.color[3] = color[3];
+
+	debugMarkerBegin(markerInfo);
+}
+
+inline void CommandBuffer::debugMarkerBegin(std::string_view markerName,
+                                            float colorR, float colorG,
+                                            float colorB, float colorA)
+{
+	vk::DebugMarkerMarkerInfoEXT markerInfo;
+	markerInfo.pMarkerName = markerName.data();
+	markerInfo.color[0] = colorR;
+	markerInfo.color[1] = colorG;
+	markerInfo.color[2] = colorB;
+	markerInfo.color[3] = colorA;
+
+	debugMarkerBegin(markerInfo);
+}
+
+inline void CommandBuffer::debugMarkerEnd()
+{
+	if (device().CmdDebugMarkerEndEXT)
+		device().CmdDebugMarkerEndEXT(m_commandBuffer.get());
+}
+
+inline void CommandBuffer::debugMarkerInsert(
+    const vk::DebugMarkerMarkerInfoEXT& markerInfo)
+{
+	if (device().CmdDebugMarkerInsertEXT)
+		device().CmdDebugMarkerInsertEXT(m_commandBuffer.get(), &markerInfo);
+}
+
+inline void CommandBuffer::debugMarkerInsert(std::string_view markerName,
+                                             std::array<float, 4> color)
+{
+	vk::DebugMarkerMarkerInfoEXT markerInfo;
+	markerInfo.pMarkerName = markerName.data();
+	markerInfo.color[0] = color[0];
+	markerInfo.color[1] = color[1];
+	markerInfo.color[2] = color[2];
+	markerInfo.color[3] = color[3];
+
+	debugMarkerInsert(markerInfo);
+}
+
+inline void CommandBuffer::debugMarkerInsert(std::string_view markerName,
+                                             float colorR, float colorG,
+                                             float colorB, float colorA)
+{
+	vk::DebugMarkerMarkerInfoEXT markerInfo;
+	markerInfo.pMarkerName = markerName.data();
+	markerInfo.color[0] = colorR;
+	markerInfo.color[1] = colorG;
+	markerInfo.color[2] = colorB;
+	markerInfo.color[3] = colorA;
+
+	debugMarkerInsert(markerInfo);
 }
 
 inline void CommandBuffer::dispatch(uint32_t groupCountX, uint32_t groupCountY,

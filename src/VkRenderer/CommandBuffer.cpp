@@ -55,6 +55,8 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& cb) noexcept
 	return *this;
 }
 
+VkCommandBuffer& CommandBuffer::get() { return m_commandBuffer.get(); }
+
 VkCommandBuffer CommandBuffer::commandBuffer()
 {
 	return m_commandBuffer.get();

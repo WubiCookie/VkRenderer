@@ -2,14 +2,10 @@
 
 #include "VulkanDevice.hpp"
 
-#define VK_NO_PROTOTYPES
-#define VK_USE_PLATFORM_WIN32_KHR
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
-#include "cdm_vulkan.hpp"
-#include "vk_mem_alloc.h"
-
 #include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
+
+#include <random>
 
 namespace cdm
 {
@@ -27,8 +23,6 @@ class Mandelbulb final
 	Moveable<VkPipelineLayout> m_pipelineLayout;
 	Moveable<VkPipeline> m_pipeline;
 
-	Moveable<VmaAllocator> m_allocator;
-
 	Moveable<VmaAllocation> m_vertexBufferAllocation;
 	Moveable<VkBuffer> m_vertexBuffer;
 
@@ -36,12 +30,23 @@ class Mandelbulb final
 	Moveable<VkImage> m_outputImage;
 	Moveable<VkImageView> m_outputImageView;
 
+	Moveable<VmaAllocation> m_outputImageHDRAllocation;
+	Moveable<VkImage> m_outputImageHDR;
+	Moveable<VkImageView> m_outputImageHDRView;
+
+	std::random_device rd;
+	std::mt19937 gen;
+	std::normal_distribution<float> dis;
+
 public:
 	Mandelbulb(RenderWindow& rw);
 	~Mandelbulb();
 
 	void render(CommandBuffer& cb);
 
+	void randomizePoints();
+
 	VkImage outputImage() const { return m_outputImage.get(); }
+	VkImage outputImageHDR() const { return m_outputImageHDR.get(); }
 };
 }  // namespace cdm

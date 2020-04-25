@@ -9,9 +9,13 @@
 #include <libloaderapi.h>
 
 #define VK_NO_PROTOTYPES
+#define VK_USE_PLATFORM_WIN32_KHR
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include "cdm_vulkan.hpp"
+#include "vk_mem_alloc.h"
 
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #define VULKAN_BASE_FUNCTIONS_VISIBILITY protected
@@ -148,6 +152,8 @@ class VulkanDevice final : public VulkanDeviceBase
 	VkQueue m_presentQueue = nullptr;
 	QueueFamilyIndices m_queueFamilyIndices;
 
+	Moveable<VmaAllocator> m_allocator = nullptr;
+
 public:
 	VulkanDevice(bool layers = false) noexcept;
 	~VulkanDevice() override;
@@ -162,6 +168,10 @@ public:
 	QueueFamilyIndices queueFamilyIndices() const
 	{
 		return m_queueFamilyIndices;
+	}
+	VmaAllocator allocator() const
+	{
+		return m_allocator.get();
 	}
 
 	using VulkanDeviceBase::create;
@@ -628,6 +638,12 @@ public:
 	PFN_vkCmdDebugMarkerInsertEXT CmdDebugMarkerInsertEXT = nullptr;
 	PFN_vkDebugMarkerSetObjectNameEXT DebugMarkerSetObjectNameEXT = nullptr;
 	PFN_vkDebugMarkerSetObjectTagEXT DebugMarkerSetObjectTagEXT = nullptr;
+	inline VkResult debugMarkerSetObjectName(const vk::DebugMarkerObjectNameInfoEXT& nameInfo) const;
+	template<typename VkHandle>
+	inline VkResult debugMarkerSetObjectName(VkHandle object, VkDebugReportObjectTypeEXT objectType, std::string_view objectName) const;
+	inline VkResult debugMarkerSetObjectTag(const vk::DebugMarkerObjectTagInfoEXT& tagInfo) const;
+	template<typename VkHandle, typename T>
+	inline VkResult debugMarkerSetObjectTag(VkHandle object, VkDebugReportObjectTypeEXT objectType, uint64_t tagName, const T& tag) const;
 
 	PFN_vkCmdBeginQueryIndexedEXT CmdBeginQueryIndexedEXT = nullptr;
 	PFN_vkCmdBeginTransformFeedbackEXT CmdBeginTransformFeedbackEXT = nullptr;
@@ -790,7 +806,7 @@ class VulkanDeviceObject
 
 protected:
 	void setCreationTime();
-	//void resetCreationTime() { m_creationTime = 0.0; }
+	// void resetCreationTime() { m_creationTime = 0.0; }
 
 public:
 	VulkanDeviceObject(const VulkanDevice& device) : vkDevice(device) {}
