@@ -17,6 +17,367 @@ constexpr float heightf = 720.0f;
 
 namespace cdm
 {
+template <typename T>
+class MandelbulbShaderLib : public T
+{
+public:
+	sdw::Float Pi;
+	sdw::Float VolumePrecision;
+	sdw::Float SceneRadius;
+	sdw::Float StepsSkipShadow;
+	sdw::Int MaxSteps;
+	sdw::Float MaxAbso;
+	sdw::Float MaxShadowAbso;
+
+	sdw::Float Width;
+	sdw::Float Height;
+
+	sdw::Vec3 CamRot;
+
+	sdw::Float CamFocalLength;
+	sdw::Float CamFocalDistance;
+	sdw::Float CamAperture;
+
+	sdw::Vec3 LightColor;
+	sdw::Vec3 LightDir;
+
+	sdw::Float Power;
+	sdw::Float Density;
+
+	sdw::Float StepSize;
+
+	sdw::Function<sdw::Float, sdw::InOutFloat> randomFloat;
+	sdw::Function<sdw::Mat3, sdw::InVec3> rotationMatrix;
+	sdw::Function<sdw::Float, sdw::InVec3> maxV;
+	sdw::Function<sdw::Vec3, sdw::InOutFloat> randomDir;
+	sdw::Function<sdw::Vec3, sdw::InVec3> backgroundColor;
+	sdw::Function<sdw::Float, sdw::InVec3, sdw::OutVec3, sdw::OutVec3>
+	    distanceEstimation;
+	sdw::Function<sdw::Vec3, sdw::InVec3, sdw::InOutFloat> directLight;
+	sdw::Function<sdw::Vec3, sdw::InVec3, sdw::InVec3, sdw::InOutFloat>
+	    pathTrace;
+	sdw::Function<sdw::Vec2, sdw::InInt, sdw::InFloat, sdw::InOutFloat>
+	    sampleAperture;
+
+	MandelbulbShaderLib()
+	    : T(),
+	      Pi(declConstant<sdw::Float>("Pi", 3.14159265359_f)),
+	      VolumePrecision(declConstant<sdw::Float>("VolumePrecision", 0.35_f)),
+	      SceneRadius(declConstant<sdw::Float>("SceneRadius", 1.5_f)),
+	      StepsSkipShadow(declConstant<sdw::Float>("StepsSkipShadow", 4.0_f)),
+	      MaxSteps(declConstant<sdw::Int>("MaxSteps", 500_i)),
+	      MaxAbso(declConstant<sdw::Float>("MaxAbso", 0.7_f)),
+	      MaxShadowAbso(declConstant<sdw::Float>("MaxShadowAbso", 0.7_f)),
+	      Width(declConstant<sdw::Float>("Width", sdw::Float(float(width)))),
+	      Height(
+	          declConstant<sdw::Float>("Height", sdw::Float(float(height)))),
+	      CamRot(
+	          declConstant<sdw::Vec3>("CamRot", vec3(0.7_f, -2.4_f, 0.0_f))),
+	      CamFocalLength(declConstant<sdw::Float>("CamFocalLength", 5.0_f)),
+	      CamFocalDistance(
+	          declConstant<sdw::Float>("CamFocalDistance", 14.2_f)),
+	      CamAperture(declConstant<sdw::Float>("CamAperture", 0.1_f)),
+	      LightColor(declConstant<sdw::Vec3>("LightColor", vec3(3.0_f))),
+	      LightDir(declConstant<sdw::Vec3>("LightDir",
+	                                       vec3(-1.0_f, -2.0_f, 0.0_f))),
+	      Power(declConstant<sdw::Float>("Power", 8.0_f)),
+	      Density(declConstant<sdw::Float>("Density", 500.0_f)),
+	      StepSize(declConstant<sdw::Float>(
+	          "StepSize", sdw::min(1.0_f / (VolumePrecision * Density),
+	                               SceneRadius / 2.0_f)))
+	{
+		using namespace sdw;
+
+		randomFloat = implementFunction<Float>(
+		    "randomFloat",
+		    [&](Float& seed) {
+			    auto res = declLocale("res", fract(sin(seed) * 43758.5453_f));
+			    seed = seed + 1.0_f;
+			    returnStmt(res);
+		    },
+		    InOutFloat{ *this, "seed" });
+
+		rotationMatrix = implementFunction<Mat3>(
+		    "rotationMatrix",
+		    [&](const Vec3& rotEuler) {
+			    auto c = declLocale("c", cos(rotEuler.x()));
+			    auto s = declLocale("s", (rotEuler.x()));
+			    auto rx = declLocale(
+			        "rx", mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, c, -s),
+			                   vec3(0.0_f, s, c)));
+			    c = cos(rotEuler.y());
+			    s = sin(rotEuler.y());
+			    auto ry = declLocale(
+			        "ry", mat3(vec3(c, 0.0_f, -s), vec3(0.0_f, 1.0_f, 0.0_f),
+			                   vec3(s, 0.0_f, c)));
+			    c = cos(rotEuler.z());
+			    s = sin(rotEuler.z());
+			    auto rz = declLocale(
+			        "rz", mat3(vec3(c, -s, 0.0_f), vec3(s, c, 0.0_f),
+			                   vec3(0.0_f, 0.0_f, 1.0_f)));
+			    returnStmt(rz * rx * ry);
+		    },
+		    InVec3{ *this, "rotEuler" });
+
+		maxV = implementFunction<Float>(
+		    "maxV",
+		    [&](const Vec3& v) {
+			    returnStmt(ternary(v.x() > v.y(),
+			                       ternary(v.x() > v.z(), v.x(), v.z()),
+			                       ternary(v.y() > v.z(), v.y(), v.z())));
+		    },
+		    InVec3{ *this, "v" });
+
+		randomDir = implementFunction<Vec3>(
+		    "randomDir",
+		    [&](Float& seed) {
+			    returnStmt(
+			        vec3(1.0_f, 0.0_f, 0.0_f) *
+			        rotationMatrix(vec3(randomFloat(seed) * 2.0_f * Pi, 0.0_f,
+			                            randomFloat(seed) * 2.0_f * Pi)));
+		    },
+		    InOutFloat{ *this, "seed" });
+
+		backgroundColor = implementFunction<Vec3>(
+		    "backgroundColor", [&](const Vec3&) { returnStmt(vec3(0.0_f)); },
+		    InVec3{ *this, "unused" });
+
+		distanceEstimation = implementFunction<Float>(
+		    "distanceEstimation",
+		    [&](const Vec3& pos_arg, Vec3& volumeColor, Vec3& emissionColor) {
+			    // Vec3 pos = declLocale<Vec3>*this, ("pos_local");
+			    auto pos = declLocale("pos", pos_arg);
+			    auto basePos = declLocale("basePos", vec3(0.0_f));
+			    auto scale = declLocale("scale", 1.0_f);
+
+			    // pos = pos_arg;
+			    // Vec3 basePos = declLocale<Vec3>*this, ("basePos");
+			    //   basePos = vec3(0.0_f);
+			    //   Float scale = 1.0_f;
+
+			    //   pos /= scale;
+			    //   pos += basePos;
+
+			    volumeColor = vec3(0.0_f);
+			    emissionColor = vec3(0.0_f);
+
+			    pos.yz() = vec2(pos.z(), pos.y());
+
+			    auto r = declLocale("r", length(pos));
+			    auto z = declLocale("z", pos);
+			    auto c = declLocale("c", pos);
+			    auto dr = declLocale("dr", 1.0_f);
+			    auto theta = declLocale("theta", 0.0_f);
+			    auto phi = declLocale("phi", 0.0_f);
+			    auto orbitTrap = declLocale("orbitTrap", vec3(1.0_f));
+
+			    // Float r = length(pos);
+			    // Vec3 z = pos;
+			    // Vec3 c = pos;
+			    // Float dr = 1.0_f, theta = 0.0_f, phi = 0.0_f;
+			    // Vec3 orbitTrap = vec3(1.0_f);
+
+			    FOR(*this, Int, i, 0_i, i < 8_i, ++i)
+			    {
+				    r = length(z);
+				    IF(*this, r > SceneRadius) { loopBreakStmt(); }
+				    FI;
+				    orbitTrap = min(abs(z) * 1.2_f, orbitTrap);
+				    theta = acos(z.y() / r);
+				    // phi = atan(z.z(), z.x());
+				    phi = atan2(z.z(), z.x());
+				    dr = pow(r, Power - 1.0_f) * Power * dr + 1.0_f;
+				    theta *= Power;
+				    phi *= Power;
+				    z = pow(r, Power) * vec3(sin(theta) * cos(phi), cos(theta),
+				                             sin(phi) * sin(theta)) +
+				        c;
+			    }
+			    ROF;
+
+			    auto dist =
+			        declLocale("dist", 0.5_f * log(r) * r / dr * scale);
+
+			    volumeColor = (1.0_f - orbitTrap) * 0.98_f;
+
+			    emissionColor =
+			        vec3(ternary(orbitTrap.z() < 0.0001_f, 20.0_f, 0.0_f));
+
+			    returnStmt(dist);
+		    },
+		    InVec3{ *this, "pos_arg" }, OutVec3{ *this, "volumeColor" },
+		    OutVec3{ *this, "emissionColor" });
+
+		directLight = implementFunction<Vec3>(
+		    "directLight",
+		    [&](const Vec3& pos_arg, Float& seed) {
+			    auto pos = declLocale("pos", pos_arg);
+
+			    auto absorption = declLocale("absorption", vec3(1.0_f));
+			    auto volumeColor = declLocale("volumeColor", vec3(0.0_f));
+			    auto emissionColor = declLocale("emissionColor", vec3(0.0_f));
+
+			    FOR(*this, Int, i, 0_i, i < MaxSteps, ++i)
+			    {
+				    auto dist = declLocale(
+				        "dist",
+				        distanceEstimation(pos, volumeColor, emissionColor));
+				    pos -= LightDir * max(dist, StepSize);
+
+				    IF(*this, dist < StepSize)
+				    {
+					    auto abStep =
+					        declLocale("abStep", StepSize * randomFloat(seed));
+					    pos -= LightDir * (abStep - StepSize);
+					    IF(*this, dist < 0.0_f)
+					    {
+						    auto absorbance = declLocale(
+						        "absorbance", exp(-Density * abStep));
+						    absorption *= absorbance;
+						    IF(*this, maxV(absorption) < 1.0_f - MaxShadowAbso)
+						    {
+							    loopBreakStmt();
+						    }
+						    FI;
+					    }
+					    FI;
+				    }
+				    FI;
+
+				    IF(*this, length(pos) > SceneRadius) { loopBreakStmt(); }
+				    FI;
+			    }
+			    ROF;
+
+			    returnStmt(
+			        LightColor *
+			        max((absorption + MaxShadowAbso - 1.0_f) / MaxShadowAbso,
+			            vec3(0.0_f)));
+		    },
+		    InVec3{ *this, "pos_arg" }, InOutFloat{ *this, "seed" });
+
+		pathTrace = implementFunction<Vec3>(
+		    "pathTrace",
+		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg, Float& seed) {
+			    auto rayPos = declLocale("rayPos", rayPos_arg);
+			    auto rayDir = declLocale("rayDir", rayDir_arg);
+
+			    rayPos += rayDir * max(length(rayPos) - SceneRadius, 0.0_f);
+
+			    auto outColor = declLocale("outColor", vec3(0.0_f));
+			    auto absorption = declLocale("absorption", vec3(1.0_f));
+
+			    auto volumeColor = declLocale("volumeColor", vec3(0.0_f));
+			    auto emissionColor = declLocale("emissionColor", vec3(0.0_f));
+
+			    FOR(*this, Int, i, 0_i, i < MaxSteps, ++i)
+			    {
+				    auto dist = declLocale(
+				        "dist", distanceEstimation(rayPos, volumeColor,
+				                                   emissionColor));
+				    rayPos += rayDir * max(dist, StepSize);
+				    IF(*this, dist < StepSize && length(rayPos) < SceneRadius)
+				    {
+					    auto abStep =
+					        declLocale("abStep", StepSize * randomFloat(seed));
+					    rayPos += rayDir * (abStep - StepSize);
+					    IF(*this, dist < 0.0_f)
+					    {
+						    auto absorbance = declLocale(
+						        "absorbance", exp(-Density * abStep));
+						    auto transmittance = declLocale(
+						        "transmittance", 1.0_f - absorbance);
+
+						    // surface glow for a nice additional effect
+						    // if(dist > -.0001) outColor += absorption *
+						    // vec3(.2, .2, .2);
+
+						    // if(randomFloat() < ShadowRaysPerStep)
+						    // emissionColor
+						    // += 1.0/ShadowRaysPerStep * volumeColor *
+						    // directLight(rayPos);
+
+						    auto i_f = declLocale("i_f", cast<Float>(i));
+
+						    IF(*this,
+						       mod(i_f, Float(StepsSkipShadow)) == 0.0_f)
+						    {
+							    emissionColor += Float(StepsSkipShadow) *
+							                     volumeColor *
+							                     directLight(rayPos, seed);
+						    }
+						    FI;
+
+						    outColor +=
+						        absorption * transmittance * emissionColor;
+
+						    IF(*this, maxV(absorption) < 1.0_f - MaxAbso)
+						    {
+							    loopBreakStmt();
+						    }
+						    FI;
+
+						    IF(*this, randomFloat(seed) > absorbance)
+						    {
+							    rayDir = randomDir(seed);
+							    absorption *= volumeColor;
+						    }
+						    FI;
+					    }
+					    FI;
+				    }
+				    FI;
+
+				    IF(*this, length(rayPos) > SceneRadius &&
+				                  dot(rayDir, rayPos) > 0.0_f)
+				    {
+					    returnStmt(outColor +
+					               backgroundColor(rayDir) * absorption);
+				    }
+				    FI;
+			    }
+			    ROF;
+
+			    returnStmt(outColor);
+		    },
+		    InVec3{ *this, "rayPos_arg" }, InVec3{ *this, "rayDir_arg" },
+		    InOutFloat{ *this, "seed" });
+
+		// n-blade aperture
+		sampleAperture = implementFunction<Vec2>(
+		    "sampleAperture",
+		    [&](const Int& nbBlades, const Float& rotation, Float& seed) {
+			    auto alpha =
+			        declLocale("alpha", 2.0_f * Pi / cast<Float>(nbBlades));
+			    auto side = declLocale("side", sin(alpha / 2.0_f));
+
+			    auto blade = declLocale(
+			        "blade",
+			        cast<Int>(randomFloat(seed) * cast<Float>(nbBlades)));
+
+			    auto tri = declLocale(
+			        "tri", vec2(randomFloat(seed), -randomFloat(seed)));
+			    IF(*this, tri.x() + tri.y() > 0.0_f)
+			    {
+				    tri = vec2(tri.x() - 1.0_f, -1.0_f - tri.y());
+			    }
+			    FI;
+			    tri.x() *= side;
+			    tri.y() *= sqrt(1.0_f - side * side);
+
+			    auto angle =
+			        declLocale("angle", rotation + cast<Float>(blade) /
+			                                           cast<Float>(nbBlades) *
+			                                           2.0_f * Pi);
+
+			    returnStmt(vec2(tri.x() * cos(angle) + tri.y() * sin(angle),
+			                    tri.y() * cos(angle) - tri.x() * sin(angle)));
+		    },
+		    InInt{ *this, "nbBlades" }, InFloat{ *this, "rotation" },
+		    InOutFloat{ *this, "seed" });
+	}
+};
+
 Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
     : rw(renderWindow),
       gen(rd()),
@@ -135,7 +496,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	{
 		using namespace sdw;
 
-		FragmentWriter writer;
+		MandelbulbShaderLib<FragmentWriter> writer;
 
 		auto in = writer.getIn();
 
@@ -143,612 +504,45 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		auto outColorHDR = writer.declOutput<Vec4>("outColorHDR", 1u);
 		auto outColor = writer.declOutput<Vec4>("outColor", 0u);
 
-		//*
-
-		// clang-format off
-#define LocaleFloat( Writer, Name )\
-	Float Name = Writer.declLocale< Float >( #Name );\
-	Name
-
-#define LocaleDouble( Writer, Name )\
-	Double Name = Writer.declLocale< Double >( #Name );\
-	Name
-
-#define LocaleInt( Writer, Name )\
-	Int Name = Writer.declLocale< Int >( #Name );\
-	Name
-
-#define LocaleUInt( Writer, Name )\
-	UInt Name = Writer.declLocale< UInt >( #Name );\
-	Name
-
-#define LocaleVec2( Writer, Name )\
-	Vec2 Name = Writer.declLocale< Vec2 >( #Name );\
-	Name
-
-#define LocaleVec3( Writer, Name )\
-	Vec3 Name = Writer.declLocale< Vec3 >( #Name );\
-	Name
-
-#define LocaleVec4( Writer, Name )\
-	Vec4 Name = Writer.declLocale< Vec4 >( #Name );\
-	Name
-
-#define LocaleDVec2( Writer, Name )\
-	DVec2 Name = Writer.declLocale< DVec2 >( #Name );\
-	Name
-
-#define LocaleDVec3( Writer, Name )\
-	DVec3 Name = Writer.declLocale< DVec3 >( #Name );\
-	Name
-
-#define LocaleDVec4( Writer, Name )\
-	DVec4 Name = Writer.declLocale< DVec4 >( #Name );\
-	Name
-
-#define LocaleIVec2( Writer, Name )\
-	IVec2 Name = Writer.declLocale< IVec2 >( #Name );\
-	Name
-
-#define LocaleIVec3( Writer, Name )\
-	IVec3 Name = Writer.declLocale< IVec3 >( #Name );\
-	Name
-
-#define LocaleIVec4( Writer, Name )\
-	IVec4 Name = Writer.declLocale< IVec4 >( #Name );\
-	Name
-
-#define LocaleUVec2( Writer, Name )\
-	UVec2 Name = Writer.declLocale< UVec2 >( #Name );\
-	Name
-
-#define LocaleUVec3( Writer, Name )\
-	UVec3 Name = Writer.declLocale< UVec3 >( #Name );\
-	Name
-
-#define LocaleUVec4( Writer, Name )\
-	UVec4 Name = Writer.declLocale< UVec4 >( #Name );\
-	Name
-
-#define LocaleBVec2( Writer, Name )\
-	BVec2 Name = Writer.declLocale< BVec2 >( #Name );\
-	Name
-
-#define LocaleBVec3( Writer, Name )\
-	BVec3 Name = Writer.declLocale< BVec3 >( #Name );\
-	Name
-
-#define LocaleBVec4( Writer, Name )\
-	BVec4 Name = Writer.declLocale< BVec4 >( #Name );\
-	Name
-
-#define LocaleMat2( Writer, Name )\
-	Mat2 Name = Writer.declLocale< Mat2 >( #Name );\
-	Name
-
-#define LocaleMat2x3( Writer, Name )\
-	Mat2x3 Name = Writer.declLocale< Mat2x3 >( #Name );\
-	Name
-
-#define LocaleMat2x4( Writer, Name )\
-	Mat2x4 Name = Writer.declLocale< Mat2x4 >( #Name );\
-	Name
-
-#define LocaleMat3( Writer, Name )\
-	Mat3 Name = Writer.declLocale< Mat3 >( #Name );\
-	Name
-
-#define LocaleMat3x2( Writer, Name )\
-	Mat3x2 Name = Writer.declLocale< Mat3x2 >( #Name );\
-	Name
-
-#define LocaleMat3x4( Writer, Name )\
-	Mat3x4 Name = Writer.declLocale< Mat3x4 >( #Name );\
-	Name
-
-#define LocaleMat4( Writer, Name )\
-	Mat4 Name = Writer.declLocale< Mat4 >( #Name );\
-	Name
-
-#define LocaleMat4x2( Writer, Name )\
-	Mat4x2 Name = Writer.declLocale< Mat4x2 >( #Name );\
-	Name
-
-#define LocaleMat4x3( Writer, Name )\
-	Mat4x3 Name = Writer.declLocale< Mat4x3 >( #Name );\
-	Name
-
-#define LocaleDMat2( Writer, Name )\
-	DMat2 Name = Writer.declLocale< DMat2 >( #Name );\
-	Name
-
-#define LocaleDMat2x3( Writer, Name )\
-	DMat2x3 Name = Writer.declLocale< DMat2x3 >( #Name );\
-	Name
-
-#define LocaleDMat2x4( Writer, Name )\
-	DMat2x4 Name = Writer.declLocale< DMat2x4 >( #Name );\
-	Name
-
-#define LocaleDMat3( Writer, Name )\
-	DMat3 Name = Writer.declLocale< DMat3 >( #Name );\
-	Name
-
-#define LocaleDMat3x2( Writer, Name )\
-	DMat3x2 Name = Writer.declLocale< DMat3x2 >( #Name );\
-	Name
-
-#define LocaleDMat3x4( Writer, Name )\
-	DMat3x4 Name = Writer.declLocale< DMat3x4 >( #Name );\
-	Name
-
-#define LocaleDMat4( Writer, Name )\
-	DMat4 Name = Writer.declLocale< DMat4 >( #Name );\
-	Name
-
-#define LocaleDMat4x2( Writer, Name )\
-	DMat4x2 Name = Writer.declLocale< DMat4x2 >( #Name );\
-	Name
-
-#define LocaleDMat4x3( Writer, Name )\
-	DMat4x3 Name = Writer.declLocale< DMat4x3 >( #Name );\
-	Name
-		// clang-format on
-
-#define Pi 3.14159265359_f
-
-#define VolumePrecision 0.35_f
-#define SceneRadius 1.5_f
-#define StepsSkipShadow 4.0_f
-#define MaxSteps 500_i
-#define MaxAbso 0.7_f
-#define MaxShadowAbso 0.7_f
-
-		auto Width = writer.declConstant<Float>("Width", Float(float(width)));
-		auto Height =
-		    writer.declConstant<Float>("Height", Float(float(height)));
-
-		auto CamRot =
-		    writer.declConstant<Vec3>("CamRot", vec3(0.7_f, -2.4_f, 0.0_f));
-
-#define CamFocalLength 5.0_f
-#define CamFocalDistance 14.2_f
-#define CamAperture 0.1_f
-
-		auto LightColor = writer.declConstant<Vec3>("LightColor", vec3(3.0_f));
-		auto LightDir =
-		    writer.declConstant<Vec3>("LightDir", vec3(-1.0_f, -2.0_f, 0.0_f));
-
-#define Power 8.0_f
-
-#define Density 500.0_f
-
-#define StepSize min(1.0_f / (VolumePrecision * Density), SceneRadius / 2.0_f)
-
-		auto randomFloat = writer.implementFunction<Float>(
-		    "randomFloat",
-		    [&](Float& seed) {
-			    LocaleFloat(writer, res) = fract(sin(seed) * 43758.5453_f);
-			    seed = seed + 1.0_f;
-			    writer.returnStmt(res);
-		    },
-		    InOutFloat{ writer, "seed" });
-
-		auto rotationMatrix = writer.implementFunction<Mat3>(
-		    "rotationMatrix",
-		    [&](const Vec3& rotEuler) {
-			    LocaleFloat(writer, c) = cos(rotEuler.x());
-			    LocaleFloat(writer, s) = sin(rotEuler.x());
-			    LocaleMat3(writer, rx) =
-			        mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, c, -s),
-			             vec3(0.0_f, s, c));
-			    c = cos(rotEuler.y());
-			    s = sin(rotEuler.y());
-			    LocaleMat3(writer, ry) =
-			        mat3(vec3(c, 0.0_f, -s), vec3(0.0_f, 1.0_f, 0.0_f),
-			             vec3(s, 0.0_f, c));
-			    c = cos(rotEuler.z());
-			    s = sin(rotEuler.z());
-			    LocaleMat3(writer, rz) =
-			        mat3(vec3(c, -s, 0.0_f), vec3(s, c, 0.0_f),
-			             vec3(0.0_f, 0.0_f, 1.0_f));
-			    writer.returnStmt(rz * rx * ry);
-		    },
-		    InVec3{ writer, "rotEuler" });
-
-		auto maxV = writer.implementFunction<Float>(
-		    "maxV",
-		    [&](const Vec3& v) {
-			    writer.returnStmt(writer.ternary(
-			        v.x() > v.y(), writer.ternary(v.x() > v.z(), v.x(), v.z()),
-			        writer.ternary(v.y() > v.z(), v.y(), v.z())));
-		    },
-		    InVec3{ writer, "v" });
-
-		auto randomDir = writer.implementFunction<Vec3>(
-		    "randomDir",
-		    [&](Float& seed) {
-			    writer.returnStmt(
-			        vec3(1.0_f, 0.0_f, 0.0_f) *
-			        rotationMatrix(vec3(randomFloat(seed) * 2.0_f * Pi, 0.0_f,
-			                            randomFloat(seed) * 2.0_f * Pi)));
-		    },
-		    InOutFloat{ writer, "seed" });
-
-		auto backgroundColor = writer.implementFunction<Vec3>(
-		    "backgroundColor",
-		    [&](const Vec3&) { writer.returnStmt(vec3(0.0_f)); },
-		    InVec3{ writer, "unused" });
-
-		auto distanceEstimation = writer.implementFunction<Float>(
-		    "distanceEstimation",
-		    [&](const Vec3& pos_arg, Vec3& volumeColor, Vec3& emissionColor) {
-			    // Vec3 pos = writer.declLocale<Vec3>writer, ("pos_local");
-			    LocaleVec3(writer, pos) = pos_arg;
-			    LocaleVec3(writer, basePos) = vec3(0.0_f);
-			    LocaleFloat(writer, scale) = 1.0_f;
-
-			    // pos = pos_arg;
-			    // Vec3 basePos = writer.declLocale<Vec3>writer, ("basePos");
-			    //   basePos = vec3(0.0_f);
-			    //   Float scale = 1.0_f;
-
-			    //   pos /= scale;
-			    //   pos += basePos;
-
-			    volumeColor = vec3(0.0_f);
-			    emissionColor = vec3(0.0_f);
-
-			    pos.yz() = vec2(pos.z(), pos.y());
-
-			    LocaleFloat(writer, r) = length(pos);
-			    LocaleVec3(writer, z) = pos;
-			    LocaleVec3(writer, c) = pos;
-			    LocaleFloat(writer, dr) = 1.0_f;
-			    LocaleFloat(writer, theta) = 0.0_f;
-			    LocaleFloat(writer, phi) = 0.0_f;
-			    LocaleVec3(writer, orbitTrap) = vec3(1.0_f);
-
-			    // Float r = length(pos);
-			    // Vec3 z = pos;
-			    // Vec3 c = pos;
-			    // Float dr = 1.0_f, theta = 0.0_f, phi = 0.0_f;
-			    // Vec3 orbitTrap = vec3(1.0_f);
-
-			    FOR(writer, Int, i, 0_i, i < 8_i, ++i)
-			    {
-				    r = length(z);
-				    IF(writer, r > SceneRadius) { writer.loopBreakStmt(); }
-				    FI;
-				    orbitTrap = min(abs(z) * 1.2_f, orbitTrap);
-				    theta = acos(z.y() / r);
-				    // phi = atan(z.z(), z.x());
-				    phi = atan2(z.z(), z.x());
-				    dr = pow(r, Power - 1.0_f) * Power * dr + 1.0_f;
-				    theta *= Power;
-				    phi *= Power;
-				    z = pow(r, Power) * vec3(sin(theta) * cos(phi), cos(theta),
-				                             sin(phi) * sin(theta)) +
-				        c;
-			    }
-			    ROF;
-
-			    LocaleFloat(writer, dist) = 0.5_f * log(r) * r / dr * scale;
-
-			    volumeColor = (1.0_f - orbitTrap) * 0.98_f;
-
-			    emissionColor = vec3(
-			        writer.ternary(orbitTrap.z() < 0.0001_f, 20.0_f, 0.0_f));
-
-			    writer.returnStmt(dist);
-		    },
-		    InVec3{ writer, "pos_arg" }, OutVec3{ writer, "volumeColor" },
-		    OutVec3{ writer, "emissionColor" });
-
-		auto directLight = writer.implementFunction<Vec3>(
-		    "directLight",
-		    [&](const Vec3& pos_arg, Float& seed) {
-			    LocaleVec3(writer, pos) = pos_arg;
-
-			    LocaleVec3(writer, absorption) = vec3(1.0_f);
-			    LocaleVec3(writer, volumeColor) = vec3(0.0_f);
-			    LocaleVec3(writer, emissionColor) = vec3(0.0_f);
-
-			    FOR(writer, Int, i, 0_i, i < MaxSteps, ++i)
-			    {
-				    LocaleFloat(writer, dist) =
-				        distanceEstimation(pos, volumeColor, emissionColor);
-				    pos -= LightDir * max(dist, StepSize);
-
-				    IF(writer, dist < StepSize)
-				    {
-					    LocaleFloat(writer, abStep) =
-					        StepSize * randomFloat(seed);
-					    pos -= LightDir * (abStep - StepSize);
-					    IF(writer, dist < 0.0_f)
-					    {
-						    LocaleFloat(writer, absorbance) =
-						        exp(-Density * abStep);
-						    absorption *= absorbance;
-						    IF(writer,
-						       maxV(absorption) < 1.0_f - MaxShadowAbso)
-						    {
-							    writer.loopBreakStmt();
-						    }
-						    FI;
-					    }
-					    FI;
-				    }
-				    FI;
-
-				    IF(writer, length(pos) > SceneRadius)
-				    {
-					    writer.loopBreakStmt();
-				    }
-				    FI;
-			    }
-			    ROF;
-
-			    writer.returnStmt(
-			        LightColor *
-			        max((absorption + MaxShadowAbso - 1.0_f) / MaxShadowAbso,
-			            vec3(0.0_f)));
-		    },
-		    InVec3{ writer, "pos_arg" }, InOutFloat{ writer, "seed" });
-
-		auto pathTrace = writer.implementFunction<Vec3>(
-		    "pathTrace",
-		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg, Float& seed) {
-			    LocaleVec3(writer, rayPos) = rayPos_arg;
-			    LocaleVec3(writer, rayDir) = rayDir_arg;
-
-			    rayPos += rayDir * max(length(rayPos) - SceneRadius, 0.0_f);
-
-			    LocaleVec3(writer, outColor) = vec3(0.0_f);
-			    LocaleVec3(writer, absorption) = vec3(1.0_f);
-
-			    LocaleVec3(writer, volumeColor) = vec3(0.0_f);
-			    LocaleVec3(writer, emissionColor) = vec3(0.0_f);
-
-			    FOR(writer, Int, i, 0_i, i < MaxSteps, ++i)
-			    {
-				    LocaleFloat(writer, dist) =
-				        distanceEstimation(rayPos, volumeColor, emissionColor);
-				    rayPos += rayDir * max(dist, StepSize);
-				    IF(writer, dist < StepSize && length(rayPos) < SceneRadius)
-				    {
-					    LocaleFloat(writer, abStep) =
-					        StepSize * randomFloat(seed);
-					    rayPos += rayDir * (abStep - StepSize);
-					    IF(writer, dist < 0.0_f)
-					    {
-						    LocaleFloat(writer, absorbance) =
-						        exp(-Density * abStep);
-						    LocaleFloat(writer, transmittance) =
-						        1.0_f - absorbance;
-
-						    // surface glow for a nice additional effect
-						    // if(dist > -.0001) outColor += absorption *
-						    // vec3(.2, .2, .2);
-
-						    // if(randomFloat() < ShadowRaysPerStep)
-						    // emissionColor
-						    // += 1.0/ShadowRaysPerStep * volumeColor *
-						    // directLight(rayPos);
-
-						    LocaleFloat(writer, i_f) = writer.cast<Float>(i);
-
-						    IF(writer,
-						       mod(i_f, Float(StepsSkipShadow)) == 0.0_f)
-						    {
-							    emissionColor += Float(StepsSkipShadow) *
-							                     volumeColor *
-							                     directLight(rayPos, seed);
-						    }
-						    FI;
-
-						    outColor +=
-						        absorption * transmittance * emissionColor;
-
-						    IF(writer, maxV(absorption) < 1.0_f - MaxAbso)
-						    {
-							    writer.loopBreakStmt();
-						    }
-						    FI;
-
-						    IF(writer, randomFloat(seed) > absorbance)
-						    {
-							    rayDir = randomDir(seed);
-							    absorption *= volumeColor;
-						    }
-						    FI;
-					    }
-					    FI;
-				    }
-				    FI;
-
-				    IF(writer, length(rayPos) > SceneRadius &&
-				                   dot(rayDir, rayPos) > 0.0_f)
-				    {
-					    writer.returnStmt(outColor + backgroundColor(rayDir) *
-					                                     absorption);
-				    }
-				    FI;
-			    }
-			    ROF;
-
-			    writer.returnStmt(outColor);
-		    },
-		    InVec3{ writer, "rayPos_arg" }, InVec3{ writer, "rayDir_arg" },
-		    InOutFloat{ writer, "seed" });
-
-		// n-blade aperture
-		auto sampleAperture = writer.implementFunction<Vec2>(
-		    "sampleAperture",
-		    [&](const Int& nbBlades, const Float& rotation, Float& seed) {
-			    LocaleFloat(writer, alpha) =
-			        2.0_f * Pi / writer.cast<Float>(nbBlades);
-			    LocaleFloat(writer, side) = sin(alpha / 2.0_f);
-
-			    LocaleInt(writer, blade) = writer.cast<Int>(
-			        randomFloat(seed) * writer.cast<Float>(nbBlades));
-
-			    LocaleVec2(writer, tri) =
-			        vec2(randomFloat(seed), -randomFloat(seed));
-			    IF(writer, tri.x() + tri.y() > 0.0_f)
-			    {
-				    tri = vec2(tri.x() - 1.0_f, -1.0_f - tri.y());
-			    }
-			    FI;
-			    tri.x() *= side;
-			    tri.y() *= sqrt(1.0_f - side * side);
-
-			    LocaleFloat(writer, angle) =
-			        rotation + writer.cast<Float>(blade) /
-			                       writer.cast<Float>(nbBlades) * 2.0_f * Pi;
-
-			    writer.returnStmt(
-			        vec2(tri.x() * cos(angle) + tri.y() * sin(angle),
-			             tri.y() * cos(angle) - tri.x() * sin(angle)));
-		    },
-		    InInt{ writer, "nbBlades" }, InFloat{ writer, "rotation" },
-		    InOutFloat{ writer, "seed" });
-
-		//// used to store values in the unused alpha channel of the buffer
-		// auto setVector = writer.implementFunction<Void>(
-		//    "setVector",
-		//    [&](const Int& index, const Vec4& v, const Vec2& fragCoord_arg,
-		//        Vec4& fragColor) {
-		//	    LocaleVec2(writer, fragCoord) = fragCoord_arg;
-		//	    fragCoord -= vec2(0.5_f);
-		//	    IF(writer, fragCoord.y() == writer.cast<Float>(index))
-		//	    {
-		//		    IF(writer, fragCoord.x() == 0.0_f)
-		//		    {
-		//			    fragColor.a() = v.x();
-		//		    }
-		//		    FI;
-		//		    IF(writer, fragCoord.x() == 1.0_f)
-		//		    {
-		//			    fragColor.a() = v.y();
-		//		    }
-		//		    FI;
-		//		    IF(writer, fragCoord.x() == 2.0_f)
-		//		    {
-		//			    fragColor.a() = v.z();
-		//		    }
-		//		    FI;
-		//		    IF(writer, fragCoord.x() == 3.0_f)
-		//		    {
-		//			    fragColor.a() = v.a();
-		//		    }
-		//		    FI;
-		//	    }
-		//	    FI;
-		//    },
-		//    InInt{ writer, "index" }, InVec4{ writer, "v" },
-		//    InVec2{ writer, "fragCoord_arg" },
-		//    InOutVec4{ writer, "fragColor" });
-
-		//*/
-
-		// auto getVector = writer.implementFunction<Vec4>(
-		//    "getVector",
-		//    [&](Int index) {
-		//	    writer.returnStmt(
-		//	        vec4(texelFetch(iChannel0, ivec2(0, index), 0).a,
-		//	             texelFetch(iChannel0, ivec2(1, index), 0).a,
-		//	             texelFetch(iChannel0, ivec2(2, index), 0).a,
-		//	             texelFetch(iChannel0, ivec2(3, index), 0).a));
-		//    },
-		//    InInt{ writer, "index" });
-
-		// writer.implementFunction<Void>("main", [&]() {
 		writer.implementMain([&]() {
-			//*
-			LocaleFloat(writer, seed) =
-			    cos(in.fragCoord.x()) + sin(in.fragCoord.y());
+			Float seed = writer.declLocale(
+			    "seed", cos(in.fragCoord.x()) + sin(in.fragCoord.y()));
 
-			// LocaleFloat(writer, width) = 1280.0_f * 4.0_f;
-			// LocaleFloat(writer, height) = 720.0_f * 4.0_f;
+			Vec2 uv = writer.declLocale(
+			    "uv", (in.fragCoord.xy() +
+			           vec2(writer.randomFloat(seed) / writer.Width,
+			                writer.randomFloat(seed) / writer.Height) -
+			           vec2(writer.Width, writer.Height) / 2.0_f) /
+			              vec2(writer.Height));
 
-			// outColor = vec4(0.0_f, 0.0_f, 0.0_f, 0.0_f);
-			// outColor = in.fragCoord / vec4(1280.0_f, 720.0_f, 1.0_f, 1.0_f);
-			// LocaleVec4(writer, uv) = in.fragCoord / vec4(1280.0_f,
-			// 720.0_f, 1.0_f, 1.0_f);
-			// LocaleVec2(writer, uv) = (in.fragCoord.xy() / vec2(1280.0_f,
-			// 720.0_f) -
-			//                  vec2(0.5_f));  // / vec2(720.0_f);
-			LocaleVec2(writer, uv) =
-			    (in.fragCoord.xy() +
-			     vec2(randomFloat(seed) / Width, randomFloat(seed) / Height) -
-			     vec2(Width, Height) / 2.0_f) /
-			    vec2(Height);
-			// LocaleVec2(writer, uv) = (in.fragCoord.xy() - vec2(1280.0_f,
-			// 720.0_f) / 2.0_f) / vec2(720.0_f);
+			Vec3 focalPoint = writer.declLocale(
+			    "focalPoint",
+			    vec3(uv * writer.CamFocalDistance / writer.CamFocalLength,
+			         writer.CamFocalDistance));
+			Vec3 aperture = writer.declLocale(
+			    "aperture",
+			    writer.CamAperture *
+			        vec3(writer.sampleAperture(6_i, 0.0_f, seed), 0.0_f));
+			Vec3 rayDir =
+			    writer.declLocale("rayDir", normalize(focalPoint - aperture));
 
-			// LocaleVec2(writer, uv) = (in.fragCoord + vec2(randomFloat(),
-			// randomFloat()) - iResolution.xy / 2.0) / iResolution.y;
+			Vec3 CamPos =
+			    writer.declLocale("CamPos", vec3(0.0_f, 0.0_f, -15.0_f));
 
-			// float samples = texelFetch(iChannel0, ivec2(0, 0), 0).a;
-			// if (iFrame > 0)
-			// CamRot = getVector(1).xyz;
-			// vec4 prevMouse = getVector(2);
-
-			// fragColor = texelFetch(iChannel0, ivec2(fragCoord), 0);
-
-			// bool mouseDragged =
-			// iMouse.z >= 0.0 && prevMouse.z >= 0.0 && iMouse != prevMouse;
-
-			// if (mouseDragged)
-			// CamRot.yx += (prevMouse.xy - iMouse.xy) / iResolution.y * 2.0;
-
-			// if (iFrame == 0 || mouseDragged)
-			//{
-			//    fragColor = vec4(0.0);
-			//    samples = 0.0;
-			//}
-
-			// setVector(1, vec4(CamRot, 0), fragCoord, fragColor);
-			// setVector(2, iMouse, fragCoord, fragColor);
-
-			//   IF (writer, in.fragCoord - vec2(0.5_f) == vec2(0.0_f))
-			//{
-			//	fragColor.a = samples + 1.0;
-			//}
-			// FI
-
-			LocaleVec3(writer, focalPoint) =
-			    vec3(uv * CamFocalDistance / CamFocalLength, CamFocalDistance);
-			LocaleVec3(writer, aperture) =
-			    CamAperture * vec3(sampleAperture(6_i, 0.0_f, seed), 0.0_f);
-			LocaleVec3(writer, rayDir) = normalize(focalPoint - aperture);
-
-			LocaleVec3(writer, CamPos) = vec3(0.0_f, 0.0_f, -15.0_f);
-
-			LocaleMat3(writer, CamMatrix) = rotationMatrix(CamRot);
+			Mat3 CamMatrix = writer.declLocale(
+			    "CamMatrix", writer.rotationMatrix(writer.CamRot));
 			CamPos = CamMatrix * CamPos;
 			rayDir = CamMatrix * rayDir;
 			aperture = CamMatrix * aperture;
 
 			outColorHDR.rgb() =
-			    pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
-			              rayDir, seed) /
+			    writer.pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
+			                     rayDir, seed) /
 			    15.0_f;
 			outColorHDR.a() = 0.5_f;
 
 			outColor = outColorHDR;
-			//*/
-
-			// mix(outColor.rgb,
-			//    pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
-			//    rayDir), 1.0_f / (samples + 1.0_f));
-
-			// outColor = in.fragCoord / vec4(1280.0_f, 720.0_f, 1.0_f, 1.0_f);
 		});
-		// writer.implementFunction<Void>("main", [&]() { outColor =
-		// vec4(in.pointCoord, 0.0_f, 1.0_f); });
-		//[&]() { outColor = inColor; });
 
 		/*
 		void mainImage(out vec4 fragColor, in vec2 fragCoord)
@@ -803,11 +597,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		}
 		//*/
 
-		// writer.implementFunction<void>("main",
-		//                               //[&]() { outColor = in.fragCoord; });
-		//                               [&]() { outColor = inColor; });
-		//[&]() { outColor = vec4(0.0_f, 0.0_f, 1.0_f, 1.0_f); });
-
 		std::vector<uint32_t> bytecode =
 		    spirv::serialiseSpirv(writer.getShader());
 
@@ -829,7 +618,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	{
 		using namespace sdw;
 
-		ComputeWriter writer;
+		MandelbulbShaderLib<ComputeWriter> writer;
 
 		auto in = writer.getIn();
 
@@ -839,485 +628,60 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		samplesPC.declMember<Float>("samples");
 		samplesPC.end();
 
-		// auto inPosition = writer.declInput<Vec4>("inPosition", 0u);
-		// auto outColorHDR = writer.declOutput<Vec4>("outColorHDR", 1u);
-		// auto outColor = writer.declOutput<Vec4>("outColor", 0u);
-
-		//*
-
-#define Pi 3.14159265359_f
-
-#define VolumePrecision 0.35_f
-#define SceneRadius 1.5_f
-#define StepsSkipShadow 4.0_f
-#define MaxSteps 500_i
-#define MaxAbso 0.7_f
-#define MaxShadowAbso 0.7_f
-
-		auto Width = writer.declConstant<Float>("Width", Float(float(width)));
-		auto Height =
-		    writer.declConstant<Float>("Height", Float(float(height)));
-
-		auto CamRot =
-		    writer.declConstant<Vec3>("CamRot", vec3(0.7_f, -2.4_f, 0.0_f));
-
-#define CamFocalLength 5.0_f
-#define CamFocalDistance 14.2_f
-#define CamAperture 0.1_f
-
-		auto LightColor = writer.declConstant<Vec3>("LightColor", vec3(3.0_f));
-		auto LightDir =
-		    writer.declConstant<Vec3>("LightDir", vec3(-1.0_f, -2.0_f, 0.0_f));
-
-#define Power 8.0_f
-
-#define Density 500.0_f
-
-#define StepSize min(1.0_f / (VolumePrecision * Density), SceneRadius / 2.0_f)
-
-		auto randomFloat = writer.implementFunction<Float>(
-		    "randomFloat",
-		    [&](Float& seed) {
-			    LocaleFloat(writer, res) = fract(sin(seed) * 43758.5453_f);
-			    seed = seed + 1.0_f;
-			    writer.returnStmt(res);
-		    },
-		    InOutFloat{ writer, "seed" });
-
-		auto rotationMatrix = writer.implementFunction<Mat3>(
-		    "rotationMatrix",
-		    [&](const Vec3& rotEuler) {
-			    LocaleFloat(writer, c) = cos(rotEuler.x());
-			    LocaleFloat(writer, s) = sin(rotEuler.x());
-			    LocaleMat3(writer, rx) =
-			        mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, c, -s),
-			             vec3(0.0_f, s, c));
-			    c = cos(rotEuler.y());
-			    s = sin(rotEuler.y());
-			    LocaleMat3(writer, ry) =
-			        mat3(vec3(c, 0.0_f, -s), vec3(0.0_f, 1.0_f, 0.0_f),
-			             vec3(s, 0.0_f, c));
-			    c = cos(rotEuler.z());
-			    s = sin(rotEuler.z());
-			    LocaleMat3(writer, rz) =
-			        mat3(vec3(c, -s, 0.0_f), vec3(s, c, 0.0_f),
-			             vec3(0.0_f, 0.0_f, 1.0_f));
-			    writer.returnStmt(rz * rx * ry);
-		    },
-		    InVec3{ writer, "rotEuler" });
-
-		auto maxV = writer.implementFunction<Float>(
-		    "maxV",
-		    [&](const Vec3& v) {
-			    writer.returnStmt(writer.ternary(
-			        v.x() > v.y(), writer.ternary(v.x() > v.z(), v.x(), v.z()),
-			        writer.ternary(v.y() > v.z(), v.y(), v.z())));
-		    },
-		    InVec3{ writer, "v" });
-
-		auto randomDir = writer.implementFunction<Vec3>(
-		    "randomDir",
-		    [&](Float& seed) {
-			    writer.returnStmt(
-			        vec3(1.0_f, 0.0_f, 0.0_f) *
-			        rotationMatrix(vec3(randomFloat(seed) * 2.0_f * Pi, 0.0_f,
-			                            randomFloat(seed) * 2.0_f * Pi)));
-		    },
-		    InOutFloat{ writer, "seed" });
-
-		auto backgroundColor = writer.implementFunction<Vec3>(
-		    "backgroundColor",
-		    [&](const Vec3&) { writer.returnStmt(vec3(0.0_f)); },
-		    InVec3{ writer, "unused" });
-
-		auto distanceEstimation = writer.implementFunction<Float>(
-		    "distanceEstimation",
-		    [&](const Vec3& pos_arg, Vec3& volumeColor, Vec3& emissionColor) {
-			    // Vec3 pos = writer.declLocale<Vec3>writer, ("pos_local");
-			    LocaleVec3(writer, pos) = pos_arg;
-			    LocaleVec3(writer, basePos) = vec3(0.0_f);
-			    LocaleFloat(writer, scale) = 1.0_f;
-
-			    // pos = pos_arg;
-			    // Vec3 basePos = writer.declLocale<Vec3>writer, ("basePos");
-			    //   basePos = vec3(0.0_f);
-			    //   Float scale = 1.0_f;
-
-			    //   pos /= scale;
-			    //   pos += basePos;
-
-			    volumeColor = vec3(0.0_f);
-			    emissionColor = vec3(0.0_f);
-
-			    pos.yz() = vec2(pos.z(), pos.y());
-
-			    LocaleFloat(writer, r) = length(pos);
-			    LocaleVec3(writer, z) = pos;
-			    LocaleVec3(writer, c) = pos;
-			    LocaleFloat(writer, dr) = 1.0_f;
-			    LocaleFloat(writer, theta) = 0.0_f;
-			    LocaleFloat(writer, phi) = 0.0_f;
-			    LocaleVec3(writer, orbitTrap) = vec3(1.0_f);
-
-			    FOR(writer, Int, i, 0_i, i < 8_i, ++i)
-			    {
-				    r = length(z);
-				    IF(writer, r > SceneRadius) { writer.loopBreakStmt(); }
-				    FI;
-				    orbitTrap = min(abs(z) * 1.2_f, orbitTrap);
-				    theta = acos(z.y() / r);
-				    // phi = atan(z.z(), z.x());
-				    phi = atan2(z.z(), z.x());
-				    dr = pow(r, Power - 1.0_f) * Power * dr + 1.0_f;
-				    theta *= Power;
-				    phi *= Power;
-				    z = pow(r, Power) * vec3(sin(theta) * cos(phi), cos(theta),
-				                             sin(phi) * sin(theta)) +
-				        c;
-			    }
-			    ROF;
-
-			    LocaleFloat(writer, dist) = 0.5_f * log(r) * r / dr * scale;
-
-			    volumeColor = (1.0_f - orbitTrap) * 0.98_f;
-
-			    emissionColor = vec3(
-			        writer.ternary(orbitTrap.z() < 0.0001_f, 20.0_f, 0.0_f));
-
-			    writer.returnStmt(dist);
-		    },
-		    InVec3{ writer, "pos_arg" }, OutVec3{ writer, "volumeColor" },
-		    OutVec3{ writer, "emissionColor" });
-
-		auto directLight = writer.implementFunction<Vec3>(
-		    "directLight",
-		    [&](const Vec3& pos_arg, Float& seed) {
-			    LocaleVec3(writer, pos) = pos_arg;
-
-			    LocaleVec3(writer, absorption) = vec3(1.0_f);
-			    LocaleVec3(writer, volumeColor) = vec3(0.0_f);
-			    LocaleVec3(writer, emissionColor) = vec3(0.0_f);
-
-			    FOR(writer, Int, i, 0_i, i < MaxSteps, ++i)
-			    {
-				    LocaleFloat(writer, dist) =
-				        distanceEstimation(pos, volumeColor, emissionColor);
-				    pos -= LightDir * max(dist, StepSize);
-
-				    IF(writer, dist < StepSize)
-				    {
-					    LocaleFloat(writer, abStep) =
-					        StepSize * randomFloat(seed);
-					    pos -= LightDir * (abStep - StepSize);
-					    IF(writer, dist < 0.0_f)
-					    {
-						    LocaleFloat(writer, absorbance) =
-						        exp(-Density * abStep);
-						    absorption *= absorbance;
-						    IF(writer,
-						       maxV(absorption) < 1.0_f - MaxShadowAbso)
-						    {
-							    writer.loopBreakStmt();
-						    }
-						    FI;
-					    }
-					    FI;
-				    }
-				    FI;
-
-				    IF(writer, length(pos) > SceneRadius)
-				    {
-					    writer.loopBreakStmt();
-				    }
-				    FI;
-			    }
-			    ROF;
-
-			    writer.returnStmt(
-			        LightColor *
-			        max((absorption + MaxShadowAbso - 1.0_f) / MaxShadowAbso,
-			            vec3(0.0_f)));
-		    },
-		    InVec3{ writer, "pos_arg" }, InOutFloat{ writer, "seed" });
-
-		auto pathTrace = writer.implementFunction<Vec3>(
-		    "pathTrace",
-		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg, Float& seed) {
-			    LocaleVec3(writer, rayPos) = rayPos_arg;
-			    LocaleVec3(writer, rayDir) = rayDir_arg;
-
-			    rayPos += rayDir * max(length(rayPos) - SceneRadius, 0.0_f);
-
-			    LocaleVec3(writer, outColor) = vec3(0.0_f);
-			    LocaleVec3(writer, absorption) = vec3(1.0_f);
-
-			    LocaleVec3(writer, volumeColor) = vec3(0.0_f);
-			    LocaleVec3(writer, emissionColor) = vec3(0.0_f);
-
-			    FOR(writer, Int, i, 0_i, i < MaxSteps, ++i)
-			    {
-				    LocaleFloat(writer, dist) =
-				        distanceEstimation(rayPos, volumeColor, emissionColor);
-				    rayPos += rayDir * max(dist, StepSize);
-				    IF(writer, dist < StepSize && length(rayPos) < SceneRadius)
-				    {
-					    LocaleFloat(writer, abStep) =
-					        StepSize * randomFloat(seed);
-					    rayPos += rayDir * (abStep - StepSize);
-					    IF(writer, dist < 0.0_f)
-					    {
-						    LocaleFloat(writer, absorbance) =
-						        exp(-Density * abStep);
-						    LocaleFloat(writer, transmittance) =
-						        1.0_f - absorbance;
-
-						    // surface glow for a nice additional effect
-						    // if(dist > -.0001) outColor += absorption *
-						    // vec3(.2, .2, .2);
-
-						    // if(randomFloat() < ShadowRaysPerStep)
-						    // emissionColor
-						    // += 1.0/ShadowRaysPerStep * volumeColor *
-						    // directLight(rayPos);
-
-						    LocaleFloat(writer, i_f) = writer.cast<Float>(i);
-
-						    IF(writer,
-						       mod(i_f, Float(StepsSkipShadow)) == 0.0_f)
-						    {
-							    emissionColor += Float(StepsSkipShadow) *
-							                     volumeColor *
-							                     directLight(rayPos, seed);
-						    }
-						    FI;
-
-						    outColor +=
-						        absorption * transmittance * emissionColor;
-
-						    IF(writer, maxV(absorption) < 1.0_f - MaxAbso)
-						    {
-							    writer.loopBreakStmt();
-						    }
-						    FI;
-
-						    IF(writer, randomFloat(seed) > absorbance)
-						    {
-							    rayDir = randomDir(seed);
-							    absorption *= volumeColor;
-						    }
-						    FI;
-					    }
-					    FI;
-				    }
-				    FI;
-
-				    IF(writer, length(rayPos) > SceneRadius &&
-				                   dot(rayDir, rayPos) > 0.0_f)
-				    {
-					    writer.returnStmt(outColor + backgroundColor(rayDir) *
-					                                     absorption);
-				    }
-				    FI;
-			    }
-			    ROF;
-
-			    writer.returnStmt(outColor);
-		    },
-		    InVec3{ writer, "rayPos_arg" }, InVec3{ writer, "rayDir_arg" },
-		    InOutFloat{ writer, "seed" });
-
-		// n-blade aperture
-		auto sampleAperture = writer.implementFunction<Vec2>(
-		    "sampleAperture",
-		    [&](const Int& nbBlades, const Float& rotation, Float& seed) {
-			    LocaleFloat(writer, alpha) =
-			        2.0_f * Pi / writer.cast<Float>(nbBlades);
-			    LocaleFloat(writer, side) = sin(alpha / 2.0_f);
-
-			    LocaleInt(writer, blade) = writer.cast<Int>(
-			        randomFloat(seed) * writer.cast<Float>(nbBlades));
-
-			    LocaleVec2(writer, tri) =
-			        vec2(randomFloat(seed), -randomFloat(seed));
-			    IF(writer, tri.x() + tri.y() > 0.0_f)
-			    {
-				    tri = vec2(tri.x() - 1.0_f, -1.0_f - tri.y());
-			    }
-			    FI;
-			    tri.x() *= side;
-			    tri.y() *= sqrt(1.0_f - side * side);
-
-			    LocaleFloat(writer, angle) =
-			        rotation + writer.cast<Float>(blade) /
-			                       writer.cast<Float>(nbBlades) * 2.0_f * Pi;
-
-			    writer.returnStmt(
-			        vec2(tri.x() * cos(angle) + tri.y() * sin(angle),
-			             tri.y() * cos(angle) - tri.x() * sin(angle)));
-		    },
-		    InInt{ writer, "nbBlades" }, InFloat{ writer, "rotation" },
-		    InOutFloat{ writer, "seed" });
-
-		//// used to store values in the unused alpha channel of the buffer
-		auto setVector = writer.implementFunction<Void>(
-		    "setVector",
-		    [&](const Int& index, const Vec4& v, const Vec2& fragCoord_arg,
-		        Vec4& fragColor) {
-			    LocaleVec2(writer, fragCoord) = fragCoord_arg;
-			    fragCoord -= vec2(0.5_f);
-			    IF(writer, fragCoord.y() == writer.cast<Float>(index))
-			    {
-				    IF(writer, fragCoord.x() == 0.0_f)
-				    {
-					    fragColor.a() = v.x();
-				    }
-				    FI;
-				    IF(writer, fragCoord.x() == 1.0_f)
-				    {
-					    fragColor.a() = v.y();
-				    }
-				    FI;
-				    IF(writer, fragCoord.x() == 2.0_f)
-				    {
-					    fragColor.a() = v.z();
-				    }
-				    FI;
-				    IF(writer, fragCoord.x() == 3.0_f)
-				    {
-					    fragColor.a() = v.a();
-				    }
-				    FI;
-			    }
-			    FI;
-		    },
-		    InInt{ writer, "index" }, InVec4{ writer, "v" },
-		    InVec2{ writer, "fragCoord_arg" },
-		    InOutVec4{ writer, "fragColor" });
-
-		//*/
-
 		auto kernelImage =
 		    writer.declImage<RWFImg2DRgba32>("kernelImage", 0, 0);
-		    //writer.declImage<ast::type::ImageFormat::eRgba32f,
-		    //                 ast::type::ImageDim::e2D, false, false, false>(
-		    //    "kernelImage", 0, 0);
 
-		/*
-		 auto getVector = writer.implementFunction<Vec4>(
-		    "getVector",
-		    [&](Int index) {
-		        writer.returnStmt(
-		            vec4(imageLoad(kernelImage, ivec2(0_i, index)).a(),
-		                 imageLoad(kernelImage, ivec2(1_i, index)).a(),
-		                 imageLoad(kernelImage, ivec2(2_i, index)).a(),
-		                 imageLoad(kernelImage, ivec2(3_i, index)).a()));
-		    },
-		    InInt{ writer, "index" });
-		 //*/
-
-		// sdw::ImageT<ast::type::ImageFormat::eRgba32f,
-		// ast::type::ImageDim::e2D, false, false, false>
-
-		// writer.implementFunction<Void>("main", [&]() {
 		writer.implementMain([&]() {
-			//*
+			Float x = writer.declLocale(
+			    "x", writer.cast<Float>(in.globalInvocationID.x()));
+			Float y = writer.declLocale(
+			    "y", writer.cast<Float>(in.globalInvocationID.y()));
 
-			LocaleFloat(writer, x) =
-			    writer.cast<Float>(in.globalInvocationID.x());
-			LocaleFloat(writer, y) =
-			    writer.cast<Float>(in.globalInvocationID.y());
+			Float samples = writer.declLocale(
+			    "samples", samplesPC.getMember<Float>("samples"));
 
-			LocaleFloat(writer, samples) =
-			    samplesPC.getMember<Float>("samples");
+			Vec2 xy = writer.declLocale(
+			    "xy", vec2(x, y) * vec2(samples, samples * samples));
 
-			LocaleVec2(writer, xy) =
-			    vec2(x, y) * vec2(samples, samples * samples);
+			Float seed = writer.declLocale("seed", cos(x) + sin(y));
 
-			LocaleFloat(writer, seed) =
-			    // cos(in.globalInvocationID.x()) +
-			    // sin(in.globalInvocationID().y());
-			    cos(x) + sin(y);
+			Vec2 uv = writer.declLocale(
+			    "uv", (xy +
+			           vec2(writer.randomFloat(seed) / writer.Width,
+			                writer.randomFloat(seed) / writer.Height) -
+			           vec2(writer.Width, writer.Height) / 2.0_f) /
+			              vec2(writer.Height));
 
-			// LocaleFloat(writer, width) = 1280.0_f * 4.0_f;
-			// LocaleFloat(writer, height) = 720.0_f * 4.0_f;
+			IVec2 iuv = writer.declLocale(
+			    "iuv",
+			    ivec2(writer.cast<Int>(uv.x()), writer.cast<Int>(uv.y())));
 
-			// outColor = vec4(0.0_f, 0.0_f, 0.0_f, 0.0_f);
-			// outColor = in.fragCoord / vec4(1280.0_f, 720.0_f, 1.0_f, 1.0_f);
-			// LocaleVec4(writer, uv) = in.fragCoord / vec4(1280.0_f,
-			// 720.0_f, 1.0_f, 1.0_f);
-			// LocaleVec2(writer, uv) = (in.fragCoord.xy() / vec2(1280.0_f,
-			// 720.0_f) -
-			//                  vec2(0.5_f));  // / vec2(720.0_f);
-			LocaleVec2(writer, uv) =
-			    (xy +
-			     vec2(randomFloat(seed) / Width, randomFloat(seed) / Height) -
-			     vec2(Width, Height) / 2.0_f) /
-			    vec2(Height);
+			Vec3 focalPoint = writer.declLocale(
+			    "focalPoint",
+			    vec3(uv * writer.CamFocalDistance / writer.CamFocalLength,
+			         writer.CamFocalDistance));
+			Vec3 aperture = writer.declLocale(
+			    "aperture",
+			    writer.CamAperture *
+			        vec3(writer.sampleAperture(6_i, 0.0_f, seed), 0.0_f));
+			Vec3 rayDir =
+			    writer.declLocale("rayDir", normalize(focalPoint - aperture));
 
-			LocaleIVec2(writer, iuv);
-			iuv.x() = writer.cast<Int>(uv.x());
-			iuv.y() = writer.cast<Int>(uv.y());
+			Vec3 CamPos =
+			    writer.declLocale("CamPos", vec3(0.0_f, 0.0_f, -15.0_f));
 
-			// LocaleVec2(writer, uv) = (in.fragCoord.xy() - vec2(1280.0_f,
-			// 720.0_f) / 2.0_f) / vec2(720.0_f);
-
-			// LocaleVec2(writer, uv) = (in.fragCoord + vec2(randomFloat(),
-			// randomFloat()) - iResolution.xy / 2.0) / iResolution.y;
-
-			// float samples = texelFetch(iChannel0, ivec2(0, 0), 0).a;
-			// if (iFrame > 0)
-			// CamRot = getVector(1).xyz;
-			// vec4 prevMouse = getVector(2);
-
-			// fragColor = texelFetch(iChannel0, ivec2(fragCoord), 0);
-
-			// bool mouseDragged =
-			// iMouse.z >= 0.0 && prevMouse.z >= 0.0 && iMouse != prevMouse;
-
-			// if (mouseDragged)
-			// CamRot.yx += (prevMouse.xy - iMouse.xy) / iResolution.y * 2.0;
-
-			// if (iFrame == 0 || mouseDragged)
-			//{
-			//    fragColor = vec4(0.0);
-			//    samples = 0.0;
-			//}
-
-			// setVector(1, vec4(CamRot, 0), fragCoord, fragColor);
-			// setVector(2, iMouse, fragCoord, fragColor);
-
-			//   IF (writer, in.fragCoord - vec2(0.5_f) == vec2(0.0_f))
-			//{
-			//	fragColor.a = samples + 1.0;
-			//}
-			// FI
-
-			LocaleVec3(writer, focalPoint) =
-			    vec3(uv * CamFocalDistance / CamFocalLength, CamFocalDistance);
-			LocaleVec3(writer, aperture) =
-			    CamAperture * vec3(sampleAperture(6_i, 0.0_f, seed), 0.0_f);
-			LocaleVec3(writer, rayDir) = normalize(focalPoint - aperture);
-
-			LocaleVec3(writer, CamPos) = vec3(0.0_f, 0.0_f, -15.0_f);
-
-			LocaleMat3(writer, CamMatrix) = rotationMatrix(CamRot);
+			Mat3 CamMatrix = writer.declLocale(
+			    "CamMatrix", writer.rotationMatrix(writer.CamRot));
 			CamPos = CamMatrix * CamPos;
 			rayDir = CamMatrix * rayDir;
 			aperture = CamMatrix * aperture;
 
-			// outColorHDR.rgb() =
-			//    pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
-			//              rayDir, seed) /
-			//    15.0_f;
-			// outColorHDR.a() = samples + 1.0;
-			//*/
-
 			// clang-format off
-			LocaleVec3(writer, previousColor) = imageLoad(kernelImage, iuv).rgb();
-			LocaleVec3(writer, newColor) = pathTrace(CamPos + aperture, rayDir, seed);
-			LocaleVec3(writer, mixer) = vec3(1.0_f / (samples + 1.0_f));
-			LocaleVec3(writer, mixedColor) = mix(previousColor, newColor, mixer);
-			LocaleVec4(writer, mixedColor4) = vec4(mixedColor, samples + 1.0_f);
+			Vec3 previousColor = writer.declLocale("previousColor", imageLoad(kernelImage, iuv).rgb());
+			Vec3 newColor = writer.declLocale("newColor", writer.pathTrace(CamPos + aperture, rayDir, seed));
+			Vec3 mixer = writer.declLocale("mixer", vec3(1.0_f / (samples + 1.0_f)));
+			Vec3 mixedColor = writer.declLocale("mixedColor", mix(previousColor, newColor, mixer));
+			Vec4 mixedColor4 = writer.declLocale("mixedColor4", vec4(mixedColor, samples + 1.0_f));
 			// clang-format on
 
 			/// AAAAAAAAAAAH
