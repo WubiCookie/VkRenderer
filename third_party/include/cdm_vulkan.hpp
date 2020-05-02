@@ -31,6 +31,7 @@ Written by Charles Seizilles de Mazancourt
 #include <vulkan/vulkan.h>
 
 #include <cstring>
+#include <cassert>
 
 namespace cdm
 {
@@ -128,6 +129,8 @@ using SubpassEndInfo                       = CreateInfo<VkSubpassEndInfo,       
 using DebugMarkerObjectTagInfoEXT          = CreateInfo<VkDebugMarkerObjectTagInfoEXT,          VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT>;
 using DebugMarkerObjectNameInfoEXT         = CreateInfo<VkDebugMarkerObjectNameInfoEXT,         VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT>;
 using DebugMarkerMarkerInfoEXT             = CreateInfo<VkDebugMarkerMarkerInfoEXT,             VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT>;
+using WriteDescriptorSet                   = CreateInfo<VkWriteDescriptorSet,                   VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET>;
+using CopyDescriptorSet                    = CreateInfo<VkCopyDescriptorSet,                    VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET>;
 
 } // namespace vk
 
@@ -157,14 +160,78 @@ public:
     T& get() noexcept { return m_obj; }
     const T& get() const noexcept { return m_obj; }
 
-    //operator T&() noexcept { return m_obj; }
-    //const operator T&() const noexcept { return m_obj; }
+    operator bool() const { return !!m_obj; }
+};
 
-    //T* operator->() noexcept { return &m_obj; }
-    //const T* operator->() const noexcept { return &m_obj; }
+template<typename T, typename Owner, auto Deleter>
+class Unique
+{
+    T m_obj = nullptr;
+    const Owner* m_owner = nullptr;
 
-    //T* operator&() noexcept { return &m_obj; }
-    //const T* operator&() const noexcept { return &m_obj; }
+public:
+    Unique() = default;
+    Unique(const Unique&) = delete;
+    Unique(Unique&& obj) noexcept :
+        m_obj(std::exchange(obj.m_obj, nullptr)),
+        m_owner(std::exchange(obj.m_owner, nullptr))
+    {}
+    Unique(T obj, const Owner* owner) noexcept : m_obj(obj), m_owner(owner)
+    {
+        assert(m_obj);
+        assert(m_owner);
+    }
+    Unique(T obj, const Owner& owner) noexcept : m_obj(obj), m_owner(&owner)
+    {
+        assert(m_obj);
+    }
+    ~Unique() { reset(); }
+
+    Unique& operator=(const Unique&) = delete;
+    Unique& operator=(Unique&& ptr) noexcept
+    {
+        m_obj = std::exchange(ptr.m_obj, nullptr);
+        m_owner = std::exchange(ptr.m_owner, nullptr);
+        return *this;
+    }
+
+    void reset(nullptr_t = nullptr)
+    {
+        reset(nullptr, nullptr);
+    }
+
+    void reset(T obj, const Owner* owner)
+    {
+        if (m_owner && m_obj)
+            (m_owner->*Deleter)(m_obj);
+
+        m_obj = obj;
+        m_owner = owner;
+    }
+
+    void reset(T obj, const Owner& owner)
+    {
+        if (m_owner && m_obj)
+            (m_owner->*Deleter)(m_obj);
+
+        m_obj = obj;
+        m_owner = &owner;
+    }
+
+    T release()
+    {
+        T res = m_obj;
+        m_obj = nullptr;
+        m_owner = nullptr;
+        return res;
+    }
+
+    T& get() noexcept { return m_obj; }
+    const T& get() const noexcept { return m_obj; }
+
+    const Owner* owner() const { return m_owner; }
+
+    operator bool() const { return !!m_obj; }
 };
 
 } // namespace cdm

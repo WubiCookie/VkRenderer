@@ -6,6 +6,7 @@
 #include "RenderWindow.hpp"
 
 #include <random>
+#include <memory>
 
 namespace cdm
 {
@@ -13,26 +14,33 @@ class Mandelbulb final
 {
 	std::reference_wrapper<RenderWindow> rw;
 
-	Moveable<VkRenderPass> m_renderPass;
+	UniqueRenderPass m_renderPass;
 
-	Moveable<VkFramebuffer> m_framebuffer;
+	UniqueFramebuffer m_framebuffer;
 
-	Moveable<VkShaderModule> m_vertexModule;
-	Moveable<VkShaderModule> m_fragmentModule;
+	UniqueShaderModule m_vertexModule;
+	UniqueShaderModule m_fragmentModule;
+	UniqueShaderModule m_computeModule;
 
-	Moveable<VkPipelineLayout> m_pipelineLayout;
-	Moveable<VkPipeline> m_pipeline;
+	UniquePipelineLayout m_pipelineLayout;
+	UniquePipeline m_pipeline;
+
+	UniqueDescriptorPool m_computePool;
+	UniqueDescriptorSetLayout m_computeSetLayout;
+	Moveable<VkDescriptorSet> m_computeSet;
+	UniquePipelineLayout m_computePipelineLayout;
+	UniquePipeline m_computePipeline;
 
 	Moveable<VmaAllocation> m_vertexBufferAllocation;
 	Moveable<VkBuffer> m_vertexBuffer;
 
 	Moveable<VmaAllocation> m_outputImageAllocation;
 	Moveable<VkImage> m_outputImage;
-	Moveable<VkImageView> m_outputImageView;
+	UniqueImageView m_outputImageView;
 
 	Moveable<VmaAllocation> m_outputImageHDRAllocation;
 	Moveable<VkImage> m_outputImageHDR;
-	Moveable<VkImageView> m_outputImageHDRView;
+	UniqueImageView m_outputImageHDRView;
 
 	std::random_device rd;
 	std::mt19937 gen;
@@ -43,6 +51,9 @@ public:
 	~Mandelbulb();
 
 	void render(CommandBuffer& cb);
+
+	float samples = 1.0f;
+	void compute(CommandBuffer& cb);
 
 	void randomizePoints();
 

@@ -335,6 +335,31 @@ VulkanDeviceBase::~VulkanDeviceBase()
 	}
 }
 
+void VulkanDeviceBase::destroySurface(VkSurfaceKHR surface) const
+{
+	DestroySurfaceKHR(instance(), surface, nullptr);
+}
+
+void VulkanDeviceBase::destroy(VkSurfaceKHR surface) const
+{
+	destroySurface(surface);
+}
+
+VkResult VulkanDeviceBase::createSurface(
+    const cdm::vk::Win32SurfaceCreateInfoKHR& createInfo,
+    VkSurfaceKHR& outSurface) const
+{
+	return CreateWin32SurfaceKHR(instance(), &createInfo, nullptr,
+	                             &outSurface);
+}
+
+VkResult VulkanDeviceBase::create(
+    const cdm::vk::Win32SurfaceCreateInfoKHR& createInfo,
+    VkSurfaceKHR& outSurface) const
+{
+	return createSurface(createInfo, outSurface);
+}
+
 // ================================================================
 
 static int rateDeviceSuitability(VkPhysicalDevice physicalDevice,
@@ -845,4 +870,554 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	vmaCreateAllocator(&allocatorInfo, &m_allocator.get());
 #pragma endregion allocator
 }
+
+VkResult VulkanDevice::allocateCommandBuffers(
+    const cdm::vk::CommandBufferAllocateInfo& allocateInfo,
+    VkCommandBuffer* pCommandBuffers) const
+{
+	return AllocateCommandBuffers(vkDevice(), &allocateInfo, pCommandBuffers);
+}
+
+VkResult VulkanDevice::allocate(
+    const cdm::vk::CommandBufferAllocateInfo& allocateInfo,
+    VkCommandBuffer* pCommandBuffers) const
+{
+	return allocateCommandBuffers(allocateInfo, pCommandBuffers);
+}
+
+VkResult VulkanDevice::allocateDescriptorSets(
+    const cdm::vk::DescriptorSetAllocateInfo& allocateInfo,
+    VkDescriptorSet* pDescriptorSets) const
+{
+	return AllocateDescriptorSets(vkDevice(), &allocateInfo, pDescriptorSets);
+}
+
+VkResult VulkanDevice::allocate(
+    const cdm::vk::DescriptorSetAllocateInfo& allocateInfo,
+    VkDescriptorSet* pDescriptorSets) const
+{
+	return allocateDescriptorSets(allocateInfo, pDescriptorSets);
+}
+
+VkResult VulkanDevice::allocateMemory(
+    const cdm::vk::MemoryAllocateInfo& allocateInfo,
+    VkDeviceMemory& outDeviceMemory) const
+{
+	return AllocateMemory(vkDevice(), &allocateInfo, nullptr,
+	                      &outDeviceMemory);
+}
+
+VkResult VulkanDevice::allocate(
+    const cdm::vk::MemoryAllocateInfo& allocateInfo,
+    VkDeviceMemory& outDeviceMemory) const
+{
+	return allocateMemory(allocateInfo, outDeviceMemory);
+}
+
+VkResult VulkanDevice::createComputePipelines(
+    uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos,
+    VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
+{
+	return CreateComputePipelines(vkDevice(), pipelineCache, createInfoCount,
+	                              pCreateInfos, nullptr, pPipelines);
+}
+
+VkResult VulkanDevice::create(uint32_t createInfoCount,
+                              const VkComputePipelineCreateInfo* pCreateInfos,
+                              VkPipeline* pPipelines,
+                              VkPipelineCache pipelineCache) const
+{
+	return createComputePipelines(createInfoCount, pCreateInfos, pPipelines,
+	                              pipelineCache);
+}
+
+VkResult VulkanDevice::createComputePipelines(
+    uint32_t createInfoCount,
+    const cdm::vk::ComputePipelineCreateInfo* pCreateInfos,
+    VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
+{
+	return CreateComputePipelines(vkDevice(), pipelineCache, createInfoCount,
+	                              pCreateInfos, nullptr, pPipelines);
+}
+
+VkResult VulkanDevice::create(
+    uint32_t createInfoCount,
+    const cdm::vk::ComputePipelineCreateInfo* pCreateInfos,
+    VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
+{
+	return createComputePipelines(createInfoCount, pCreateInfos, pPipelines,
+	                              pipelineCache);
+}
+
+VkResult VulkanDevice::createComputePipeline(
+    const cdm::vk::ComputePipelineCreateInfo& createInfo,
+    VkPipeline& outPipeline, VkPipelineCache pipelineCache) const
+{
+	return CreateComputePipelines(vkDevice(), pipelineCache, 1, &createInfo,
+	                              nullptr, &outPipeline);
+}
+
+VkResult VulkanDevice::create(
+    const cdm::vk::ComputePipelineCreateInfo& createInfo,
+    VkPipeline& outPipeline, VkPipelineCache pipelineCache) const
+{
+	return createComputePipeline(createInfo, outPipeline, pipelineCache);
+}
+
+UniquePipeline VulkanDevice::createComputePipeline(
+    const cdm::vk::ComputePipelineCreateInfo& createInfo,
+    VkPipelineCache pipelineCache) const
+{
+	VkPipeline res = nullptr;
+	createComputePipeline(createInfo, res, pipelineCache);
+	return UniquePipeline(res, *this);
+}
+
+VkResult VulkanDevice::createGraphicsPipelines(
+    uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo* pCreateInfos,
+    VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
+{
+	return CreateGraphicsPipelines(vkDevice(), pipelineCache, createInfoCount,
+	                               pCreateInfos, nullptr, pPipelines);
+}
+
+VkResult VulkanDevice::create(uint32_t createInfoCount,
+                              const VkGraphicsPipelineCreateInfo* pCreateInfos,
+                              VkPipeline* pPipelines,
+                              VkPipelineCache pipelineCache) const
+{
+	return createGraphicsPipelines(createInfoCount, pCreateInfos, pPipelines,
+	                               pipelineCache);
+}
+
+VkResult VulkanDevice::createGraphicsPipelines(
+    uint32_t createInfoCount,
+    const cdm::vk::GraphicsPipelineCreateInfo* pCreateInfos,
+    VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
+{
+	return CreateGraphicsPipelines(vkDevice(), pipelineCache, createInfoCount,
+	                               pCreateInfos, nullptr, pPipelines);
+}
+
+VkResult VulkanDevice::create(
+    uint32_t createInfoCount,
+    const cdm::vk::GraphicsPipelineCreateInfo* pCreateInfos,
+    VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
+{
+	return createGraphicsPipelines(createInfoCount, pCreateInfos, pPipelines,
+	                               pipelineCache);
+}
+
+VkResult VulkanDevice::createGraphicsPipeline(
+    const cdm::vk::GraphicsPipelineCreateInfo& createInfo,
+    VkPipeline& outPipeline, VkPipelineCache pipelineCache) const
+{
+	return CreateGraphicsPipelines(vkDevice(), pipelineCache, 1, &createInfo,
+	                               nullptr, &outPipeline);
+}
+
+VkResult VulkanDevice::create(
+    const cdm::vk::GraphicsPipelineCreateInfo& createInfo,
+    VkPipeline& outPipeline, VkPipelineCache pipelineCache) const
+{
+	return createGraphicsPipeline(createInfo, outPipeline, pipelineCache);
+}
+
+UniquePipeline VulkanDevice::createGraphicsPipeline(
+    const cdm::vk::GraphicsPipelineCreateInfo& createInfo,
+    VkPipelineCache pipelineCache) const
+{
+	VkPipeline res = nullptr;
+	createGraphicsPipeline(createInfo, res, pipelineCache);
+	return UniquePipeline(res, *this);
+}
+
+VkResult VulkanDevice::createRenderPass2(
+    const cdm::vk::RenderPassCreateInfo2& createInfo,
+    VkRenderPass& outRenderPass) const
+{
+	return CreateRenderPass2KHR(vkDevice(), &createInfo, nullptr,
+	                            &outRenderPass);
+}
+
+VkResult VulkanDevice::create(const cdm::vk::RenderPassCreateInfo2& createInfo,
+                              VkRenderPass& outRenderPass) const
+{
+	return createRenderPass2(createInfo, outRenderPass);
+}
+
+UniqueRenderPass VulkanDevice::createRenderPass2(
+    const cdm::vk::RenderPassCreateInfo2& createInfo) const
+{
+	VkRenderPass res = nullptr;
+	createRenderPass2(createInfo, res);
+	return UniqueRenderPass(res, *this);
+}
+
+UniqueBuffer VulkanDevice::createBuffer(
+    const cdm::vk::BufferCreateInfo& createInfo) const
+{
+	VkBuffer res = nullptr;
+	createBuffer(createInfo, res);
+	return UniqueBuffer(res, *this);
+}
+
+UniqueBufferView VulkanDevice::createBufferView(
+    const cdm::vk::BufferViewCreateInfo& createInfo) const
+{
+	VkBufferView res = nullptr;
+	createBufferView(createInfo, res);
+	return UniqueBufferView(res, *this);
+}
+
+UniqueCommandPool VulkanDevice::createCommandPool(
+    const cdm::vk::CommandPoolCreateInfo& createInfo) const
+{
+	VkCommandPool res = nullptr;
+	createCommandPool(createInfo, res);
+	return UniqueCommandPool(res, *this);
+}
+
+UniqueDescriptorPool VulkanDevice::createDescriptorPool(
+    const cdm::vk::DescriptorPoolCreateInfo& createInfo) const
+{
+	VkDescriptorPool res = nullptr;
+	createDescriptorPool(createInfo, res);
+	return UniqueDescriptorPool(res, *this);
+}
+
+UniqueDescriptorSetLayout VulkanDevice::createDescriptorSetLayout(
+    const cdm::vk::DescriptorSetLayoutCreateInfo& createInfo) const
+{
+	VkDescriptorSetLayout res = nullptr;
+	createDescriptorSetLayout(createInfo, res);
+	return UniqueDescriptorSetLayout(res, *this);
+}
+
+UniqueDescriptorUpdateTemplate VulkanDevice::createDescriptorUpdateTemplate(
+    const cdm::vk::DescriptorUpdateTemplateCreateInfo& createInfo) const
+{
+	VkDescriptorUpdateTemplate res = nullptr;
+	createDescriptorUpdateTemplate(createInfo, res);
+	return UniqueDescriptorUpdateTemplate(res, *this);
+}
+
+UniqueEvent VulkanDevice::createEvent(
+    const cdm::vk::EventCreateInfo& createInfo) const
+{
+	VkEvent res = nullptr;
+	createEvent(createInfo, res);
+	return UniqueEvent(res, *this);
+}
+
+UniqueFence VulkanDevice::createFence(
+    const cdm::vk::FenceCreateInfo& createInfo) const
+{
+	VkFence res = nullptr;
+	createFence(createInfo, res);
+	return UniqueFence(res, *this);
+}
+
+UniqueFramebuffer VulkanDevice::createFramebuffer(
+    const cdm::vk::FramebufferCreateInfo& createInfo) const
+{
+	VkFramebuffer res = nullptr;
+	createFramebuffer(createInfo, res);
+	return UniqueFramebuffer(res, *this);
+}
+
+UniqueImage VulkanDevice::createImage(
+    const cdm::vk::ImageCreateInfo& createInfo) const
+{
+	VkImage res = nullptr;
+	createImage(createInfo, res);
+	return UniqueImage(res, *this);
+}
+
+UniqueImageView VulkanDevice::createImageView(
+    const cdm::vk::ImageViewCreateInfo& createInfo) const
+{
+	VkImageView res = nullptr;
+	createImageView(createInfo, res);
+	return UniqueImageView(res, *this);
+}
+
+UniquePipelineCache VulkanDevice::createPipelineCache(
+    const cdm::vk::PipelineCacheCreateInfo& createInfo) const
+{
+	VkPipelineCache res = nullptr;
+	createPipelineCache(createInfo, res);
+	return UniquePipelineCache(res, *this);
+}
+
+UniquePipelineLayout VulkanDevice::createPipelineLayout(
+    const cdm::vk::PipelineLayoutCreateInfo& createInfo) const
+{
+	VkPipelineLayout res = nullptr;
+	createPipelineLayout(createInfo, res);
+	return UniquePipelineLayout(res, *this);
+}
+
+UniqueQueryPool VulkanDevice::createQueryPool(
+    const cdm::vk::QueryPoolCreateInfo& createInfo) const
+{
+	VkQueryPool res = nullptr;
+	createQueryPool(createInfo, res);
+	return UniqueQueryPool(res, *this);
+}
+
+UniqueRenderPass VulkanDevice::createRenderPass(
+    const cdm::vk::RenderPassCreateInfo& createInfo) const
+{
+	VkRenderPass res = nullptr;
+	createRenderPass(createInfo, res);
+	return UniqueRenderPass(res, *this);
+}
+
+UniqueSampler VulkanDevice::createSampler(
+    const cdm::vk::SamplerCreateInfo& createInfo) const
+{
+	VkSampler res = nullptr;
+	createSampler(createInfo, res);
+	return UniqueSampler(res, *this);
+}
+
+UniqueSamplerYcbcrConversion VulkanDevice::createSamplerYcbcrConversion(
+    const cdm::vk::SamplerYcbcrConversionCreateInfo& createInfo) const
+{
+	VkSamplerYcbcrConversion res = nullptr;
+	createSamplerYcbcrConversion(createInfo, res);
+	return UniqueSamplerYcbcrConversion(res, *this);
+}
+
+UniqueSemaphore VulkanDevice::createSemaphore(
+    const cdm::vk::SemaphoreCreateInfo& createInfo) const
+{
+	VkSemaphore res = nullptr;
+	createSemaphore(createInfo, res);
+	return UniqueSemaphore(res, *this);
+}
+
+UniqueShaderModule VulkanDevice::createShaderModule(
+    const cdm::vk::ShaderModuleCreateInfo& createInfo) const
+{
+	VkShaderModule res = nullptr;
+	createShaderModule(createInfo, res);
+	return UniqueShaderModule(res, *this);
+}
+
+void VulkanDevice::destroyDevice() const
+{
+	DestroyDevice(vkDevice(), nullptr);
+}
+
+void VulkanDevice::destroy() const { destroyDevice(); }
+
+VkResult VulkanDevice::waitIdle() const { return DeviceWaitIdle(vkDevice()); }
+VkResult VulkanDevice::wait() const { return waitIdle(); }
+
+void VulkanDevice::freeCommandBuffers(
+    VkCommandPool commandPool, uint32_t commandBufferCount,
+    const VkCommandBuffer* pCommandBuffers) const
+{
+	FreeCommandBuffers(vkDevice(), commandPool, commandBufferCount,
+	                   pCommandBuffers);
+}
+
+void VulkanDevice::free(VkCommandPool commandPool, uint32_t commandBufferCount,
+                        const VkCommandBuffer* pCommandBuffers) const
+{
+	freeCommandBuffers(commandPool, commandBufferCount, pCommandBuffers);
+}
+
+void VulkanDevice::freeCommandBuffer(VkCommandPool commandPool,
+                                     VkCommandBuffer CommandBuffer) const
+{
+	FreeCommandBuffers(vkDevice(), commandPool, 1, &CommandBuffer);
+}
+
+void VulkanDevice::free(VkCommandPool commandPool,
+                        VkCommandBuffer CommandBuffer) const
+{
+	freeCommandBuffers(commandPool, 1, &CommandBuffer);
+}
+
+VkResult VulkanDevice::freeDescriptorSets(
+    VkDescriptorPool descriptorPool, uint32_t descriptorSetCount,
+    const VkDescriptorSet* pDescriptorSets) const
+{
+	return FreeDescriptorSets(vkDevice(), descriptorPool, descriptorSetCount,
+	                          pDescriptorSets);
+}
+
+VkResult VulkanDevice::free(VkDescriptorPool descriptorPool,
+                            uint32_t descriptorSetCount,
+                            const VkDescriptorSet* pDescriptorSets) const
+{
+	return freeDescriptorSets(descriptorPool, descriptorSetCount,
+	                          pDescriptorSets);
+}
+VkResult VulkanDevice::freeDescriptorSets(VkDescriptorPool descriptorPool,
+                                          VkDescriptorSet DescriptorSet) const
+{
+	return FreeDescriptorSets(vkDevice(), descriptorPool, 1, &DescriptorSet);
+}
+
+VkResult VulkanDevice::free(VkDescriptorPool descriptorPool,
+                            VkDescriptorSet DescriptorSet) const
+{
+	return freeDescriptorSets(descriptorPool, 1, &DescriptorSet);
+}
+
+void VulkanDevice::freeMemory(VkDeviceMemory aDeviceMemory) const
+{
+	FreeMemory(vkDevice(), aDeviceMemory, nullptr);
+}
+
+void VulkanDevice::free(VkDeviceMemory aDeviceMemory) const
+{
+	freeMemory(aDeviceMemory);
+}
+
+VkResult VulkanDevice::queueSubmit(VkQueue queue, uint32_t submitCount,
+                                   const VkSubmitInfo* submits,
+                                   VkFence fence) const
+{
+	return QueueSubmit(queue, submitCount, submits, fence);
+}
+
+VkResult VulkanDevice::queueSubmit(VkQueue queue, const VkSubmitInfo& submit,
+                                   VkFence fence) const
+{
+	return queueSubmit(queue, 1, &submit, fence);
+}
+
+VkResult VulkanDevice::queueWaitIdle(VkQueue queue) const
+{
+	return QueueWaitIdle(queue);
+}
+
+VkResult VulkanDevice::waitIdle(VkQueue queue) const
+{
+	return QueueWaitIdle(queue);
+}
+
+VkResult VulkanDevice::wait(VkQueue queue) const
+{
+	return QueueWaitIdle(queue);
+}
+
+VkResult VulkanDevice::waitForFences(uint32_t fenceCount,
+                                     const VkFence* pFences, bool waitAll,
+                                     uint64_t timeout) const
+{
+	return WaitForFences(vkDevice(), fenceCount, pFences, waitAll, timeout);
+}
+
+void VulkanDevice::updateDescriptorSets(
+    uint32_t descriptorWriteCount,
+    const vk::WriteDescriptorSet* descriptorWrites,
+    uint32_t descriptorCopyCount,
+    const vk::CopyDescriptorSet* descriptorCopies) const
+{
+	UpdateDescriptorSets(vkDevice(), descriptorWriteCount, descriptorWrites,
+	                     descriptorCopyCount, descriptorCopies);
+}
+
+void VulkanDevice::updateDescriptorSets(
+    uint32_t descriptorWriteCount,
+    const vk::WriteDescriptorSet* descriptorWrites) const
+{
+	updateDescriptorSets(descriptorWriteCount, descriptorWrites, 0, nullptr);
+}
+
+void VulkanDevice::updateDescriptorSets(
+    uint32_t descriptorCopyCount,
+    const vk::CopyDescriptorSet* descriptorCopies) const
+{
+	updateDescriptorSets(0, nullptr, descriptorCopyCount, descriptorCopies);
+}
+
+void VulkanDevice::updateDescriptorSets(
+    const vk::WriteDescriptorSet& descriptorWrite) const
+{
+	updateDescriptorSets(1, &descriptorWrite);
+}
+
+void VulkanDevice::updateDescriptorSets(
+    const vk::CopyDescriptorSet& descriptorCopy) const
+{
+	updateDescriptorSets(1, &descriptorCopy);
+}
+
+VkResult VulkanDevice::wait(uint32_t fenceCount, const VkFence* pFences,
+                            bool waitAll, uint64_t timeout) const
+{
+	return waitForFences(fenceCount, pFences, waitAll, timeout);
+}
+
+VkResult VulkanDevice::waitForFence(VkFence fence, uint64_t timeout) const
+{
+	return WaitForFences(vkDevice(), 1, &fence, true, timeout);
+}
+
+VkResult VulkanDevice::wait(VkFence fence, uint64_t timeout) const
+{
+	return waitForFence(fence, timeout);
+}
+
+VkResult VulkanDevice::waitSemaphores(cdm::vk::SemaphoreWaitInfo& waitInfo,
+                                      uint64_t timeout) const
+{
+	return WaitSemaphores(vkDevice(), &waitInfo, timeout);
+}
+
+VkResult VulkanDevice::wait(cdm::vk::SemaphoreWaitInfo& waitInfo,
+                            uint64_t timeout) const
+{
+	return waitSemaphores(waitInfo, timeout);
+}
+
+VkResult VulkanDevice::createSwapchain(
+    const cdm::vk::SwapchainCreateInfoKHR& createInfo,
+    VkSwapchainKHR& outSwapchain) const
+{
+	return CreateSwapchainKHR(vkDevice(), &createInfo, nullptr, &outSwapchain);
+}
+
+VkResult VulkanDevice::create(
+    const cdm::vk::SwapchainCreateInfoKHR& createInfo,
+    VkSwapchainKHR& outSwapchain) const
+{
+	return createSwapchain(createInfo, outSwapchain);
+}
+
+void VulkanDevice::destroySwapchain(VkSwapchainKHR swapchain) const
+{
+	DestroySwapchainKHR(vkDevice(), swapchain, nullptr);
+}
+
+void VulkanDevice::destroy(VkSwapchainKHR swapchain) const
+{
+	destroySwapchain(swapchain);
+}
+
+VkResult VulkanDevice::debugMarkerSetObjectName(
+    const cdm::vk::DebugMarkerObjectNameInfoEXT& nameInfo) const
+{
+	if (DebugMarkerSetObjectNameEXT)
+		return DebugMarkerSetObjectNameEXT(vkDevice(), &nameInfo);
+	else
+		return VkResult::VK_ERROR_EXTENSION_NOT_PRESENT;
+}
+
+VkResult VulkanDevice::debugMarkerSetObjectTag(
+    const cdm::vk::DebugMarkerObjectTagInfoEXT& tagInfo) const
+{
+	if (DebugMarkerSetObjectNameEXT)
+		return DebugMarkerSetObjectTagEXT(vkDevice(), &tagInfo);
+	else
+		return VkResult::VK_ERROR_EXTENSION_NOT_PRESENT;
+}
+
 }  // namespace cdm

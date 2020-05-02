@@ -45,7 +45,7 @@ protected:
 	bool m_layers;
 
 public:
-	static inline bool LogActive = false;
+	inline static bool LogActive = false;
 
 	VulkanDeviceBase(bool layers = false) noexcept;
 	virtual ~VulkanDeviceBase();
@@ -91,8 +91,8 @@ public:
 	// VK_KHR_SURFACE_EXTENSION
 	PFN_vkDestroySurfaceKHR DestroySurfaceKHR;
 public:
-	inline void destroySurface(VkSurfaceKHR surface) const;
-	inline void destroy(VkSurfaceKHR surface) const;
+	void destroySurface(VkSurfaceKHR surface) const;
+	void destroy(VkSurfaceKHR surface) const;
 
 	PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR GetPhysicalDeviceSurfaceCapabilitiesKHR;
 	PFN_vkGetPhysicalDeviceSurfaceFormatsKHR GetPhysicalDeviceSurfaceFormatsKHR;
@@ -102,8 +102,8 @@ public:
 	// VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 	PFN_vkCreateWin32SurfaceKHR CreateWin32SurfaceKHR;
 public:
-	inline VkResult createSurface(const vk::Win32SurfaceCreateInfoKHR& createInfo, VkSurfaceKHR& outSurface) const;
-	inline VkResult create(const vk::Win32SurfaceCreateInfoKHR& createInfo, VkSurfaceKHR& outSurface) const;
+	VkResult createSurface(const vk::Win32SurfaceCreateInfoKHR& createInfo, VkSurfaceKHR& outSurface) const;
+	VkResult create(const vk::Win32SurfaceCreateInfoKHR& createInfo, VkSurfaceKHR& outSurface) const;
 
 	PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR GetPhysicalDeviceWin32PresentationSupportKHR;
 
@@ -169,10 +169,7 @@ public:
 	{
 		return m_queueFamilyIndices;
 	}
-	VmaAllocator allocator() const
-	{
-		return m_allocator.get();
-	}
+	VmaAllocator allocator() const { return m_allocator.get(); }
 
 	using VulkanDeviceBase::create;
 	using VulkanDeviceBase::createSurface;
@@ -217,147 +214,88 @@ public:
 
 	PFN_vkAllocateCommandBuffers AllocateCommandBuffers;
 public:
-	inline VkResult allocateCommandBuffers(const vk::CommandBufferAllocateInfo& allocateInfo, VkCommandBuffer* pCommandBuffers) const;
-	inline VkResult allocate(const vk::CommandBufferAllocateInfo& allocateInfo, VkCommandBuffer* pCommandBuffers) const;
+	VkResult allocateCommandBuffers(const vk::CommandBufferAllocateInfo& allocateInfo, VkCommandBuffer* pCommandBuffers) const;
+	VkResult allocate(const vk::CommandBufferAllocateInfo& allocateInfo, VkCommandBuffer* pCommandBuffers) const;
 
 	PFN_vkAllocateDescriptorSets AllocateDescriptorSets;
 public:
-	inline VkResult allocateDescriptorSets(const vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
-	inline VkResult allocate(const vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
+	VkResult allocateDescriptorSets(const vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
+	VkResult allocate(const vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
 
 	PFN_vkAllocateMemory AllocateMemory;
 public:
-	inline VkResult allocateMemory(const vk::MemoryAllocateInfo& allocateInfo, VkDeviceMemory& outDeviceMemory) const;
-	inline VkResult allocate(const vk::MemoryAllocateInfo& allocateInfo, VkDeviceMemory& outDeviceMemory) const;
+	VkResult allocateMemory(const vk::MemoryAllocateInfo& allocateInfo, VkDeviceMemory& outDeviceMemory) const;
+	VkResult allocate(const vk::MemoryAllocateInfo& allocateInfo, VkDeviceMemory& outDeviceMemory) const;
 
-	PFN_vkBindBufferMemory BindBufferMemory;
-	PFN_vkBindBufferMemory2 BindBufferMemory2;
-	PFN_vkBindImageMemory BindImageMemory;
-	PFN_vkBindImageMemory2 BindImageMemory2;
+	PFN_vkBindBufferMemory            BindBufferMemory;
+	PFN_vkBindBufferMemory2           BindBufferMemory2;
+	PFN_vkBindImageMemory             BindImageMemory;
+	PFN_vkBindImageMemory2            BindImageMemory2;
 
-	PFN_vkBeginCommandBuffer BeginCommandBuffer;
-	PFN_vkCmdBeginQuery CmdBeginQuery;
-	PFN_vkCmdBeginRenderPass CmdBeginRenderPass;
-	PFN_vkCmdBeginRenderPass2 CmdBeginRenderPass2;
-	PFN_vkCmdBindDescriptorSets CmdBindDescriptorSets;
-	PFN_vkCmdBindIndexBuffer CmdBindIndexBuffer;
-	PFN_vkCmdBindPipeline CmdBindPipeline;
-	PFN_vkCmdBindVertexBuffers CmdBindVertexBuffers;
-	PFN_vkCmdBlitImage CmdBlitImage;
-	PFN_vkCmdClearAttachments CmdClearAttachments;
-	PFN_vkCmdClearColorImage CmdClearColorImage;
-	PFN_vkCmdClearDepthStencilImage CmdClearDepthStencilImage;
-	PFN_vkCmdCopyBuffer CmdCopyBuffer;
-	PFN_vkCmdCopyBufferToImage CmdCopyBufferToImage;
-	PFN_vkCmdCopyImage CmdCopyImage;
-	PFN_vkCmdCopyImageToBuffer CmdCopyImageToBuffer;
-	PFN_vkCmdCopyQueryPoolResults CmdCopyQueryPoolResults;
-	PFN_vkCmdDispatch CmdDispatch;
-	PFN_vkCmdDispatchBase CmdDispatchBase;
-	PFN_vkCmdDispatchIndirect CmdDispatchIndirect;
-	PFN_vkCmdDraw CmdDraw;
-	PFN_vkCmdDrawIndexed CmdDrawIndexed;
-	PFN_vkCmdDrawIndexedIndirect CmdDrawIndexedIndirect;
+	PFN_vkBeginCommandBuffer          BeginCommandBuffer;
+	PFN_vkCmdBeginQuery               CmdBeginQuery;
+	PFN_vkCmdBeginRenderPass          CmdBeginRenderPass;
+	PFN_vkCmdBeginRenderPass2         CmdBeginRenderPass2;
+	PFN_vkCmdBindDescriptorSets       CmdBindDescriptorSets;
+	PFN_vkCmdBindIndexBuffer          CmdBindIndexBuffer;
+	PFN_vkCmdBindPipeline             CmdBindPipeline;
+	PFN_vkCmdBindVertexBuffers        CmdBindVertexBuffers;
+	PFN_vkCmdBlitImage                CmdBlitImage;
+	PFN_vkCmdClearAttachments         CmdClearAttachments;
+	PFN_vkCmdClearColorImage          CmdClearColorImage;
+	PFN_vkCmdClearDepthStencilImage   CmdClearDepthStencilImage;
+	PFN_vkCmdCopyBuffer               CmdCopyBuffer;
+	PFN_vkCmdCopyBufferToImage        CmdCopyBufferToImage;
+	PFN_vkCmdCopyImage                CmdCopyImage;
+	PFN_vkCmdCopyImageToBuffer        CmdCopyImageToBuffer;
+	PFN_vkCmdCopyQueryPoolResults     CmdCopyQueryPoolResults;
+	PFN_vkCmdDispatch                 CmdDispatch;
+	PFN_vkCmdDispatchBase             CmdDispatchBase;
+	PFN_vkCmdDispatchIndirect         CmdDispatchIndirect;
+	PFN_vkCmdDraw                     CmdDraw;
+	PFN_vkCmdDrawIndexed              CmdDrawIndexed;
+	PFN_vkCmdDrawIndexedIndirect      CmdDrawIndexedIndirect;
 	PFN_vkCmdDrawIndexedIndirectCount CmdDrawIndexedIndirectCount;
-	PFN_vkCmdDrawIndirect CmdDrawIndirect;
-	PFN_vkCmdDrawIndirectCount CmdDrawIndirectCount;
-	PFN_vkCmdEndQuery CmdEndQuery;
-	PFN_vkCmdEndRenderPass CmdEndRenderPass;
-	PFN_vkCmdEndRenderPass2 CmdEndRenderPass2;
-	PFN_vkCmdExecuteCommands CmdExecuteCommands;
-	PFN_vkCmdFillBuffer CmdFillBuffer;
-	PFN_vkCmdNextSubpass CmdNextSubpass;
-	PFN_vkCmdNextSubpass2 CmdNextSubpass2;
-	PFN_vkCmdPipelineBarrier CmdPipelineBarrier;
-	PFN_vkCmdPushConstants CmdPushConstants;
-	PFN_vkCmdResetEvent CmdResetEvent;
-	PFN_vkCmdResetQueryPool CmdResetQueryPool;
-	PFN_vkCmdResolveImage CmdResolveImage;
-	PFN_vkCmdSetBlendConstants CmdSetBlendConstants;
-	PFN_vkCmdSetDepthBias CmdSetDepthBias;
-	PFN_vkCmdSetDepthBounds CmdSetDepthBounds;
-	PFN_vkCmdSetDeviceMask CmdSetDeviceMask;
-	PFN_vkCmdSetEvent CmdSetEvent;
-	PFN_vkCmdSetLineWidth CmdSetLineWidth;
-	PFN_vkCmdSetScissor CmdSetScissor;
-	PFN_vkCmdSetStencilCompareMask CmdSetStencilCompareMask;
-	PFN_vkCmdSetStencilReference CmdSetStencilReference;
-	PFN_vkCmdSetStencilWriteMask CmdSetStencilWriteMask;
-	PFN_vkCmdSetViewport CmdSetViewport;
-	PFN_vkCmdUpdateBuffer CmdUpdateBuffer;
-	PFN_vkCmdWaitEvents CmdWaitEvents;
-	PFN_vkCmdWriteTimestamp CmdWriteTimestamp;
-	PFN_vkEndCommandBuffer EndCommandBuffer;
-	PFN_vkResetCommandBuffer ResetCommandBuffer;
+	PFN_vkCmdDrawIndirect             CmdDrawIndirect;
+	PFN_vkCmdDrawIndirectCount        CmdDrawIndirectCount;
+	PFN_vkCmdEndQuery                 CmdEndQuery;
+	PFN_vkCmdEndRenderPass            CmdEndRenderPass;
+	PFN_vkCmdEndRenderPass2           CmdEndRenderPass2;
+	PFN_vkCmdExecuteCommands          CmdExecuteCommands;
+	PFN_vkCmdFillBuffer               CmdFillBuffer;
+	PFN_vkCmdNextSubpass              CmdNextSubpass;
+	PFN_vkCmdNextSubpass2             CmdNextSubpass2;
+	PFN_vkCmdPipelineBarrier          CmdPipelineBarrier;
+	PFN_vkCmdPushConstants            CmdPushConstants;
+	PFN_vkCmdResetEvent               CmdResetEvent;
+	PFN_vkCmdResetQueryPool           CmdResetQueryPool;
+	PFN_vkCmdResolveImage             CmdResolveImage;
+	PFN_vkCmdSetBlendConstants        CmdSetBlendConstants;
+	PFN_vkCmdSetDepthBias             CmdSetDepthBias;
+	PFN_vkCmdSetDepthBounds           CmdSetDepthBounds;
+	PFN_vkCmdSetDeviceMask            CmdSetDeviceMask;
+	PFN_vkCmdSetEvent                 CmdSetEvent;
+	PFN_vkCmdSetLineWidth             CmdSetLineWidth;
+	PFN_vkCmdSetScissor               CmdSetScissor;
+	PFN_vkCmdSetStencilCompareMask    CmdSetStencilCompareMask;
+	PFN_vkCmdSetStencilReference      CmdSetStencilReference;
+	PFN_vkCmdSetStencilWriteMask      CmdSetStencilWriteMask;
+	PFN_vkCmdSetViewport              CmdSetViewport;
+	PFN_vkCmdUpdateBuffer             CmdUpdateBuffer;
+	PFN_vkCmdWaitEvents               CmdWaitEvents;
+	PFN_vkCmdWriteTimestamp           CmdWriteTimestamp;
+	PFN_vkEndCommandBuffer            EndCommandBuffer;
+	PFN_vkResetCommandBuffer          ResetCommandBuffer;
 
-
-
-	PFN_vkCreateComputePipelines CreateComputePipelines;
-public:
-	inline VkResult createComputePipelines(uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult createComputePipelines(uint32_t createInfoCount, const vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(uint32_t createInfoCount, const vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult createComputePipeline(const vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(const vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
-
-
-	PFN_vkCreateGraphicsPipelines CreateGraphicsPipelines;
-public:
-	inline VkResult createGraphicsPipelines(uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult createGraphicsPipelines(uint32_t createInfoCount, const vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(uint32_t createInfoCount, const vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
-	inline VkResult create(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
-
-
-	PFN_vkCreateRenderPass2 CreateRenderPass2;
-public:
-	inline VkResult createRenderPass2(const vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
-	inline VkResult create(const vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
-
-#define DEFINE_DEVICE_CREATE(ObjectName)                                                                                    \
-                                                                                                \
-	PFN_vkCreate##ObjectName Create##ObjectName;                                                                            \
-public:                                                                                                                     \
-	VkResult create##ObjectName(const vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const \
-	{                                                                                                                       \
-		return Create##ObjectName(vkDevice(), &createInfo, nullptr, &out##ObjectName);                                      \
-	}                                                                                                                       \
-	VkResult create(const vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const             \
-	{                                                                                                                       \
-		return create##ObjectName(createInfo, out##ObjectName);                                                             \
-	}
-
-	DEFINE_DEVICE_CREATE(Buffer);
-	DEFINE_DEVICE_CREATE(BufferView);
-	DEFINE_DEVICE_CREATE(CommandPool);
-	DEFINE_DEVICE_CREATE(DescriptorPool);
-	DEFINE_DEVICE_CREATE(DescriptorSetLayout);
-	DEFINE_DEVICE_CREATE(DescriptorUpdateTemplate);
-	DEFINE_DEVICE_CREATE(Event);
-	DEFINE_DEVICE_CREATE(Fence);
-	DEFINE_DEVICE_CREATE(Framebuffer);
-	DEFINE_DEVICE_CREATE(Image);
-	DEFINE_DEVICE_CREATE(ImageView);
-	DEFINE_DEVICE_CREATE(PipelineCache);
-	DEFINE_DEVICE_CREATE(PipelineLayout);
-	DEFINE_DEVICE_CREATE(QueryPool);
-	DEFINE_DEVICE_CREATE(RenderPass);
-	DEFINE_DEVICE_CREATE(Sampler);
-	DEFINE_DEVICE_CREATE(SamplerYcbcrConversion);
-	DEFINE_DEVICE_CREATE(Semaphore);
-	DEFINE_DEVICE_CREATE(ShaderModule);
 
 
 	PFN_vkDestroyDevice DestroyDevice;
 public:
-	inline void destroyDevice() const;
-	inline void destroy() const;
+	void destroyDevice() const;
+	void destroy() const;
 
 #define DEFINE_DEVICE_DESTROY(ObjectName)                        \
-                                     \
+                                                                 \
 	PFN_vkDestroy##ObjectName Destroy##ObjectName;               \
 public:                                                          \
 	void destroy##ObjectName(Vk##ObjectName a##ObjectName) const \
@@ -391,10 +329,147 @@ public:                                                          \
 	DEFINE_DEVICE_DESTROY(ShaderModule);
 
 
+
+	using UniqueBuffer =                   Unique<VkBuffer,                   VulkanDevice, &VulkanDevice::destroyBuffer                  >;
+	using UniqueBufferView =               Unique<VkBufferView,               VulkanDevice, &VulkanDevice::destroyBufferView              >;
+	using UniqueCommandPool =              Unique<VkCommandPool,              VulkanDevice, &VulkanDevice::destroyCommandPool             >;
+	using UniqueDescriptorPool =           Unique<VkDescriptorPool,           VulkanDevice, &VulkanDevice::destroyDescriptorPool          >;
+	using UniqueDescriptorSetLayout =      Unique<VkDescriptorSetLayout,      VulkanDevice, &VulkanDevice::destroyDescriptorSetLayout     >;
+	using UniqueDescriptorUpdateTemplate = Unique<VkDescriptorUpdateTemplate, VulkanDevice, &VulkanDevice::destroyDescriptorUpdateTemplate>;
+	using UniqueEvent =                    Unique<VkEvent,                    VulkanDevice, &VulkanDevice::destroyEvent                   >;
+	using UniqueFence =                    Unique<VkFence,                    VulkanDevice, &VulkanDevice::destroyFence                   >;
+	using UniqueFramebuffer =              Unique<VkFramebuffer,              VulkanDevice, &VulkanDevice::destroyFramebuffer             >;
+	using UniqueImage =                    Unique<VkImage,                    VulkanDevice, &VulkanDevice::destroyImage                   >;
+	using UniqueImageView =                Unique<VkImageView,                VulkanDevice, &VulkanDevice::destroyImageView               >;
+	using UniquePipeline =                 Unique<VkPipeline,                 VulkanDevice, &VulkanDevice::destroyPipeline                >;
+	using UniquePipelineCache =            Unique<VkPipelineCache,            VulkanDevice, &VulkanDevice::destroyPipelineCache           >;
+	using UniquePipelineLayout =           Unique<VkPipelineLayout,           VulkanDevice, &VulkanDevice::destroyPipelineLayout          >;
+	using UniqueQueryPool =                Unique<VkQueryPool,                VulkanDevice, &VulkanDevice::destroyQueryPool               >;
+	using UniqueRenderPass =               Unique<VkRenderPass,               VulkanDevice, &VulkanDevice::destroyRenderPass              >;
+	using UniqueSampler =                  Unique<VkSampler,                  VulkanDevice, &VulkanDevice::destroySampler                 >;
+	using UniqueSamplerYcbcrConversion =   Unique<VkSamplerYcbcrConversion,   VulkanDevice, &VulkanDevice::destroySamplerYcbcrConversion  >;
+	using UniqueSemaphore =                Unique<VkSemaphore,                VulkanDevice, &VulkanDevice::destroySemaphore               >;
+	using UniqueShaderModule =             Unique<VkShaderModule,             VulkanDevice, &VulkanDevice::destroyShaderModule            >;
+
+
+
+	PFN_vkCreateComputePipelines CreateComputePipelines;
+public:
+	VkResult createComputePipelines(uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult create(uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult createComputePipelines(uint32_t createInfoCount, const vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult create(uint32_t createInfoCount, const vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult createComputePipeline(const vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult create(const vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
+	UniquePipeline createComputePipeline(const vk::ComputePipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const;
+	UniquePipeline create(const vk::ComputePipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const
+	{
+		return createComputePipeline(createInfo, pipelineCache);
+	}
+
+
+	PFN_vkCreateGraphicsPipelines CreateGraphicsPipelines;
+public:
+	VkResult createGraphicsPipelines(uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult create(uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult createGraphicsPipelines(uint32_t createInfoCount, const vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult create(uint32_t createInfoCount, const vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
+	VkResult create(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
+	Unique<VkPipeline, VulkanDevice, &VulkanDevice::destroyPipeline> createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const;
+	Unique<VkPipeline, VulkanDevice, &VulkanDevice::destroyPipeline> create(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const
+	{
+		return createGraphicsPipeline(createInfo, pipelineCache);
+	}
+
+
+	PFN_vkCreateRenderPass2 CreateRenderPass2;
+public:
+	VkResult createRenderPass2(const vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
+	VkResult create(const vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
+	UniqueRenderPass createRenderPass2(const vk::RenderPassCreateInfo2& createInfo) const;
+	UniqueRenderPass create(const vk::RenderPassCreateInfo2& createInfo) const
+	{
+		return createRenderPass2(createInfo);
+	}
+
+#define DEFINE_DEVICE_CREATE(ObjectName)                                                                                    \
+                                                                                                                            \
+	PFN_vkCreate##ObjectName Create##ObjectName;                                                                            \
+public:                                                                                                                     \
+	VkResult create##ObjectName(const vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const      \
+	{                                                                                                                       \
+		return Create##ObjectName(vkDevice(), &createInfo, nullptr, &out##ObjectName);                                      \
+	}                                                                                                                       \
+	VkResult create(const vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const                  \
+	{                                                                                                                       \
+		return create##ObjectName(createInfo, out##ObjectName);                                                             \
+	}
+
+	DEFINE_DEVICE_CREATE(Buffer);
+	DEFINE_DEVICE_CREATE(BufferView);
+	DEFINE_DEVICE_CREATE(CommandPool);
+	DEFINE_DEVICE_CREATE(DescriptorPool);
+	DEFINE_DEVICE_CREATE(DescriptorSetLayout);
+	DEFINE_DEVICE_CREATE(DescriptorUpdateTemplate);
+	DEFINE_DEVICE_CREATE(Event);
+	DEFINE_DEVICE_CREATE(Fence);
+	DEFINE_DEVICE_CREATE(Framebuffer);
+	DEFINE_DEVICE_CREATE(Image);
+	DEFINE_DEVICE_CREATE(ImageView);
+	DEFINE_DEVICE_CREATE(PipelineCache);
+	DEFINE_DEVICE_CREATE(PipelineLayout);
+	DEFINE_DEVICE_CREATE(QueryPool);
+	DEFINE_DEVICE_CREATE(RenderPass);
+	DEFINE_DEVICE_CREATE(Sampler);
+	DEFINE_DEVICE_CREATE(SamplerYcbcrConversion);
+	DEFINE_DEVICE_CREATE(Semaphore);
+	DEFINE_DEVICE_CREATE(ShaderModule);
+
+	UniqueBuffer                   createBuffer                   (const vk::BufferCreateInfo& createInfo)                   const;
+	UniqueBuffer                   create                         (const vk::BufferCreateInfo& createInfo)                   const { return createBuffer(createInfo); }
+	UniqueBufferView               createBufferView               (const vk::BufferViewCreateInfo& createInfo)               const;
+	UniqueBufferView               create                         (const vk::BufferViewCreateInfo& createInfo)               const { return createBufferView(createInfo); }
+	UniqueCommandPool              createCommandPool              (const vk::CommandPoolCreateInfo& createInfo)              const;
+	UniqueCommandPool              create                         (const vk::CommandPoolCreateInfo& createInfo)              const { return createCommandPool(createInfo); }
+	UniqueDescriptorPool           createDescriptorPool           (const vk::DescriptorPoolCreateInfo& createInfo)           const;
+	UniqueDescriptorPool           create                         (const vk::DescriptorPoolCreateInfo& createInfo)           const { return createDescriptorPool(createInfo); }
+	UniqueDescriptorSetLayout      createDescriptorSetLayout      (const vk::DescriptorSetLayoutCreateInfo& createInfo)      const;
+	UniqueDescriptorSetLayout      create                         (const vk::DescriptorSetLayoutCreateInfo& createInfo)      const { return createDescriptorSetLayout(createInfo); }
+	UniqueDescriptorUpdateTemplate createDescriptorUpdateTemplate (const vk::DescriptorUpdateTemplateCreateInfo& createInfo) const;
+	UniqueDescriptorUpdateTemplate create                         (const vk::DescriptorUpdateTemplateCreateInfo& createInfo) const { return createDescriptorUpdateTemplate(createInfo); }
+	UniqueEvent                    createEvent                    (const vk::EventCreateInfo& createInfo)                    const;
+	UniqueEvent                    create                         (const vk::EventCreateInfo& createInfo)                    const { return createEvent(createInfo); }
+	UniqueFence                    createFence                    (const vk::FenceCreateInfo& createInfo)                    const;
+	UniqueFence                    create                         (const vk::FenceCreateInfo& createInfo)                    const { return createFence(createInfo); }
+	UniqueFramebuffer              createFramebuffer              (const vk::FramebufferCreateInfo& createInfo)              const;
+	UniqueFramebuffer              create                         (const vk::FramebufferCreateInfo& createInfo)              const { return createFramebuffer(createInfo); }
+	UniqueImage                    createImage                    (const vk::ImageCreateInfo& createInfo)                    const;
+	UniqueImage                    create                         (const vk::ImageCreateInfo& createInfo)                    const { return createImage(createInfo); }
+	UniqueImageView                createImageView                (const vk::ImageViewCreateInfo& createInfo)                const;
+	UniqueImageView                create                         (const vk::ImageViewCreateInfo& createInfo)                const { return createImageView(createInfo); }
+	UniquePipelineCache            createPipelineCache            (const vk::PipelineCacheCreateInfo& createInfo)            const;
+	UniquePipelineCache            create                         (const vk::PipelineCacheCreateInfo& createInfo)            const { return createPipelineCache(createInfo); }
+	UniquePipelineLayout           createPipelineLayout           (const vk::PipelineLayoutCreateInfo& createInfo)           const;
+	UniquePipelineLayout           create                         (const vk::PipelineLayoutCreateInfo& createInfo)           const { return createPipelineLayout(createInfo); }
+	UniqueQueryPool                createQueryPool                (const vk::QueryPoolCreateInfo& createInfo)                const;
+	UniqueQueryPool                create                         (const vk::QueryPoolCreateInfo& createInfo)                const { return createQueryPool(createInfo); }
+	UniqueRenderPass               createRenderPass               (const vk::RenderPassCreateInfo& createInfo)               const;
+	UniqueRenderPass               create                         (const vk::RenderPassCreateInfo& createInfo)               const { return createRenderPass(createInfo); }
+	UniqueSampler                  createSampler                  (const vk::SamplerCreateInfo& createInfo)                  const;
+	UniqueSampler                  create                         (const vk::SamplerCreateInfo& createInfo)                  const { return createSampler(createInfo); }
+	UniqueSamplerYcbcrConversion   createSamplerYcbcrConversion   (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const;
+	UniqueSamplerYcbcrConversion   create                         (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const { return createSamplerYcbcrConversion(createInfo); }
+	UniqueSemaphore                createSemaphore                (const vk::SemaphoreCreateInfo& createInfo)                const;
+	UniqueSemaphore                create                         (const vk::SemaphoreCreateInfo& createInfo)                const { return createSemaphore(createInfo); }
+	UniqueShaderModule             createShaderModule             (const vk::ShaderModuleCreateInfo& createInfo)             const;
+	UniqueShaderModule             create                         (const vk::ShaderModuleCreateInfo& createInfo)             const { return createShaderModule(createInfo); }
+
+
 	PFN_vkDeviceWaitIdle DeviceWaitIdle;
 public:
-	inline VkResult waitIdle() const;
-	inline VkResult wait() const;
+	VkResult waitIdle() const;
+	VkResult wait() const;
 
 	PFN_vkEnumerateInstanceVersion EnumerateInstanceVersion;
 	PFN_vkFlushMappedMemoryRanges FlushMappedMemoryRanges;
@@ -402,24 +477,24 @@ public:
 
 	PFN_vkFreeCommandBuffers FreeCommandBuffers;
 public:
-	inline void freeCommandBuffers(VkCommandPool commandPool, uint32_t commandBufferCount, const VkCommandBuffer* pCommandBuffers) const;
-	inline void free(VkCommandPool commandPool, uint32_t commandBufferCount, const VkCommandBuffer* pCommandBuffers) const;
-	inline void freeCommandBuffer(VkCommandPool commandPool, VkCommandBuffer CommandBuffer) const;
-	inline void free(VkCommandPool commandPool, VkCommandBuffer CommandBuffer) const;
+	void freeCommandBuffers(VkCommandPool commandPool, uint32_t commandBufferCount, const VkCommandBuffer* pCommandBuffers) const;
+	void free(VkCommandPool commandPool, uint32_t commandBufferCount, const VkCommandBuffer* pCommandBuffers) const;
+	void freeCommandBuffer(VkCommandPool commandPool, VkCommandBuffer CommandBuffer) const;
+	void free(VkCommandPool commandPool, VkCommandBuffer CommandBuffer) const;
 
 
 	PFN_vkFreeDescriptorSets FreeDescriptorSets;
 public:
-	inline VkResult freeDescriptorSets(VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets) const;
-	inline VkResult free(VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets) const;
-	inline VkResult freeDescriptorSets(VkDescriptorPool descriptorPool, VkDescriptorSet DescriptorSet) const;
-	inline VkResult free(VkDescriptorPool descriptorPool, VkDescriptorSet DescriptorSet) const;
+	VkResult freeDescriptorSets(VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets) const;
+	VkResult free(VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets) const;
+	VkResult freeDescriptorSets(VkDescriptorPool descriptorPool, VkDescriptorSet DescriptorSet) const;
+	VkResult free(VkDescriptorPool descriptorPool, VkDescriptorSet DescriptorSet) const;
 
 
 	PFN_vkFreeMemory FreeMemory;
 public:
-	inline void freeMemory(VkDeviceMemory aDeviceMemory) const;
-	inline void free(VkDeviceMemory aDeviceMemory) const;
+	void freeMemory(VkDeviceMemory aDeviceMemory) const;
+	void free(VkDeviceMemory aDeviceMemory) const;
 
 	PFN_vkGetBufferDeviceAddress GetBufferDeviceAddress;
 	PFN_vkGetBufferMemoryRequirements GetBufferMemoryRequirements;
@@ -447,14 +522,14 @@ public:
 	PFN_vkMergePipelineCaches MergePipelineCaches;
 	PFN_vkQueueBindSparse QueueBindSparse;
 	PFN_vkQueueSubmit QueueSubmit;
-	inline VkResult queueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* submits, VkFence fence = nullptr) const;
-	inline VkResult queueSubmit(VkQueue queue, const VkSubmitInfo& submit, VkFence fence = nullptr) const;
+	VkResult queueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* submits, VkFence fence = nullptr) const;
+	VkResult queueSubmit(VkQueue queue, const VkSubmitInfo& submit, VkFence fence = nullptr) const;
 
 	PFN_vkQueueWaitIdle QueueWaitIdle;
 public:
-	inline VkResult queueWaitIdle(VkQueue queue) const;
-	inline VkResult waitIdle(VkQueue queue) const;
-	inline VkResult wait(VkQueue queue) const;
+	VkResult queueWaitIdle(VkQueue queue) const;
+	VkResult waitIdle(VkQueue queue) const;
+	VkResult wait(VkQueue queue) const;
 
 	PFN_vkResetCommandPool ResetCommandPool;
 	PFN_vkResetDescriptorPool ResetDescriptorPool;
@@ -465,22 +540,29 @@ public:
 	PFN_vkSignalSemaphore SignalSemaphore;
 	PFN_vkTrimCommandPool TrimCommandPool;
 	PFN_vkUnmapMemory UnmapMemory;
+
 	PFN_vkUpdateDescriptorSets UpdateDescriptorSets;
+	void updateDescriptorSets(uint32_t descriptorWriteCount, const vk::WriteDescriptorSet* descriptorWrites, uint32_t descriptorCopyCount, const vk::CopyDescriptorSet* descriptorCopies) const;
+	void updateDescriptorSets(uint32_t descriptorWriteCount, const vk::WriteDescriptorSet* descriptorWrites) const;
+	void updateDescriptorSets(uint32_t descriptorCopyCount, const vk::CopyDescriptorSet* descriptorCopies) const;
+	void updateDescriptorSets(const vk::WriteDescriptorSet& descriptorWrite) const;
+	void updateDescriptorSets(const vk::CopyDescriptorSet& descriptorCopy) const;
+
 	PFN_vkUpdateDescriptorSetWithTemplate UpdateDescriptorSetWithTemplate;
 
 
 	PFN_vkWaitForFences WaitForFences;
 public:
-	inline VkResult waitForFences(uint32_t fenceCount, const VkFence* pFences, bool waitAll, uint64_t timeout = UINT64_MAX) const;
-	inline VkResult wait(uint32_t fenceCount, const VkFence* pFences, bool waitAll, uint64_t timeout = UINT64_MAX) const;
-	inline VkResult waitForFence(VkFence fence, uint64_t timeout = UINT64_MAX) const;
-	inline VkResult wait(VkFence fence, uint64_t timeout = UINT64_MAX) const;
+	VkResult waitForFences(uint32_t fenceCount, const VkFence* pFences, bool waitAll, uint64_t timeout = UINT64_MAX) const;
+	VkResult wait(uint32_t fenceCount, const VkFence* pFences, bool waitAll, uint64_t timeout = UINT64_MAX) const;
+	VkResult waitForFence(VkFence fence, uint64_t timeout = UINT64_MAX) const;
+	VkResult wait(VkFence fence, uint64_t timeout = UINT64_MAX) const;
 
 
 	PFN_vkWaitSemaphores WaitSemaphores;
 public:
-	inline VkResult waitSemaphores(vk::SemaphoreWaitInfo& waitInfo, uint64_t timeout = UINT64_MAX) const;
-	inline VkResult wait(vk::SemaphoreWaitInfo& waitInfo, uint64_t timeout = UINT64_MAX) const;
+	VkResult waitSemaphores(vk::SemaphoreWaitInfo& waitInfo, uint64_t timeout = UINT64_MAX) const;
+	VkResult wait(vk::SemaphoreWaitInfo& waitInfo, uint64_t timeout = UINT64_MAX) const;
 
 	// PFN_vkDestroySurfaceKHR DestroySurfaceKHR = nullptr;
 	// PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR
@@ -498,14 +580,14 @@ public:
 
 	PFN_vkCreateSwapchainKHR CreateSwapchainKHR = nullptr;
 public:
-	inline VkResult createSwapchain(const vk::SwapchainCreateInfoKHR& createInfo, VkSwapchainKHR& outSwapchain) const;
-	inline VkResult create(const vk::SwapchainCreateInfoKHR& createInfo, VkSwapchainKHR& outSwapchain) const;
+	VkResult createSwapchain(const vk::SwapchainCreateInfoKHR& createInfo, VkSwapchainKHR& outSwapchain) const;
+	VkResult create(const vk::SwapchainCreateInfoKHR& createInfo, VkSwapchainKHR& outSwapchain) const;
 
 
 	PFN_vkDestroySwapchainKHR DestroySwapchainKHR = nullptr;
 public:
-	inline void destroySwapchain(VkSwapchainKHR swapchain) const;
-	inline void destroy(VkSwapchainKHR swapchain) const;
+	void destroySwapchain(VkSwapchainKHR swapchain) const;
+	void destroy(VkSwapchainKHR swapchain) const;
 
 	PFN_vkGetDeviceGroupPresentCapabilitiesKHR GetDeviceGroupPresentCapabilitiesKHR = nullptr;
 	PFN_vkGetDeviceGroupSurfacePresentModesKHR GetDeviceGroupSurfacePresentModesKHR = nullptr;
@@ -638,12 +720,12 @@ public:
 	PFN_vkCmdDebugMarkerInsertEXT CmdDebugMarkerInsertEXT = nullptr;
 	PFN_vkDebugMarkerSetObjectNameEXT DebugMarkerSetObjectNameEXT = nullptr;
 	PFN_vkDebugMarkerSetObjectTagEXT DebugMarkerSetObjectTagEXT = nullptr;
-	inline VkResult debugMarkerSetObjectName(const vk::DebugMarkerObjectNameInfoEXT& nameInfo) const;
+	VkResult debugMarkerSetObjectName(const vk::DebugMarkerObjectNameInfoEXT& nameInfo) const;
 	template<typename VkHandle>
-	inline VkResult debugMarkerSetObjectName(VkHandle object, VkDebugReportObjectTypeEXT objectType, std::string_view objectName) const;
-	inline VkResult debugMarkerSetObjectTag(const vk::DebugMarkerObjectTagInfoEXT& tagInfo) const;
+	VkResult debugMarkerSetObjectName(VkHandle object, VkDebugReportObjectTypeEXT objectType, std::string_view objectName) const;
+	VkResult debugMarkerSetObjectTag(const vk::DebugMarkerObjectTagInfoEXT& tagInfo) const;
 	template<typename VkHandle, typename T>
-	inline VkResult debugMarkerSetObjectTag(VkHandle object, VkDebugReportObjectTypeEXT objectType, uint64_t tagName, const T& tag) const;
+	VkResult debugMarkerSetObjectTag(VkHandle object, VkDebugReportObjectTypeEXT objectType, uint64_t tagName, const T& tag) const;
 
 	PFN_vkCmdBeginQueryIndexedEXT CmdBeginQueryIndexedEXT = nullptr;
 	PFN_vkCmdBeginTransformFeedbackEXT CmdBeginTransformFeedbackEXT = nullptr;
@@ -798,6 +880,29 @@ public:
 	PFN_vkReleaseFullScreenExclusiveModeEXT ReleaseFullScreenExclusiveModeEXT = nullptr;
 	// clang-format on
 };
+
+// clang-format off
+using UniqueBuffer =                   Unique<VkBuffer,                   VulkanDevice, &VulkanDevice::destroyBuffer                  >;
+using UniqueBufferView =               Unique<VkBufferView,               VulkanDevice, &VulkanDevice::destroyBufferView              >;
+using UniqueCommandPool =              Unique<VkCommandPool,              VulkanDevice, &VulkanDevice::destroyCommandPool             >;
+using UniqueDescriptorPool =           Unique<VkDescriptorPool,           VulkanDevice, &VulkanDevice::destroyDescriptorPool          >;
+using UniqueDescriptorSetLayout =      Unique<VkDescriptorSetLayout,      VulkanDevice, &VulkanDevice::destroyDescriptorSetLayout     >;
+using UniqueDescriptorUpdateTemplate = Unique<VkDescriptorUpdateTemplate, VulkanDevice, &VulkanDevice::destroyDescriptorUpdateTemplate>;
+using UniqueEvent =                    Unique<VkEvent,                    VulkanDevice, &VulkanDevice::destroyEvent                   >;
+using UniqueFence =                    Unique<VkFence,                    VulkanDevice, &VulkanDevice::destroyFence                   >;
+using UniqueFramebuffer =              Unique<VkFramebuffer,              VulkanDevice, &VulkanDevice::destroyFramebuffer             >;
+using UniqueImage =                    Unique<VkImage,                    VulkanDevice, &VulkanDevice::destroyImage                   >;
+using UniqueImageView =                Unique<VkImageView,                VulkanDevice, &VulkanDevice::destroyImageView               >;
+using UniquePipeline =                 Unique<VkPipeline,                 VulkanDevice, &VulkanDevice::destroyPipeline                >;
+using UniquePipelineCache =            Unique<VkPipelineCache,            VulkanDevice, &VulkanDevice::destroyPipelineCache           >;
+using UniquePipelineLayout =           Unique<VkPipelineLayout,           VulkanDevice, &VulkanDevice::destroyPipelineLayout          >;
+using UniqueQueryPool =                Unique<VkQueryPool,                VulkanDevice, &VulkanDevice::destroyQueryPool               >;
+using UniqueRenderPass =               Unique<VkRenderPass,               VulkanDevice, &VulkanDevice::destroyRenderPass              >;
+using UniqueSampler =                  Unique<VkSampler,                  VulkanDevice, &VulkanDevice::destroySampler                 >;
+using UniqueSamplerYcbcrConversion =   Unique<VkSamplerYcbcrConversion,   VulkanDevice, &VulkanDevice::destroySamplerYcbcrConversion  >;
+using UniqueSemaphore =                Unique<VkSemaphore,                VulkanDevice, &VulkanDevice::destroySemaphore               >;
+using UniqueShaderModule =             Unique<VkShaderModule,             VulkanDevice, &VulkanDevice::destroyShaderModule            >;
+// clang-format on
 
 class VulkanDeviceObject
 {
