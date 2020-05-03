@@ -1292,6 +1292,15 @@ VkResult VulkanDevice::queueSubmit(VkQueue queue, const VkSubmitInfo& submit,
 	return queueSubmit(queue, 1, &submit, fence);
 }
 
+VkResult VulkanDevice::queueSubmit(VkQueue queue, VkCommandBuffer commandBuffer, VkFence fence) const
+{
+	vk::SubmitInfo submit;
+	submit.commandBufferCount = 1;
+	submit.pCommandBuffers = &commandBuffer;
+
+	return queueSubmit(queue, 1, &submit, fence);
+}
+
 VkResult VulkanDevice::queueWaitIdle(VkQueue queue) const
 {
 	return QueueWaitIdle(queue);

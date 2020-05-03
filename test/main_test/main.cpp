@@ -89,6 +89,7 @@ int main()
 	//	abort();
 	//}
 
+	/*
 	CommandBuffer computeCB(vk, rw.commandPool());
 
 	computeCB.begin(beginInfo);
@@ -224,6 +225,7 @@ int main()
 	}
 
 	return 0;
+	//*/
 
 	CommandBuffer renderCB(vk, rw.commandPool());
 	vk.debugMarkerSetObjectName(renderCB.get(),
@@ -430,8 +432,8 @@ int main()
 		//                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy);
 
 		VkImageBlit blit{};
-		blit.srcOffsets[1].x = 1280 * 3;
-		blit.srcOffsets[1].y = 720 * 3;
+		blit.srcOffsets[1].x = 1280;
+		blit.srcOffsets[1].y = 720;
 		blit.srcOffsets[1].z = 1;
 		blit.dstOffsets[1].x = 1280;
 		blit.dstOffsets[1].y = 720;

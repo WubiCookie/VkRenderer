@@ -57,13 +57,20 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& cb) noexcept
 
 VkCommandBuffer& CommandBuffer::get() { return m_commandBuffer.get(); }
 
-VkCommandBuffer CommandBuffer::commandBuffer()
+VkCommandBuffer& CommandBuffer::commandBuffer()
 {
 	return m_commandBuffer.get();
 }
 
 VkResult CommandBuffer::begin(const vk::CommandBufferBeginInfo& beginInfo)
 {
+	return device().BeginCommandBuffer(m_commandBuffer.get(), &beginInfo);
+}
+
+VkResult CommandBuffer::begin(VkCommandBufferUsageFlags usage)
+{
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = usage;
 	return device().BeginCommandBuffer(m_commandBuffer.get(), &beginInfo);
 }
 

@@ -7,6 +7,8 @@ project(VkRenderer)
 
 unset(PROJECTS_BINARIES_OUTPUT_DIR)
 
+find_package(Vulkan REQUIRED)
+
 message("==============================================")
 message("                     GLFW                     ")
 message("==============================================")
@@ -48,37 +50,6 @@ set(PROJECTS_USE_PRETTY_PRINTING OFF)
 add_subdirectory(third_party/ShaderWriter)
 
 message("==============================================")
-message("                  VkRenderer                  ")
-message("==============================================")
-add_library(VkRenderer STATIC
-	src/VkRenderer/CommandBuffer.cpp
-	src/VkRenderer/Framebuffer.cpp
-	src/VkRenderer/Image.cpp
-	src/VkRenderer/ImageView.cpp
-	src/VkRenderer/Renderer.cpp
-	src/VkRenderer/RenderPass.cpp
-	src/VkRenderer/RenderWindow.cpp
-	src/VkRenderer/VulkanDevice.cpp
-	src/VkRenderer/Material.cpp
-	src/VkRenderer/Mandelbulb.cpp
-
-	include/VkRenderer/CommandBuffer.hpp
-	include/VkRenderer/CommandBuffer.inl
-	include/VkRenderer/Framebuffer.hpp
-	include/VkRenderer/Image.hpp
-	include/VkRenderer/ImageView.hpp
-	include/VkRenderer/Renderer.hpp
-	include/VkRenderer/RenderPass.hpp
-	include/VkRenderer/RenderWindow.hpp
-	include/VkRenderer/VulkanDevice.hpp
-	include/VkRenderer/VulkanDevice.inl
-	include/VkRenderer/Material.hpp
-	include/VkRenderer/Mandelbulb.hpp
-)
-
-set_target_properties(VkRenderer PROPERTIES FOLDER "")
-
-message("==============================================")
 message("                   shaderc                    ")
 message("==============================================")
 set(gtest_force_shared_crt OFF)
@@ -87,12 +58,46 @@ set(SHADERC_SKIP_INSTALL ON)
 set(SHADERC_SKIP_TESTS ON)
 add_subdirectory("$ENV{VULKAN_SDK}/shaderc" "${CMAKE_CURRENT_BINARY_DIR}-shaderc")
 
+message("==============================================")
+message("                  VkRenderer                  ")
+message("==============================================")
+add_library(VkRenderer STATIC
+	src/VkRenderer/Buffer.cpp
+	src/VkRenderer/Buffer.hpp
+	src/VkRenderer/CommandBuffer.cpp
+	src/VkRenderer/CommandBuffer.hpp
+	src/VkRenderer/CommandBuffer.inl
+	src/VkRenderer/Framebuffer.cpp
+	src/VkRenderer/Framebuffer.hpp
+	src/VkRenderer/Image.cpp
+	src/VkRenderer/Image.hpp
+	src/VkRenderer/ImageView.cpp
+	src/VkRenderer/ImageView.hpp
+	src/VkRenderer/Mandelbulb.cpp
+	src/VkRenderer/Mandelbulb.hpp
+	src/VkRenderer/Material.cpp
+	src/VkRenderer/Material.hpp
+	src/VkRenderer/Renderer.cpp
+	src/VkRenderer/Renderer.hpp
+	src/VkRenderer/RenderPass.cpp
+	src/VkRenderer/RenderPass.hpp
+	src/VkRenderer/RenderWindow.cpp
+	src/VkRenderer/RenderWindow.hpp
+	src/VkRenderer/Texture.cpp
+	src/VkRenderer/Texture.hpp
+	src/VkRenderer/VulkanDevice.cpp
+	src/VkRenderer/VulkanDevice.hpp
+	src/VkRenderer/VulkanDevice.inl
+)
+
+set_target_properties(VkRenderer PROPERTIES FOLDER "")
+
 target_include_directories(VkRenderer
 	PUBLIC
-		include/VkRenderer
+		src/VkRenderer
 
 	PRIVATE
-		"$ENV{VULKAN_SDK}/Include"
+		"${Vulkan_INCLUDE_DIRS}"
 		third_party/include
 		third_party/glfw/include
 		third_party/assimp/include
@@ -113,7 +118,7 @@ add_executable(MainTest test/main_test/main.cpp)
 target_include_directories(MainTest
 	PRIVATE
 		include/VkRenderer
-		"$ENV{VULKAN_SDK}/Include"
+		"${Vulkan_INCLUDE_DIRS}"
 		third_party/include
 		third_party/ShaderWriter/include
 )
