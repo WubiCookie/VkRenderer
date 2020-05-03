@@ -624,9 +624,9 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 		writer.inputLayout(8, 8);
 
-		auto samplesPC = Pcb(writer, "pc");
-		samplesPC.declMember<Float>("samples");
-		samplesPC.end();
+		auto ubo = sdw::Ubo(writer, "ubo", 1, 0);
+		ubo.declMember<Float>("samples");
+		ubo.end();
 
 		auto kernelImage =
 		    writer.declImage<RWFImg2DRgba32>("kernelImage", 0, 0);
@@ -638,7 +638,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			    "y", writer.cast<Float>(in.globalInvocationID.y()));
 
 			Float samples = writer.declLocale(
-			    "samples", samplesPC.getMember<Float>("samples"));
+			    "samples", ubo.getMember<Float>("samples"));
 
 			Vec2 xy = writer.declLocale(
 			    "xy", vec2(x, y) * vec2(samples, samples * samples));
@@ -935,14 +935,15 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion pipeline
 
 #pragma region compute descriptor pool
-	VkDescriptorPoolSize poolSize{};
-	poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	poolSize.descriptorCount = 1;
+	std::array poolSizes{
+		VkDescriptorPoolSize { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
+		VkDescriptorPoolSize { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
+	};
 
 	vk::DescriptorPoolCreateInfo poolInfo;
 	poolInfo.maxSets = 1;
-	poolInfo.poolSizeCount = 1;
-	poolInfo.pPoolSizes = &poolSize;
+	poolInfo.poolSizeCount = 2;
+	poolInfo.pPoolSizes = poolSizes.data();
 
 	m_computePool = vk.create(poolInfo);
 	if (!m_computePool)
@@ -954,15 +955,26 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion compute descriptor pool
 
 #pragma region compute descriptor set layout
-	VkDescriptorSetLayoutBinding layoutBinding;
-	layoutBinding.binding = 0;
-	layoutBinding.descriptorCount = 1;
-	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	layoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	VkDescriptorSetLayoutBinding layoutBindingKernelImage;
+	layoutBindingKernelImage.binding = 0;
+	layoutBindingKernelImage.descriptorCount = 1;
+	layoutBindingKernelImage.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	layoutBindingKernelImage.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	VkDescriptorSetLayoutBinding layoutBindingUbo;
+	layoutBindingUbo.binding = 1;
+	layoutBindingUbo.descriptorCount = 1;
+	layoutBindingUbo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingUbo.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	std::array layoutBindings{
+		layoutBindingKernelImage,
+		layoutBindingUbo
+	};
 
 	vk::DescriptorSetLayoutCreateInfo setLayoutInfo;
-	setLayoutInfo.bindingCount = 1;
-	setLayoutInfo.pBindings = &layoutBinding;
+	setLayoutInfo.bindingCount = 2;
+	setLayoutInfo.pBindings = layoutBindings.data();
 
 	m_computeSetLayout = vk.create(setLayoutInfo);
 	if (!m_computeSetLayout)
@@ -1064,6 +1076,49 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 	vmaUnmapMemory(vk.allocator(), m_vertexBufferAllocation.get());
 #pragma endregion vertexBuffer
+
+#pragma region compute UBO
+	vk::BufferCreateInfo uboInfo;
+	uboInfo.size = sizeof(float);
+	uboInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	uboInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VmaAllocationCreateInfo uboAllocCreateInfo = {};
+	uboAllocCreateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+	// uboAllocCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	uboAllocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+	VmaAllocationInfo stagingUboAllocInfo = {};
+	vmaCreateBuffer(vk.allocator(), &vbInfo, &vbAllocCreateInfo,
+	                &m_vertexBuffer.get(), &m_vertexBufferAllocation.get(),
+	                &stagingUboAllocInfo);
+
+	{
+		void* data;
+
+		vmaMapMemory(vk.allocator(), m_vertexBufferAllocation.get(), &data);
+
+		*static_cast<float*>(data) = 1.0f;
+
+		//std::copy(vertices.begin(), vertices.end(), static_cast<Vertex*>(data));
+
+		vmaUnmapMemory(vk.allocator(), m_vertexBufferAllocation.get());
+	}
+
+	VkDescriptorBufferInfo setBufferInfo{};
+	setBufferInfo.buffer = m_computeUbo.get();
+	setBufferInfo.range = sizeof(float);
+
+	vk::WriteDescriptorSet uboWrite;
+	uboWrite.descriptorCount = 1;
+	uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboWrite.dstArrayElement = 0;
+	uboWrite.dstBinding = 1;
+	uboWrite.dstSet = m_computeSet.get();
+	uboWrite.pBufferInfo = &setBufferInfo;
+
+	vk.updateDescriptorSets(uboWrite);
+#pragma endregion compute UBO
 
 #pragma region outputImage
 	vk::ImageCreateInfo imageInfo;
@@ -1377,8 +1432,6 @@ void Mandelbulb::compute(CommandBuffer& cb)
 	cb.bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline.get());
 	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE,
 	                     m_computePipelineLayout.get(), 0, m_computeSet.get());
-	cb.pushConstants(m_computePipelineLayout.get(),
-	                 VK_SHADER_STAGE_COMPUTE_BIT, 0, &samples);
 	cb.dispatch(8, 8);
 }
 

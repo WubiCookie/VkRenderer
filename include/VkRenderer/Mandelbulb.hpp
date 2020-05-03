@@ -34,6 +34,9 @@ class Mandelbulb final
 	Moveable<VmaAllocation> m_vertexBufferAllocation;
 	Moveable<VkBuffer> m_vertexBuffer;
 
+	Moveable<VmaAllocation> m_computeUboAllocation;
+	Moveable<VkBuffer> m_computeUbo;
+
 	Moveable<VmaAllocation> m_outputImageAllocation;
 	Moveable<VkImage> m_outputImage;
 	UniqueImageView m_outputImageView;
@@ -52,7 +55,6 @@ public:
 
 	void render(CommandBuffer& cb);
 
-	float samples = 1.0f;
 	void compute(CommandBuffer& cb);
 
 	void randomizePoints();
