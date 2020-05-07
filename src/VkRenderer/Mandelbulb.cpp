@@ -530,14 +530,14 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			    //"seed", cos(in.fragCoord.x()) + sin(in.fragCoord.y()));
 			    "seed", ubo.getMember<Float>("seed"));
 
-			 Vec2 uv = writer.declLocale(
+			Vec2 uv = writer.declLocale(
 			    "uv", (in.fragCoord.xy() +
 			           vec2(writer.randomFloat(seed) / writer.Width,
 			                writer.randomFloat(seed) / writer.Height) -
 			           vec2(writer.Width, writer.Height) / 2.0_f) /
 			              vec2(writer.Height));
 
-			//Vec2 uv = writer.declLocale("uv", inPosition.xy());
+			// Vec2 uv = writer.declLocale("uv", inPosition.xy());
 
 			Vec3 focalPoint = writer.declLocale(
 			    "focalPoint",
@@ -559,11 +559,12 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			rayDir = CamMatrix * rayDir;
 			aperture = CamMatrix * aperture;
 
-			outColorHDR =
-			    vec4(writer.pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
+			outColorHDR = vec4(
+			    writer.pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
 			                     rayDir, seed) /
-			    15.0_f, 0.5_f);
-			//outColorHDR.a() = 0.5_f;
+			        15.0_f,
+			    0.5_f);
+			// outColorHDR.a() = 0.5_f;
 
 			outColor = outColorHDR;
 		});
@@ -671,16 +672,22 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 			Float seed = writer.declLocale("seed", cos(x) + sin(y));
 
-			Vec2 uv = writer.declLocale(
-			    "uv", (xy +
-			           vec2(writer.randomFloat(seed) / writer.Width,
-			                writer.randomFloat(seed) / writer.Height) -
-			           vec2(writer.Width, writer.Height) / 2.0_f) /
-			              vec2(writer.Height));
+			Vec2 screen_uv =
+			    writer.declLocale("screen_uv", xy);  // / vec2(4.0_f, 4.0_f));
+			                                         //(xy +
+			//          vec2(writer.randomFloat(seed) / writer.Width,
+			//               writer.randomFloat(seed) / writer.Height) -
+			//          vec2(writer.Width, writer.Height) / 2.0_f) /
+			//             vec2(writer.Height));
 
 			IVec2 iuv = writer.declLocale(
-			    "iuv",
-			    ivec2(writer.cast<Int>(uv.x()), writer.cast<Int>(uv.y())));
+			    "iuv", ivec2(writer.cast<Int>(screen_uv.x()),
+			                 writer.cast<Int>(screen_uv.y())));
+
+			Vec2 uv =
+			    writer.declLocale("uv", ((screen_uv * vec2(2.0_f)) /
+			                             vec2(writer.Width, writer.Height)) -
+			                                vec2(1.0_f));
 
 			Vec3 focalPoint = writer.declLocale(
 			    "focalPoint",
@@ -710,8 +717,10 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			Vec4 mixedColor4 = writer.declLocale("mixedColor4", vec4(mixedColor, samples + 1.0_f));
 			// clang-format on
 
-			/// AAAAAAAAAAAH
-			 imageStore(kernelImage, iuv, mixedColor4);
+			imageStore(kernelImage, iuv, mixedColor4);
+			// imageStore(kernelImage, iuv, vec4(newColor, 1.0_f));
+			// imageStore(kernelImage, iuv, vec4(1.0_f));
+			// imageStore(kernelImage, iuv, vec4(uv, 0.0_f, 0.0_f));
 		});
 
 		/*
@@ -1061,8 +1070,8 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	computePipelineInfo.basePipelineHandle = nullptr;
 	computePipelineInfo.basePipelineIndex = -1;
 
-	 m_computePipeline = vk.create(computePipelineInfo);
-	 if (!m_computePipeline)
+	m_computePipeline = vk.create(computePipelineInfo);
+	if (!m_computePipeline)
 	{
 		std::cerr << "error: failed to create compute pipeline" << std::endl;
 		abort();
@@ -1213,7 +1222,7 @@ void Mandelbulb::compute(CommandBuffer& cb)
 	cb.bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline.get());
 	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE,
 	                     m_computePipelineLayout.get(), 0, m_computeSet.get());
-	cb.dispatch(8, 8);
+	cb.dispatch(1280 / 8, 720 / 8);
 }
 
 void Mandelbulb::randomizePoints()
@@ -1239,5 +1248,13 @@ void Mandelbulb::randomizePoints()
 		data[1] = udis(gen);
 		m_computeUbo.unmap();
 	}
+}
+
+void Mandelbulb::setSampleAndRandomize(float s)
+{
+	float* data = m_computeUbo.map<float>();
+	data[0] = s;
+	data[1] = udis(gen);
+	m_computeUbo.unmap();
 }
 }  // namespace cdm

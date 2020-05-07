@@ -28,6 +28,7 @@ int main()
 	Renderer ren(rw);
 
 	Mandelbulb mandelbulb(rw);
+	mandelbulb.outputTextureHDR().transitionLayoutImediate(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 	// CommandBuffer transitionCB(vk, rw.commandPool());
 
@@ -39,35 +40,60 @@ int main()
 
 	computeCB.begin(beginInfo);
 
-	vk::ImageMemoryBarrier computeBarrier;
-	computeBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	computeBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	computeBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	computeBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	computeBarrier.image = mandelbulb.outputImageHDR();
-	computeBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	computeBarrier.subresourceRange.baseMipLevel = 0;
-	computeBarrier.subresourceRange.levelCount = 1;
-	computeBarrier.subresourceRange.baseArrayLayer = 0;
-	computeBarrier.subresourceRange.layerCount = 1;
-	computeBarrier.srcAccessMask = 0;
-	computeBarrier.dstAccessMask = 0;
-	computeCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-	                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
-	                          computeBarrier);
+	//vk::ImageMemoryBarrier computeBarrier;
+	//computeBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	//computeBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	//computeBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	//computeBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	//computeBarrier.image = mandelbulb.outputImageHDR();
+	//computeBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	//computeBarrier.subresourceRange.baseMipLevel = 0;
+	//computeBarrier.subresourceRange.levelCount = 1;
+	//computeBarrier.subresourceRange.baseArrayLayer = 0;
+	//computeBarrier.subresourceRange.layerCount = 1;
+	//computeBarrier.srcAccessMask = 0;
+	//computeBarrier.dstAccessMask = 0;
+	//computeCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	//                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+	//                          computeBarrier);
 
 	mandelbulb.compute(computeCB);
 	computeCB.end();
 
+
+	mandelbulb.setSampleAndRandomize(1.0f);
 	if (vk.queueSubmit(vk.graphicsQueue(), computeCB.get()) != VK_SUCCESS)
 	{
 		std::cerr << "error: failed to submit compute command buffer"
 		          << std::endl;
 		abort();
 	}
-
 	vk.wait(vk.graphicsQueue());
 
+	mandelbulb.setSampleAndRandomize(2.0f);
+	if (vk.queueSubmit(vk.graphicsQueue(), computeCB.get()) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit compute command buffer"
+			        << std::endl;
+		abort();
+	}
+	vk.wait(vk.graphicsQueue());
+
+	mandelbulb.setSampleAndRandomize(3.0f);
+	if (vk.queueSubmit(vk.graphicsQueue(), computeCB.get()) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit compute command buffer"
+			        << std::endl;
+		abort();
+	}
+	vk.wait(vk.graphicsQueue());
+
+	rw.prerender();
+	rw.present();
+	rw.pollEvents();
+	return 0;
+
+	/*
 	{
 		vk.wait(vk.graphicsQueue());
 
@@ -156,14 +182,37 @@ int main()
 
 		vmaDestroyBuffer(vk.allocator(), HDRBuffer, HDRBufferAllocation);
 
-			CommandBuffer copyHDRCB(vk, rw.commandPool());
+		mandelbulb.setSampleAndRandomize(2.0f);
+		if (vk.queueSubmit(vk.graphicsQueue(), computeCB.get()) != VK_SUCCESS)
+		{
+			std::cerr << "error: failed to submit compute command buffer"
+			          << std::endl;
+			abort();
+		}
+		vk.wait(vk.graphicsQueue());
+
+		mandelbulb.setSampleAndRandomize(3.0f);
+		if (vk.queueSubmit(vk.graphicsQueue(), computeCB.get()) != VK_SUCCESS)
+		{
+			std::cerr << "error: failed to submit compute command buffer"
+			          << std::endl;
+			abort();
+		}
+		vk.wait(vk.graphicsQueue());
+
+		rw.prerender();
+		rw.present();
+		rw.pollEvents();
+		return 0;
+
+		CommandBuffer copyHDRCB(vk, rw.commandPool());
 		while (!rw.shouldClose())
 		{
 			auto swapImages = rw.swapchainImages();
 
 			vk.debugMarkerSetObjectName(
-			    copyHDRCB.get(), VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
-			    "copyHDRCB");
+			    copyHDRCB.get(),
+			    VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT, "copyHDRCB");
 
 			copyHDRCB.begin(beginInfo);
 
@@ -196,8 +245,8 @@ int main()
 				swapBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 				swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 				copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-				                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
-				                       swapBarrier);
+				                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+				                          0, swapBarrier);
 
 				// VkImageCopy copy{};
 				// copy.extent.width = 1280;
@@ -240,10 +289,10 @@ int main()
 				blit.dstSubresource.mipLevel = 0;
 
 				copyHDRCB.blitImage(mandelbulb.outputImage(),
-				                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-				                 swapImage,
-				                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
-				                 VkFilter::VK_FILTER_LINEAR);
+				                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				                    swapImage,
+				                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
+				                    VkFilter::VK_FILTER_LINEAR);
 
 				swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 				swapBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -254,8 +303,8 @@ int main()
 				    "swapImage transfer dst to present src", 1, 1, 0.4f);
 
 				copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-				                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
-				                       swapBarrier);
+				                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+				                          0, swapBarrier);
 			}
 
 			copyHDRCB.debugMarkerEnd();
@@ -269,7 +318,8 @@ int main()
 
 			vk.wait(vk.graphicsQueue());
 
-			if (vk.queueSubmit(vk.graphicsQueue(), copyHDRCB.get()) != VK_SUCCESS)
+			if (vk.queueSubmit(vk.graphicsQueue(), copyHDRCB.get()) !=
+			    VK_SUCCESS)
 			{
 				std::cerr << "error: failed to submit draw command buffer"
 				          << std::endl;

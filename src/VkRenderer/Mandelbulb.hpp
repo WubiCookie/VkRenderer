@@ -66,8 +66,10 @@ public:
 	void compute(CommandBuffer& cb);
 
 	void randomizePoints();
+	void setSampleAndRandomize(float s);
 
 	VkImage outputImage() const { return m_outputImage.get(); }
 	VkImage outputImageHDR() const { return m_outputImageHDR.get(); }
+	Texture2D& outputTextureHDR() { return m_outputImageHDR; }
 };
 }  // namespace cdm
