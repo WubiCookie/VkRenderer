@@ -24,7 +24,7 @@ class Mandelbulb final
 	UniqueShaderModule m_fragmentModule;
 	UniqueShaderModule m_computeModule;
 
-	UniquePipelineLayout m_pipelineLayout;
+	//UniquePipelineLayout m_pipelineLayout;
 	UniquePipeline m_pipeline;
 
 	UniqueDescriptorPool m_computePool;
@@ -55,6 +55,7 @@ class Mandelbulb final
 	std::random_device rd;
 	std::mt19937 gen;
 	std::normal_distribution<float> dis;
+	std::uniform_real_distribution<float> udis;
 
 public:
 	Mandelbulb(RenderWindow& renderWindow);

@@ -85,6 +85,8 @@ public:
 	      StepSize(declConstant<sdw::Float>(
 	          "StepSize", sdw::min(1.0_f / (VolumePrecision * Density),
 	                               SceneRadius / 2.0_f)))
+#define StepSize                                                              \
+	sdw::min(1.0_f / (VolumePrecision * Density), SceneRadius / 2.0_f)
 	{
 		using namespace sdw;
 
@@ -217,14 +219,13 @@ public:
 			    auto volumeColor = declLocale("volumeColor", vec3(0.0_f));
 			    auto emissionColor = declLocale("emissionColor", vec3(0.0_f));
 
-				auto dist = declLocale<Float>("dist");
+			    auto dist = declLocale<Float>("dist");
 
 			    FOR(*this, Int, i, 0_i, i < MaxSteps, ++i)
 			    {
-				    //auto dist = declLocale(
-				        //"dist",
-					dist =
-				        distanceEstimation(pos, volumeColor, emissionColor);
+				    // auto dist = declLocale(
+				    //"dist",
+				    dist = distanceEstimation(pos, volumeColor, emissionColor);
 				    pos -= LightDir * max(dist, StepSize);
 
 				    IF(*this, dist < StepSize)
@@ -273,14 +274,13 @@ public:
 			    auto volumeColor = declLocale("volumeColor", vec3(0.0_f));
 			    auto emissionColor = declLocale("emissionColor", vec3(0.0_f));
 
-				auto dist = declLocale<Float>("dist");
+			    auto dist = declLocale<Float>("dist");
 
 			    FOR(*this, Int, i, 0_i, i < MaxSteps, ++i)
 			    {
-				    //auto dist = declLocale( "dist",
-					dist =
-				        distanceEstimation(rayPos, volumeColor,
-				                                   emissionColor);
+				    // auto dist = declLocale( "dist",
+				    dist =
+				        distanceEstimation(rayPos, volumeColor, emissionColor);
 				    rayPos += rayDir * max(dist, StepSize);
 				    IF(*this, dist < StepSize && length(rayPos) < SceneRadius)
 				    {
@@ -479,7 +479,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 		// writer.implementFunction<Void>("main", [&]() {
 		writer.implementMain([&]() {
-			out.vtx.pointSize = 1.0_f;
+			out.vtx.pointSize = 3.0_f;
 			out.vtx.position = vec4(inPosition, 0.0_f, 1.0_f);
 			outColor = vec4(inPosition / 2.0_f + 0.5_f, 0.0_f, 1.0_f);
 		});
@@ -502,6 +502,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion vertexShaders
 
 #pragma region fragmentShaders
+	std::cout << "fragmentShaders" << std::endl;
 	{
 		using namespace sdw;
 
@@ -513,16 +514,30 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		auto outColorHDR = writer.declOutput<Vec4>("outColorHDR", 1u);
 		auto outColor = writer.declOutput<Vec4>("outColor", 0u);
 
-		writer.implementMain([&]() {
-			Float seed = writer.declLocale(
-			    "seed", cos(in.fragCoord.x()) + sin(in.fragCoord.y()));
+		auto kernelImage =
+		    writer.declImage<RWFImg2DRgba32>("kernelImage", 0, 0);
 
-			Vec2 uv = writer.declLocale(
+		auto ubo = sdw::Ubo(writer, "ubo", 1, 0);
+		ubo.declMember<Float>("samples");
+		ubo.declMember<Float>("seed");
+		ubo.end();
+
+		writer.implementMain([&]() {
+			outColor = vec4(0.0_f);
+			outColorHDR = vec4(0.0_f);
+
+			Float seed = writer.declLocale(
+			    //"seed", cos(in.fragCoord.x()) + sin(in.fragCoord.y()));
+			    "seed", ubo.getMember<Float>("seed"));
+
+			 Vec2 uv = writer.declLocale(
 			    "uv", (in.fragCoord.xy() +
 			           vec2(writer.randomFloat(seed) / writer.Width,
 			                writer.randomFloat(seed) / writer.Height) -
 			           vec2(writer.Width, writer.Height) / 2.0_f) /
 			              vec2(writer.Height));
+
+			//Vec2 uv = writer.declLocale("uv", inPosition.xy());
 
 			Vec3 focalPoint = writer.declLocale(
 			    "focalPoint",
@@ -544,11 +559,11 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			rayDir = CamMatrix * rayDir;
 			aperture = CamMatrix * aperture;
 
-			outColorHDR.rgb() =
-			    writer.pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
+			outColorHDR =
+			    vec4(writer.pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
 			                     rayDir, seed) /
-			    15.0_f;
-			outColorHDR.a() = 0.5_f;
+			    15.0_f, 0.5_f);
+			//outColorHDR.a() = 0.5_f;
 
 			outColor = outColorHDR;
 		});
@@ -624,6 +639,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion fragmentShaders
 
 #pragma region computeShaders
+	std::cout << "computeShaders" << std::endl;
 	{
 		using namespace sdw;
 
@@ -633,12 +649,13 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 		writer.inputLayout(8, 8);
 
-		auto ubo = sdw::Ubo(writer, "ubo", 1, 0);
-		ubo.declMember<Float>("samples");
-		ubo.end();
-
 		auto kernelImage =
 		    writer.declImage<RWFImg2DRgba32>("kernelImage", 0, 0);
+
+		auto ubo = sdw::Ubo(writer, "ubo", 1, 0);
+		ubo.declMember<Float>("samples");
+		ubo.declMember<Float>("seed");
+		ubo.end();
 
 		writer.implementMain([&]() {
 			Float x = writer.declLocale(
@@ -694,7 +711,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			// clang-format on
 
 			/// AAAAAAAAAAAH
-			// imageStore(kernelImage, iuv, mixedColor4);
+			 imageStore(kernelImage, iuv, mixedColor4);
 		});
 
 		/*
@@ -767,6 +784,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	}
 #pragma endregion computeShaders
 
+	/*
 #pragma region pipelineLayout
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = 0;
@@ -777,12 +795,101 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	m_pipelineLayout = vk.create(pipelineLayoutInfo);
 	if (!m_pipelineLayout)
 	{
-		std::cerr << "error: failed to create pipeline layout" << std::endl;
-		abort();
+	    std::cerr << "error: failed to create pipeline layout" << std::endl;
+	    abort();
 	}
 #pragma endregion pipelineLayout
+	//*/
+
+#pragma region compute descriptor pool
+	std::array poolSizes{
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
+	};
+
+	vk::DescriptorPoolCreateInfo poolInfo;
+	poolInfo.maxSets = 1;
+	poolInfo.poolSizeCount = 2;
+	poolInfo.pPoolSizes = poolSizes.data();
+
+	m_computePool = vk.create(poolInfo);
+	if (!m_computePool)
+	{
+		std::cerr << "error: failed to create compute descriptor pool"
+		          << std::endl;
+		abort();
+	}
+#pragma endregion compute descriptor pool
+
+#pragma region compute descriptor set layout
+	VkDescriptorSetLayoutBinding layoutBindingKernelImage;
+	layoutBindingKernelImage.binding = 0;
+	layoutBindingKernelImage.descriptorCount = 1;
+	layoutBindingKernelImage.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	layoutBindingKernelImage.stageFlags =
+	    VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorSetLayoutBinding layoutBindingUbo;
+	layoutBindingUbo.binding = 1;
+	layoutBindingUbo.descriptorCount = 1;
+	layoutBindingUbo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingUbo.stageFlags =
+	    VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array layoutBindings{ layoutBindingKernelImage, layoutBindingUbo };
+
+	vk::DescriptorSetLayoutCreateInfo setLayoutInfo;
+	setLayoutInfo.bindingCount = 2;
+	setLayoutInfo.pBindings = layoutBindings.data();
+
+	m_computeSetLayout = vk.create(setLayoutInfo);
+	if (!m_computeSetLayout)
+	{
+		std::cerr << "error: failed to create compute set layout" << std::endl;
+		abort();
+	}
+#pragma endregion compute descriptor set layout
+
+#pragma region compute descriptor set
+	vk::DescriptorSetAllocateInfo setAlloc;
+	setAlloc.descriptorPool = m_computePool.get();
+	setAlloc.descriptorSetCount = 1;
+	setAlloc.pSetLayouts = &m_computeSetLayout.get();
+
+	vk.allocate(setAlloc, &m_computeSet.get());
+
+	if (!m_computeSet)
+	{
+		std::cerr << "error: failed to allocate compute descriptor set"
+		          << std::endl;
+		abort();
+	}
+#pragma endregion compute descriptor set
+
+#pragma region compute pipeline layout
+	// VkPushConstantRange pcRange{};
+	// pcRange.size = sizeof(float);
+	// pcRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	vk::PipelineLayoutCreateInfo computePipelineLayoutInfo;
+	computePipelineLayoutInfo.setLayoutCount = 1;
+	computePipelineLayoutInfo.pSetLayouts = &m_computeSetLayout.get();
+	// computePipelineLayoutInfo.pushConstantRangeCount = 1;
+	// computePipelineLayoutInfo.pPushConstantRanges = &pcRange;
+	computePipelineLayoutInfo.pushConstantRangeCount = 0;
+	computePipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+	m_computePipelineLayout = vk.create(computePipelineLayoutInfo);
+	if (!m_computePipelineLayout)
+	{
+		std::cerr << "error: failed to create compute pipeline layout"
+		          << std::endl;
+		abort();
+	}
+#pragma endregion compute pipeline layout
 
 #pragma region pipeline
+	std::cout << "pipeline" << std::endl;
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	vertShaderStageInfo.module = m_vertexModule.get();
@@ -929,7 +1036,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	pipelineInfo.pDepthStencilState = nullptr;
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = nullptr;
-	pipelineInfo.layout = m_pipelineLayout.get();
+	pipelineInfo.layout = m_computePipelineLayout.get();
 	pipelineInfo.renderPass = m_renderPass.get();
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = nullptr;
@@ -943,114 +1050,28 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	}
 #pragma endregion pipeline
 
-#pragma region compute descriptor pool
-	std::array poolSizes{
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
-	};
-
-	vk::DescriptorPoolCreateInfo poolInfo;
-	poolInfo.maxSets = 1;
-	poolInfo.poolSizeCount = 2;
-	poolInfo.pPoolSizes = poolSizes.data();
-
-	m_computePool = vk.create(poolInfo);
-	if (!m_computePool)
-	{
-		std::cerr << "error: failed to create compute descriptor pool"
-		          << std::endl;
-		abort();
-	}
-#pragma endregion compute descriptor pool
-
-#pragma region compute descriptor set layout
-	VkDescriptorSetLayoutBinding layoutBindingKernelImage;
-	layoutBindingKernelImage.binding = 0;
-	layoutBindingKernelImage.descriptorCount = 1;
-	layoutBindingKernelImage.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	layoutBindingKernelImage.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-	VkDescriptorSetLayoutBinding layoutBindingUbo;
-	layoutBindingUbo.binding = 1;
-	layoutBindingUbo.descriptorCount = 1;
-	layoutBindingUbo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	layoutBindingUbo.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-	std::array layoutBindings{ layoutBindingKernelImage, layoutBindingUbo };
-
-	vk::DescriptorSetLayoutCreateInfo setLayoutInfo;
-	setLayoutInfo.bindingCount = 2;
-	setLayoutInfo.pBindings = layoutBindings.data();
-
-	m_computeSetLayout = vk.create(setLayoutInfo);
-	if (!m_computeSetLayout)
-	{
-		std::cerr << "error: failed to create compute set layout" << std::endl;
-		abort();
-	}
-#pragma endregion compute descriptor set layout
-
-#pragma region compute descriptor set
-	vk::DescriptorSetAllocateInfo setAlloc;
-	setAlloc.descriptorPool = m_computePool.get();
-	setAlloc.descriptorSetCount = 1;
-	setAlloc.pSetLayouts = &m_computeSetLayout.get();
-
-	vk.allocate(setAlloc, &m_computeSet.get());
-
-	if (!m_computeSet)
-	{
-		std::cerr << "error: failed to allocate compute descriptor set"
-		          << std::endl;
-		abort();
-	}
-#pragma endregion compute descriptor set
-
-#pragma region compute pipeline layout
-	VkPushConstantRange pcRange{};
-	pcRange.size = sizeof(float);
-	pcRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-	vk::PipelineLayoutCreateInfo computePipelineLayoutInfo;
-	computePipelineLayoutInfo.setLayoutCount = 1;
-	computePipelineLayoutInfo.pSetLayouts = &m_computeSetLayout.get();
-	computePipelineLayoutInfo.pushConstantRangeCount = 1;
-	computePipelineLayoutInfo.pPushConstantRanges = &pcRange;
-
-	m_computePipelineLayout = vk.create(computePipelineLayoutInfo);
-	if (!m_computePipelineLayout)
-	{
-		std::cerr << "error: failed to create compute pipeline layout"
-		          << std::endl;
-		abort();
-	}
-#pragma endregion compute pipeline layout
-
 #pragma region compute pipeline
+	std::cout << "compute pipeline" << std::endl;
 	vk::ComputePipelineCreateInfo computePipelineInfo;
-	computePipelineInfo.layout = m_pipelineLayout.get();
+	computePipelineInfo.layout = m_computePipelineLayout.get();
+	computePipelineInfo.stage = vk::PipelineShaderStageCreateInfo();
 	computePipelineInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
 	computePipelineInfo.stage.module = m_computeModule.get();
 	computePipelineInfo.stage.pName = "main";
 	computePipelineInfo.basePipelineHandle = nullptr;
 	computePipelineInfo.basePipelineIndex = -1;
 
-	// m_computePipeline = vk.create(computePipelineInfo);
-	// if (!m_computePipeline)
-	//{
-	//	std::cerr << "error: failed to create compute pipeline" << std::endl;
-	//	abort();
-	//}
+	 m_computePipeline = vk.create(computePipelineInfo);
+	 if (!m_computePipeline)
+	{
+		std::cerr << "error: failed to create compute pipeline" << std::endl;
+		abort();
+	}
 #pragma endregion compute pipeline
 
 #pragma region vertexBuffer
 	using Vertex = std::array<float, 2>;
 	std::vector<Vertex> vertices(POINT_COUNT);
-	// std::vector<Vertex> vertices(3);
-
-	// vertices[0] = { -1, -1 };
-	// vertices[1] = { 2, -1 };
-	// vertices[2] = { -1, 2 };
 
 	for (auto& vertex : vertices)
 	{
@@ -1066,77 +1087,24 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	Vertex* data = m_vertexBuffer.map<Vertex>();
 	std::copy(vertices.begin(), vertices.end(), data);
 	m_vertexBuffer.unmap();
-
-	// vk::BufferCreateInfo vbInfo;
-	// vbInfo.size = sizeof(Vertex) * vertices.size();
-	// vbInfo.usage =
-	//    VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	// vbInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	// VmaAllocationCreateInfo vbAllocCreateInfo = {};
-	// vbAllocCreateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-	//// vbAllocCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-	// vbAllocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-	// VmaAllocationInfo stagingVertexBufferAllocInfo = {};
-	// vmaCreateBuffer(vk.allocator(), &vbInfo, &vbAllocCreateInfo,
-	//                &m_vertexBuffer.get(), &m_vertexBufferAllocation.get(),
-	//                &stagingVertexBufferAllocInfo);
-
-	// void* data;
-
-	// vmaMapMemory(vk.allocator(), m_vertexBufferAllocation.get(), &data);
-
-	// std::copy(vertices.begin(), vertices.end(), static_cast<Vertex*>(data));
-
-	// vmaUnmapMemory(vk.allocator(), m_vertexBufferAllocation.get());
 #pragma endregion vertexBuffer
 
 #pragma region compute UBO
-
 	m_computeUbo = Buffer(
-	    rw, sizeof(float), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	    rw, sizeof(float) * 2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	{
 		float* data = m_computeUbo.map<float>();
-		*data = 1.0f;
+		data[0] = 1.0f;
+		data[1] = udis(gen);
 		m_computeUbo.unmap();
 	}
 
-	// vk::BufferCreateInfo uboInfo;
-	// uboInfo.size = sizeof(float);
-	// uboInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	// uboInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	// VmaAllocationCreateInfo uboAllocCreateInfo = {};
-	// uboAllocCreateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-	//// uboAllocCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-	// uboAllocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-	// VmaAllocationInfo stagingUboAllocInfo = {};
-	// vmaCreateBuffer(vk.allocator(), &uboInfo, &uboAllocCreateInfo,
-	//                &m_computeUbo.get(), &m_computeUboAllocation.get(),
-	//                &stagingUboAllocInfo);
-
-	//{
-	//	void* data;
-
-	//	vmaMapMemory(vk.allocator(), m_computeUboAllocation.get(), &data);
-
-	//	*static_cast<float*>(data) = 1.0f;
-
-	//	//std::copy(vertices.begin(), vertices.end(),
-	//static_cast<Vertex*>(data));
-
-	//	vmaUnmapMemory(vk.allocator(), m_computeUboAllocation.get());
-	//}
-
 	VkDescriptorBufferInfo setBufferInfo{};
 	setBufferInfo.buffer = m_computeUbo.get();
-	//setBufferInfo.range = m_computeUbo.size();
 	setBufferInfo.range = sizeof(float);
-	setBufferInfo.offset = 0;// m_computeUbo.offset();
+	setBufferInfo.offset = 0;
 
 	vk::WriteDescriptorSet uboWrite;
 	uboWrite.descriptorCount = 1;
@@ -1157,121 +1125,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 	m_outputImage.transitionLayoutImediate(
 	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-	// vk::ImageCreateInfo imageInfo;
-	// imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	// imageInfo.extent.width = width;
-	// imageInfo.extent.height = height;
-	// imageInfo.extent.depth = 1;
-	// imageInfo.mipLevels = 1;
-	// imageInfo.arrayLayers = 1;
-	// imageInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
-	// imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	// imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	//// imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	//// VK_IMAGE_USAGE_SAMPLED_BIT;
-	// imageInfo.usage =
-	//    VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	//    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	// imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	// imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	// imageInfo.flags = 0;
-
-	// VmaAllocationCreateInfo imageAllocCreateInfo = {};
-	// imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	// imageAllocCreateInfo.requiredFlags =
-	// VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-	// vmaCreateImage(vk.allocator(), &imageInfo, &imageAllocCreateInfo,
-	//               &m_outputImage.get(), &m_outputImageAllocation.get(),
-	//               nullptr);
-
-	// vk.debugMarkerSetObjectName(m_outputImage.get(),
-	//                            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
-	//                            "mandelbulb_output_image");
-
-	// CommandBuffer transitionCB(vk, rw.get().commandPool());
-
-	// vk::CommandBufferBeginInfo beginInfo;
-	// beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	// transitionCB.begin(beginInfo);
-	// vk::ImageMemoryBarrier barrier;
-	// barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	// barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	// barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// barrier.image = m_outputImage.get();
-	// barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	// barrier.subresourceRange.baseMipLevel = 0;
-	// barrier.subresourceRange.levelCount = 1;
-	// barrier.subresourceRange.baseArrayLayer = 0;
-	// barrier.subresourceRange.layerCount = 1;
-	// barrier.srcAccessMask = 0;
-	// barrier.dstAccessMask = 0;
-	// transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-	//                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-	//                             VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
-	// if (transitionCB.end() != VK_SUCCESS)
-	//{
-	//	std::cerr << "error: failed to record command buffer" << std::endl;
-	//	abort();
-	//}
-
-	// vk::SubmitInfo submitInfo;
-
-	//// VkSemaphore waitSemaphores[] = {
-	////	rw.get().currentImageAvailableSemaphore()
-	////};
-	//// VkPipelineStageFlags waitStages[] = {
-	////	VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-	////};
-	//// submitInfo.waitSemaphoreCount = 1;
-	//// submitInfo.pWaitSemaphores = waitSemaphores;
-	//// submitInfo.pWaitDstStageMask = waitStages;
-
-	//// auto cb = m_commandBuffers[rw.get().imageIndex()].commandBuffer();
-	// auto cb = transitionCB.commandBuffer();
-	// submitInfo.commandBufferCount = 1;
-	// submitInfo.pCommandBuffers = &cb;
-	//// VkSemaphore signalSemaphores[] = {
-	////	m_renderFinishedSemaphores[rw.get().currentFrame()]
-	////};
-	//// submitInfo.signalSemaphoreCount = 1;
-	//// submitInfo.pSignalSemaphores = signalSemaphores;
-
-	//// VkFence inFlightFence = rw.get().currentInFlightFences();
-
-	//// vk.ResetFences(vk.vkDevice(), 1, &inFlightFence);
-
-	// if (vk.queueSubmit(vk.graphicsQueue(), submitInfo) != VK_SUCCESS)
-	//{
-	//	std::cerr << "error: failed to submit draw command buffer"
-	//	          << std::endl;
-	//	abort();
-	//}
-	// vk.wait(vk.graphicsQueue());
-
-	// vk::ImageViewCreateInfo viewInfo;
-	// viewInfo.image = m_outputImage.get();
-	// viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	// viewInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
-	// viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	// viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	// viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	// viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	// viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	// viewInfo.subresourceRange.baseMipLevel = 0;
-	// viewInfo.subresourceRange.levelCount = 1;
-	// viewInfo.subresourceRange.baseArrayLayer = 0;
-	// viewInfo.subresourceRange.layerCount = 1;
-
-	// m_outputImageView = vk.create(viewInfo);
-	// if (!m_outputImageView)
-	//{
-	//	std::cerr << "error: failed to create image view" << std::endl;
-	//	abort();
-	//}
 #pragma endregion outputImage
 
 #pragma region outputImageHDR
@@ -1284,121 +1137,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 	m_outputImageHDR.transitionLayoutImediate(
 	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-	// imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	// imageInfo.extent.width = width;
-	// imageInfo.extent.height = height;
-	// imageInfo.extent.depth = 1;
-	// imageInfo.mipLevels = 1;
-	// imageInfo.arrayLayers = 1;
-	// imageInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-	// imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
-	// imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	//// imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	//// VK_IMAGE_USAGE_SAMPLED_BIT;
-	// imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	//                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-	//                  VK_IMAGE_USAGE_STORAGE_BIT;
-	// imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	// imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	// imageInfo.flags = 0;
-
-	// imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	// imageAllocCreateInfo.requiredFlags =
-	// VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-	// vmaCreateImage(vk.allocator(), &imageInfo, &imageAllocCreateInfo,
-	//               &m_outputImageHDR.get(),
-	//               &m_outputImageHDRAllocation.get(), nullptr);
-
-	// vk.debugMarkerSetObjectName(m_outputImageHDR.get(),
-	//                            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
-	//                            "mandelbulb_output_image_HDR");
-
-	//{
-	//	CommandBuffer transitionCB(vk, rw.get().commandPool());
-
-	//	vk::CommandBufferBeginInfo beginInfo;
-	//	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	//	transitionCB.begin(beginInfo);
-	//	vk::ImageMemoryBarrier barrier;
-	//	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	//	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	//	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	//	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	//	barrier.image = m_outputImageHDR.get();
-	//	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	//	barrier.subresourceRange.baseMipLevel = 0;
-	//	barrier.subresourceRange.levelCount = 1;
-	//	barrier.subresourceRange.baseArrayLayer = 0;
-	//	barrier.subresourceRange.layerCount = 1;
-	//	barrier.srcAccessMask = 0;
-	//	barrier.dstAccessMask = 0;
-	//	transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-	//	                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-	//	                             VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
-	//	if (transitionCB.end() != VK_SUCCESS)
-	//	{
-	//		std::cerr << "error: failed to record command buffer" << std::endl;
-	//		abort();
-	//	}
-
-	//	vk::SubmitInfo submitInfo;
-
-	//	// VkSemaphore waitSemaphores[] = {
-	//	//	rw.get().currentImageAvailableSemaphore()
-	//	//};
-	//	// VkPipelineStageFlags waitStages[] = {
-	//	//	VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-	//	//};
-	//	// submitInfo.waitSemaphoreCount = 1;
-	//	// submitInfo.pWaitSemaphores = waitSemaphores;
-	//	// submitInfo.pWaitDstStageMask = waitStages;
-
-	//	// auto cb = m_commandBuffers[rw.get().imageIndex()].commandBuffer();
-	//	auto cb = transitionCB.commandBuffer();
-	//	submitInfo.commandBufferCount = 1;
-	//	submitInfo.pCommandBuffers = &cb;
-	//	// VkSemaphore signalSemaphores[] = {
-	//	//	m_renderFinishedSemaphores[rw.get().currentFrame()]
-	//	//};
-	//	// submitInfo.signalSemaphoreCount = 1;
-	//	// submitInfo.pSignalSemaphores = signalSemaphores;
-
-	//	// VkFence inFlightFence = rw.get().currentInFlightFences();
-
-	//	// vk.ResetFences(vk.vkDevice(), 1, &inFlightFence);
-
-	//	if (vk.queueSubmit(vk.graphicsQueue(), submitInfo) != VK_SUCCESS)
-	//	{
-	//		std::cerr << "error: failed to submit draw command buffer"
-	//		          << std::endl;
-	//		abort();
-	//	}
-	//	vk.wait(vk.graphicsQueue());
-	//}
-
-	//// vk::ImageViewCreateInfo viewInfo;
-	// viewInfo.image = m_outputImageHDR.get();
-	// viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	// viewInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-	// viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	// viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	// viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	// viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	// viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	// viewInfo.subresourceRange.baseMipLevel = 0;
-	// viewInfo.subresourceRange.levelCount = 1;
-	// viewInfo.subresourceRange.baseArrayLayer = 0;
-	// viewInfo.subresourceRange.layerCount = 1;
-
-	// m_outputImageHDRView = vk.create(viewInfo);
-	// if (!m_outputImageHDRView)
-	//{
-	//	std::cerr << "error: failed to create image view" << std::endl;
-	//	abort();
-	//}
 
 	VkDescriptorImageInfo setImageInfo{};
 	setImageInfo.imageView = m_outputImageHDR.view();
@@ -1434,19 +1172,9 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion framebuffer
 
 	vk.LogActive = false;
-}  // namespace cdm
-
-Mandelbulb::~Mandelbulb()
-{
-	// auto& vk = rw.get().device();
-
-	// vmaDestroyImage(vk.allocator(), m_outputImage.get(),
-	//                m_outputImageAllocation.get());
-	// vmaDestroyImage(vk.allocator(), m_outputImageHDR.get(),
-	//                m_outputImageHDRAllocation.get());
-	// vmaDestroyBuffer(vk.allocator(), m_vertexBuffer.get(),
-	//                 m_vertexBufferAllocation.get());
 }
+
+Mandelbulb::~Mandelbulb() {}
 
 void Mandelbulb::render(CommandBuffer& cb)
 {
@@ -1471,6 +1199,8 @@ void Mandelbulb::render(CommandBuffer& cb)
 	cb.beginRenderPass2(rpInfo, subpassBeginInfo);
 
 	cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.get());
+	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
+	                     m_computePipelineLayout.get(), 0, m_computeSet.get());
 	cb.bindVertexBuffer(m_vertexBuffer.get());
 	cb.draw(POINT_COUNT);
 	// cb.draw(3);
@@ -1502,5 +1232,12 @@ void Mandelbulb::randomizePoints()
 	Vertex* data = m_vertexBuffer.map<Vertex>();
 	std::copy(vertices.begin(), vertices.end(), static_cast<Vertex*>(data));
 	m_vertexBuffer.unmap();
+
+	{
+		float* data = m_computeUbo.map<float>();
+		// data[0] = 1.0f;
+		data[1] = udis(gen);
+		m_computeUbo.unmap();
+	}
 }
 }  // namespace cdm

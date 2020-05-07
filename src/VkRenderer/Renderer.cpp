@@ -259,7 +259,9 @@ void Renderer::render()
 		    "error: failed to submit draw command buffer");
 	}
 
-	if (rw.get().present() == false)
+	bool swapchainRecreated;
+	rw.get().present(swapchainRecreated);
+	if (swapchainRecreated)
 	{
 		vk.wait();
 		m_framebuffers.clear();

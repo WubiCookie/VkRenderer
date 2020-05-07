@@ -5,7 +5,9 @@
 #define VK_NO_PROTOTYPES
 #include "cdm_vulkan.hpp"
 
+#ifdef USE_SHADERC
 #include <shaderc/shaderc.hpp>
+#endif
 
 #include <vector>
 
@@ -33,7 +35,9 @@ class Material final : public VulkanDeviceObject
 
 	std::reference_wrapper<RenderPass> m_renderPass;
 
+#ifdef USE_SHADERC
 	static inline shaderc::Compiler m_compiler;
+#endif
 
 public:
 	Material(RenderWindow& rw, RenderPass& renderPass);

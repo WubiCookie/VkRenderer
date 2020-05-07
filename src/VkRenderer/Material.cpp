@@ -77,6 +77,7 @@ bool Material::setFragmentShaderBytecode(std::vector<uint32_t> bytecode)
 
 bool Material::setVertexShaderGLSL(std::string code)
 {
+#ifdef USE_SHADERC
 	auto vertexCompileResult = m_compiler.CompileGlslToSpv(
 	    code, shaderc_shader_kind::shaderc_vertex_shader, "Vertex Shader");
 
@@ -98,12 +99,14 @@ bool Material::setVertexShaderGLSL(std::string code)
 		m_vertexShaderGLSL = std::move(code);
 		return true;
 	}
+#endif
 
 	return false;
 }
 
 bool Material::setFragmentShaderGLSL(std::string code)
 {
+#ifdef USE_SHADERC
 	auto fragmentCompileResult = m_compiler.CompileGlslToSpv(
 	    code, shaderc_shader_kind::shaderc_fragment_shader, "Fragment Shader");
 
@@ -125,6 +128,7 @@ bool Material::setFragmentShaderGLSL(std::string code)
 		m_fragmentShaderGLSL = std::move(code);
 		return true;
 	}
+#endif
 
 	return false;
 }

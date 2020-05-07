@@ -37,7 +37,8 @@ public:
 
 	void pollEvents();
 	void prerender();
-	bool present();
+	void present();
+	void present(bool& outSwapchainRecreated);
 	// void presentImage(VkImage image);
 
 	uint32_t imageIndex() const;

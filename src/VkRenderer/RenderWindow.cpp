@@ -782,8 +782,15 @@ void RenderWindow::prerender()
 	p->imagesInFlight[m_imageIndex] = p->inFlightFences[m_currentFrame];
 }
 
-bool RenderWindow::present()
+void RenderWindow::present()
 {
+	bool _;
+	present(_);
+}
+
+void RenderWindow::present(bool& outSwapchainRecreated)
+{
+	outSwapchainRecreated = false;
 	const auto& vk = device();
 
 	vk::PresentInfoKHR presentInfo;
@@ -804,7 +811,8 @@ bool RenderWindow::present()
 
 		p->recreateSwapchain(width, height);
 
-		return false;
+		outSwapchainRecreated = true;
+		return;
 	}
 	else if (result != VK_SUCCESS)
 	{
@@ -812,8 +820,6 @@ bool RenderWindow::present()
 	}
 
 	m_currentFrame = (m_currentFrame + 1) % p->swapchainImages.size();
-
-	return true;
 }
 
 /*

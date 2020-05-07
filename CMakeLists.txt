@@ -21,20 +21,23 @@ SET(GLFW_USE_HYBRID_HPG OFF)
 SET(GLFW_VULKAN_STATIC OFF)
 add_subdirectory(third_party/glfw)
 
-message("==============================================")
-message("                     Assimp                   ")
-message("==============================================")
-SET(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF)
-SET(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT ON)
-SET(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
-SET(ASSIMP_BUILD_SAMPLES OFF)
-SET(ASSIMP_BUILD_TESTS OFF)
-SET(ASSIMP_INSTALL OFF)
-SET(ASSIMP_INSTALL_PDB OFF)
-SET(ASSIMP_NO_EXPORT ON)
-SET(BUILD_DOCS OFF)
-SET(BUILD_FRAMEWORK OFF)
-add_subdirectory(third_party/assimp)
+option(USE_ASSIMP OFF)
+if (USE_ASSIMP)
+	message("==============================================")
+	message("                     Assimp                   ")
+	message("==============================================")
+	SET(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF)
+	SET(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT ON)
+	SET(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
+	SET(ASSIMP_BUILD_SAMPLES OFF)
+	SET(ASSIMP_BUILD_TESTS OFF)
+	SET(ASSIMP_INSTALL OFF)
+	SET(ASSIMP_INSTALL_PDB OFF)
+	SET(ASSIMP_NO_EXPORT ON)
+	SET(BUILD_DOCS OFF)
+	SET(BUILD_FRAMEWORK OFF)
+	add_subdirectory(third_party/assimp)
+endif (USE_ASSIMP)
 
 message("==============================================")
 message("                 ShaderWriter                 ")
@@ -49,14 +52,17 @@ set(PROJECTS_PACKAGE_WIX OFF)
 set(PROJECTS_USE_PRETTY_PRINTING OFF)
 add_subdirectory(third_party/ShaderWriter)
 
-message("==============================================")
-message("                   shaderc                    ")
-message("==============================================")
-set(gtest_force_shared_crt OFF)
-set(SHADERC_ENABLE_NV_EXTENSIONS OFF)
-set(SHADERC_SKIP_INSTALL ON)
-set(SHADERC_SKIP_TESTS ON)
-add_subdirectory("$ENV{VULKAN_SDK}/shaderc" "${CMAKE_CURRENT_BINARY_DIR}-shaderc")
+option(USE_SHADERC OFF)
+if (USE_SHADERC)
+	message("==============================================")
+	message("                   shaderc                    ")
+	message("==============================================")
+	set(gtest_force_shared_crt OFF)
+	set(SHADERC_ENABLE_NV_EXTENSIONS OFF)
+	set(SHADERC_SKIP_INSTALL ON)
+	set(SHADERC_SKIP_TESTS ON)
+	add_subdirectory("$ENV{VULKAN_SDK}/shaderc" "${CMAKE_CURRENT_BINARY_DIR}-shaderc")
+endif (USE_SHADERC)
 
 message("==============================================")
 message("                  VkRenderer                  ")
@@ -100,11 +106,24 @@ target_include_directories(VkRenderer
 		"${Vulkan_INCLUDE_DIRS}"
 		third_party/include
 		third_party/glfw/include
-		third_party/assimp/include
 		third_party/ShaderWriter/include
 )
 
-target_link_libraries(VkRenderer PRIVATE glfw assimp sdwShaderWriter sdwCompilerSpirV PUBLIC shaderc)
+target_link_libraries(VkRenderer PRIVATE glfw sdwShaderWriter sdwCompilerSpirV)
+
+if (USE_SHADERC)
+	target_link_libraries(VkRenderer PUBLIC shaderc)
+	target_compile_definitions(VkRenderer PUBLIC -DUSE_SHADERC)
+endif (USE_SHADERC)
+
+if (USE_ASSIMP)
+	target_include_directories(VkRenderer
+		PRIVATE
+			third_party/assimp/include
+	)
+	target_link_libraries(VkRenderer PRIVATE assimp)
+endif (USE_ASSIMP)
+
 set_target_properties(VkRenderer PROPERTIES CXX_STANDARD 17)
 
 if(MSVC)
