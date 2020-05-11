@@ -36,6 +36,9 @@ public:
 	RenderWindow& operator=(RenderWindow&&) = delete;
 
 	void pollEvents();
+	uint32_t acquireNextImage(VkSemaphore semaphore, VkFence fence);
+	uint32_t acquireNextImage(VkSemaphore semaphore);
+	uint32_t acquireNextImage(VkFence fence);
 	void prerender();
 	void present();
 	void present(bool& outSwapchainRecreated);
@@ -81,6 +84,8 @@ public:
 	std::vector<std::reference_wrapper<ImageView>> swapchainImageViews() const;
 
 	VkCommandPool commandPool() const;
-	// VkCommandPool oneTimeCommandPool() const;
+	VkCommandPool oneTimeCommandPool() const;
+
+	VkRenderPass imguiRenderPass() const;
 };
 }  // namespace cdm

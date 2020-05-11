@@ -62,6 +62,12 @@ VkCommandBuffer& CommandBuffer::commandBuffer()
 	return m_commandBuffer.get();
 }
 
+VkResult CommandBuffer::begin()
+{
+	vk::CommandBufferBeginInfo beginInfo;
+	return begin(beginInfo);
+}
+
 VkResult CommandBuffer::begin(const vk::CommandBufferBeginInfo& beginInfo)
 {
 	return device().BeginCommandBuffer(m_commandBuffer.get(), &beginInfo);

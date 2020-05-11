@@ -4,47 +4,45 @@
 #include "ShaderWriter/Intrinsics/Intrinsics.hpp"
 #include "ShaderWriter/Source.hpp"
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
+
 #include <array>
 #include <iostream>
 #include <stdexcept>
 
 constexpr size_t POINT_COUNT = 2000;
 
-constexpr uint32_t width = 1280;
-constexpr uint32_t height = 720;
-constexpr float widthf = 1280.0f;
-constexpr float heightf = 720.0f;
+#define mandelbulbTexScale 1
+
+constexpr uint32_t width = 1280 * mandelbulbTexScale;
+constexpr uint32_t height = 720 * mandelbulbTexScale;
+constexpr float widthf = 1280.0f * mandelbulbTexScale;
+constexpr float heightf = 720.0f * mandelbulbTexScale;
 
 namespace cdm
 {
+static constexpr float Pi{ 3.14159265359f };
+
+void Mandelbulb::Config::copyTo(void* ptr)
+{
+	stepSize =
+	    std::min(1.0f / (volumePrecision * density), sceneRadius / 2.0f);
+
+	std::memcpy(ptr, this, sizeof(*this));
+}
+
 template <typename T>
 class MandelbulbShaderLib : public T
 {
 public:
-	sdw::Float Pi;
-	sdw::Float VolumePrecision;
-	sdw::Float SceneRadius;
-	sdw::Float StepsSkipShadow;
-	sdw::Int MaxSteps;
-	sdw::Float MaxAbso;
-	sdw::Float MaxShadowAbso;
+	const sdw::Float Pi;
 
-	sdw::Float Width;
-	sdw::Float Height;
+	const sdw::Float Height;
+	const sdw::Float Width;
 
-	sdw::Vec3 CamRot;
-
-	sdw::Float CamFocalLength;
-	sdw::Float CamFocalDistance;
-	sdw::Float CamAperture;
-
-	sdw::Vec3 LightColor;
-	sdw::Vec3 LightDir;
-
-	sdw::Float Power;
-	sdw::Float Density;
-
-	sdw::Float StepSize;
+	sdw::Ubo ubo;
 
 	sdw::Function<sdw::Float, sdw::InOutFloat> randomFloat;
 	sdw::Function<sdw::Mat3, sdw::InVec3> rotationMatrix;
@@ -59,36 +57,38 @@ public:
 	sdw::Function<sdw::Vec2, sdw::InInt, sdw::InFloat, sdw::InOutFloat>
 	    sampleAperture;
 
-	MandelbulbShaderLib()
+	MandelbulbShaderLib(Mandelbulb::Config const& config)
 	    : T(),
-	      Pi(declConstant<sdw::Float>("Pi", 3.14159265359_f)),
-	      VolumePrecision(declConstant<sdw::Float>("VolumePrecision", 0.35_f)),
-	      SceneRadius(declConstant<sdw::Float>("SceneRadius", 1.5_f)),
-	      StepsSkipShadow(declConstant<sdw::Float>("StepsSkipShadow", 4.0_f)),
-	      MaxSteps(declConstant<sdw::Int>("MaxSteps", 500_i)),
-	      MaxAbso(declConstant<sdw::Float>("MaxAbso", 0.7_f)),
-	      MaxShadowAbso(declConstant<sdw::Float>("MaxShadowAbso", 0.7_f)),
-	      Width(declConstant<sdw::Float>("Width", sdw::Float(float(width)))),
+	      Pi(declConstant<sdw::Float>("Pi", sdw::Float{ cdm::Pi })),
+	      Width(declConstant<sdw::Float>("Width", sdw::Float{ float(width) })),
 	      Height(
-	          declConstant<sdw::Float>("Height", sdw::Float(float(height)))),
-	      CamRot(
-	          declConstant<sdw::Vec3>("CamRot", vec3(0.7_f, -2.4_f, 0.0_f))),
-	      CamFocalLength(declConstant<sdw::Float>("CamFocalLength", 5.0_f)),
-	      CamFocalDistance(
-	          declConstant<sdw::Float>("CamFocalDistance", 14.2_f)),
-	      CamAperture(declConstant<sdw::Float>("CamAperture", 0.1_f)),
-	      LightColor(declConstant<sdw::Vec3>("LightColor", vec3(3.0_f))),
-	      LightDir(declConstant<sdw::Vec3>("LightDir",
-	                                       vec3(-1.0_f, -2.0_f, 0.0_f))),
-	      Power(declConstant<sdw::Float>("Power", 8.0_f)),
-	      Density(declConstant<sdw::Float>("Density", 500.0_f)),
-	      StepSize(declConstant<sdw::Float>(
-	          "StepSize", sdw::min(1.0_f / (VolumePrecision * Density),
-	                               SceneRadius / 2.0_f)))
-#define StepSize                                                              \
-	sdw::min(1.0_f / (VolumePrecision * Density), SceneRadius / 2.0_f)
+	          declConstant<sdw::Float>("Height", sdw::Float{ float(height) })),
+	      ubo(sdw::Ubo(*this, "ubo", 1, 0))
 	{
 		using namespace sdw;
+
+		(void)ubo.declMember<Float>("camAperture");
+		(void)ubo.declMember<Float>("camFocalDistance");
+		(void)ubo.declMember<Float>("camFocalLength");
+		(void)ubo.declMember<Float>("density");
+		(void)ubo.declMember<Float>("maxAbso");
+		(void)ubo.declMember<Float>("maxShadowAbso");
+		(void)ubo.declMember<Float>("power");
+		(void)ubo.declMember<Float>("samples");
+		(void)ubo.declMember<Float>("sceneRadius");
+		(void)ubo.declMember<Float>("seed");
+		(void)ubo.declMember<Float>("stepSize");
+		(void)ubo.declMember<Float>("stepsSkipShadow");
+		(void)ubo.declMember<Float>("volumePrecision");
+		(void)ubo.declMember<Int>("maxSteps");
+		(void)ubo.declMember<Vec3>("camRot");
+		(void)ubo.declMember<Vec3>("lightColor");
+		(void)ubo.declMember<Vec3>("lightDir");
+		(void)ubo.declMember<Float>("bloomAscale1");
+		(void)ubo.declMember<Float>("bloomAscale2");
+		(void)ubo.declMember<Float>("bloomBscale1");
+		(void)ubo.declMember<Float>("bloomBscale2");
+		ubo.end();
 
 		randomFloat = implementFunction<Float>(
 		    "randomFloat",
@@ -103,20 +103,23 @@ public:
 		    "rotationMatrix",
 		    [&](const Vec3& rotEuler) {
 			    auto c = declLocale("c", cos(rotEuler.x()));
-			    auto s = declLocale("s", (rotEuler.x()));
+			    auto s = declLocale("s", sin(rotEuler.x()));
 			    auto rx = declLocale(
 			        "rx", mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, c, -s),
 			                   vec3(0.0_f, s, c)));
+			    rx = transpose(rx);
 			    c = cos(rotEuler.y());
 			    s = sin(rotEuler.y());
 			    auto ry = declLocale(
 			        "ry", mat3(vec3(c, 0.0_f, -s), vec3(0.0_f, 1.0_f, 0.0_f),
 			                   vec3(s, 0.0_f, c)));
+			    ry = transpose(ry);
 			    c = cos(rotEuler.z());
 			    s = sin(rotEuler.z());
 			    auto rz = declLocale(
 			        "rz", mat3(vec3(c, -s, 0.0_f), vec3(s, c, 0.0_f),
 			                   vec3(0.0_f, 0.0_f, 1.0_f)));
+			    rz = transpose(rz);
 			    returnStmt(rz * rx * ry);
 		    },
 		    InVec3{ *this, "rotEuler" });
@@ -179,6 +182,11 @@ public:
 			    // Float dr = 1.0_f, theta = 0.0_f, phi = 0.0_f;
 			    // Vec3 orbitTrap = vec3(1.0_f);
 
+			    auto SceneRadius = declLocale(
+			        "SceneRadius", ubo.getMember<Float>("sceneRadius"));
+			    auto Power =
+			        declLocale("Power", ubo.getMember<Float>("power"));
+
 			    FOR(*this, Int, i, 0_i, i < 8_i, ++i)
 			    {
 				    r = length(z);
@@ -220,6 +228,23 @@ public:
 			    auto emissionColor = declLocale("emissionColor", vec3(0.0_f));
 
 			    auto dist = declLocale<Float>("dist");
+
+			    auto MaxSteps =
+			        declLocale("MaxSteps", ubo.getMember<Int>("maxSteps"));
+			    auto StepSize =
+			        declLocale("StepSize", ubo.getMember<Float>("stepSize"));
+			    auto SceneRadius = declLocale(
+			        "SceneRadius", ubo.getMember<Float>("sceneRadius"));
+			    auto LightDir =
+			        declLocale("LightDir", ubo.getMember<Vec3>("lightDir"));
+			    auto LightColor = declLocale(
+			        "LightColor", ubo.getMember<Vec3>("lightColor"));
+			    auto MaxShadowAbso = declLocale(
+			        "MaxShadowAbso", ubo.getMember<Float>("maxShadowAbso"));
+			    auto Density =
+			        declLocale("Density", ubo.getMember<Float>("density"));
+
+			    LightDir = normalize(LightDir);
 
 			    FOR(*this, Int, i, 0_i, i < MaxSteps, ++i)
 			    {
@@ -265,6 +290,19 @@ public:
 		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg, Float& seed) {
 			    auto rayPos = declLocale("rayPos", rayPos_arg);
 			    auto rayDir = declLocale("rayDir", rayDir_arg);
+
+			    auto MaxSteps =
+			        declLocale("MaxSteps", ubo.getMember<Int>("maxSteps"));
+			    auto StepsSkipShadow = declLocale(
+			        "StepsSkipShadow", ubo.getMember<Int>("stepsSkipShadow"));
+			    auto StepSize =
+			        declLocale("StepSize", ubo.getMember<Float>("stepSize"));
+			    auto SceneRadius = declLocale(
+			        "SceneRadius", ubo.getMember<Float>("sceneRadius"));
+			    auto Density =
+			        declLocale("Density", ubo.getMember<Float>("density"));
+			    auto MaxAbso =
+			        declLocale("MaxAbso", ubo.getMember<Float>("maxAbso"));
 
 			    rayPos += rayDir * max(length(rayPos) - SceneRadius, 0.0_f);
 
@@ -391,47 +429,48 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 {
 	auto& vk = rw.get().device();
 
-	vk.LogActive = true;
+	vk.setLogActive();
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = VkFormat::VK_FORMAT_B8G8R8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-	VkAttachmentDescription colorHDRAttachment = {};
-	colorHDRAttachment.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
-	colorHDRAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorHDRAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-	colorHDRAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorHDRAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorHDRAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorHDRAttachment.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	colorHDRAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	// VkAttachmentDescription colorHDRAttachment = {};
+	// colorHDRAttachment.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
+	// colorHDRAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	// colorHDRAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	// colorHDRAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	// colorHDRAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	// colorHDRAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	// colorHDRAttachment.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	// colorHDRAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
-	std::array colorAttachments{ colorAttachment, colorHDRAttachment };
+	// std::array colorAttachments{ colorAttachment, colorHDRAttachment };
+	std::array colorAttachments{ colorAttachment };
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment = 0;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference colorHDRAttachmentRef = {};
-	colorHDRAttachmentRef.attachment = 1;
-	colorHDRAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// VkAttachmentReference colorHDRAttachmentRef = {};
+	// colorHDRAttachmentRef.attachment = 1;
+	// colorHDRAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	std::array colorAttachmentRefs{
 
-		colorAttachmentRef, colorHDRAttachmentRef
+		colorAttachmentRef  //, colorHDRAttachmentRef
 	};
 
 	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 2;
+	subpass.colorAttachmentCount = uint32_t(colorAttachmentRefs.size());
 	subpass.pColorAttachments = colorAttachmentRefs.data();
 	subpass.inputAttachmentCount = 0;
 	subpass.pInputAttachments = nullptr;
@@ -451,7 +490,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	                           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	vk::RenderPassCreateInfo renderPassInfo;
-	renderPassInfo.attachmentCount = 2;
+	renderPassInfo.attachmentCount = uint32_t(colorAttachments.size());
 	renderPassInfo.pAttachments = colorAttachments.data();
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
@@ -464,24 +503,23 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		std::cerr << "error: failed to create render pass" << std::endl;
 		abort();
 	}
-#pragma endregion renderPass
+#pragma endregion
 
-#pragma region vertexShaders
+#pragma region vertexShader
+	std::cout << "vertexShader" << std::endl;
 	{
 		using namespace sdw;
 
 		VertexWriter writer;
 
 		auto inPosition = writer.declInput<Vec2>("inPosition", 0);
-		auto outColor = writer.declOutput<Vec4>("fragColor", 0u);
+		auto fragColor = writer.declOutput<Vec4>("fragColor", 0u);
 
 		auto out = writer.getOut();
 
-		// writer.implementFunction<Void>("main", [&]() {
 		writer.implementMain([&]() {
-			out.vtx.pointSize = 3.0_f;
 			out.vtx.position = vec4(inPosition, 0.0_f, 1.0_f);
-			outColor = vec4(inPosition / 2.0_f + 0.5_f, 0.0_f, 1.0_f);
+			fragColor = vec4(inPosition / 2.0_f + 0.5_f, 0.0_f, 1.0_f);
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -499,128 +537,128 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			abort();
 		}
 	}
-#pragma endregion vertexShaders
+#pragma endregion
 
-#pragma region fragmentShaders
-	std::cout << "fragmentShaders" << std::endl;
+#pragma region fragmentShader
+	std::cout << "fragmentShader" << std::endl;
 	{
 		using namespace sdw;
-
-		MandelbulbShaderLib<FragmentWriter> writer;
+		MandelbulbShaderLib<FragmentWriter> writer{ m_config };
 
 		auto in = writer.getIn();
 
 		auto inPosition = writer.declInput<Vec4>("inPosition", 0u);
-		auto outColorHDR = writer.declOutput<Vec4>("outColorHDR", 1u);
-		auto outColor = writer.declOutput<Vec4>("outColor", 0u);
+		auto fragColor = writer.declOutput<Vec4>("fragColor", 0u);
+		// auto fragColorHDR = writer.declOutput<Vec4>("fragColorHDR", 1u);
+
+		auto kernelStorageImage =
+		    writer.declImage<RWFImg2DRgba32>("kernelStorageImage", 0, 0);
 
 		auto kernelImage =
-		    writer.declImage<RWFImg2DRgba32>("kernelImage", 0, 0);
+		    writer.declSampledImage<FImg2DRgba32>("kernelImage", 2, 0);
 
-		auto ubo = sdw::Ubo(writer, "ubo", 1, 0);
-		ubo.declMember<Float>("samples");
-		ubo.declMember<Float>("seed");
-		ubo.end();
+		//*
+		auto ACESFilm = writer.implementFunction<Vec3>(
+		    "ACESFilm",
+		    [&](const Vec3& x_arg) {
+			    auto ACESMatrix = writer.declLocale<Mat3>(
+			        "ACESMatrix", mat3(vec3(0.59719_f, 0.35458_f, 0.04823_f),
+			                           vec3(0.07600_f, 0.90834_f, 0.01566_f),
+			                           vec3(0.02840_f, 0.13383_f, 0.83777_f)));
+			    ACESMatrix = transpose(ACESMatrix);
+			    auto ACESMatrixInv = writer.declLocale<Mat3>(
+			        "ACESMatrixInv", inverse(ACESMatrix));
+			    auto x = writer.declLocale("x", x_arg);
+
+			    // RGB to ACES conversion
+			    x = ACESMatrix * x;
+
+			    // ACES system tone scale (RTT+ODT)
+			    auto a = writer.declLocale("a", 0.0245786_f);
+			    auto b = writer.declLocale("b", -0.000090537_f);
+			    auto c = writer.declLocale("c", 0.983729_f);
+			    auto d = writer.declLocale("d", 0.4329510_f);
+			    auto e = writer.declLocale("e", 0.238081_f);
+			    x = (x * (x + a) + b) / (x * (x * c + d) + e);
+
+			    // ACES to RGB conversion
+			    x = ACESMatrixInv * x;
+
+			    writer.returnStmt(x);
+		    },
+		    InVec3{ writer, "x_arg" });
+
+		auto bloom = writer.implementFunction<Vec3>(
+		    "bloom",
+		    [&](const Float& scale, const Float& threshold,
+		        const Vec2& fragCoord) {
+			    auto logScale =
+			        writer.declLocale("logScale", log2(scale) + 1.0_f);
+
+			    auto bloomV3 = writer.declLocale("bloomV3", vec3(0.0_f));
+
+			    FOR(writer, Int, y, -1_i, y <= 1_i, ++y)
+			    {
+				    FOR(writer, Int, x, -1_i, x <= 1_i, ++x)
+				    {
+					    bloomV3 += sdw::textureLod(
+					                   kernelImage,
+					                   (fragCoord + vec2(x, y) * vec2(scale)) /
+					                       vec2(writer.Width, writer.Height),
+					                   logScale)
+					                   .rgb();
+				    }
+				    ROF;
+			    }
+			    ROF;
+
+			    writer.returnStmt(
+			        max(bloomV3 / vec3(9.0_f) - vec3(threshold), vec3(0.0_f)));
+		    },
+		    InFloat{ writer, "scale" }, InFloat{ writer, "threshold" },
+		    InVec2{ writer, "fragCoord" });
+		//*/
 
 		writer.implementMain([&]() {
-			outColor = vec4(0.0_f);
-			outColorHDR = vec4(0.0_f);
+			auto uv = writer.declLocale(
+			    "uv", in.fragCoord.xy() / vec2(1280.0_f, 720.0_f));
 
-			Float seed = writer.declLocale(
-			    //"seed", cos(in.fragCoord.x()) + sin(in.fragCoord.y()));
-			    "seed", ubo.getMember<Float>("seed"));
+			auto col =
+			    writer.declLocale("col", sdw::texture(kernelImage, uv).rgb());
 
-			Vec2 uv = writer.declLocale(
-			    "uv", (in.fragCoord.xy() +
-			           vec2(writer.randomFloat(seed) / writer.Width,
-			                writer.randomFloat(seed) / writer.Height) -
-			           vec2(writer.Width, writer.Height) / 2.0_f) /
-			              vec2(writer.Height));
+			auto bloomAscale1 = writer.declLocale(
+			    "BloomAscale1", writer.ubo.getMember<Float>("bloomAscale1"));
+			auto bloomAscale2 = writer.declLocale(
+			    "BloomAscale2", writer.ubo.getMember<Float>("bloomAscale2"));
+			auto bloomBscale1 = writer.declLocale(
+			    "BloomBscale1", writer.ubo.getMember<Float>("bloomBscale1"));
+			auto bloomBscale2 = writer.declLocale(
+			    "BloomBscale2", writer.ubo.getMember<Float>("bloomBscale2"));
 
-			// Vec2 uv = writer.declLocale("uv", inPosition.xy());
+			auto bloomA = writer.declLocale(
+			    "bloomA",
+			    bloom(bloomAscale1 * writer.Height, 0.0_f, in.fragCoord.xy()));
+			auto bloomB = writer.declLocale(
+			    "bloomB",
+			    bloom(bloomBscale1 * writer.Height, 0.0_f, in.fragCoord.xy()));
 
-			Vec3 focalPoint = writer.declLocale(
-			    "focalPoint",
-			    vec3(uv * writer.CamFocalDistance / writer.CamFocalLength,
-			         writer.CamFocalDistance));
-			Vec3 aperture = writer.declLocale(
-			    "aperture",
-			    writer.CamAperture *
-			        vec3(writer.sampleAperture(6_i, 0.0_f, seed), 0.0_f));
-			Vec3 rayDir =
-			    writer.declLocale("rayDir", normalize(focalPoint - aperture));
+			// auto bloomA = writer.declLocale(
+			//    "bloomA", bloom(0.15_f, 0.0_f, in.fragCoord.xy()));
+			// auto bloomB = writer.declLocale(
+			//    "bloomB", bloom(0.05_f, 0.0_f, in.fragCoord.xy()));
 
-			Vec3 CamPos =
-			    writer.declLocale("CamPos", vec3(0.0_f, 0.0_f, -15.0_f));
+			auto bloomSum =
+			    writer.declLocale("bloomSum", bloomA * vec3(bloomAscale2) +
+			                                      bloomB * vec3(bloomBscale2));
 
-			Mat3 CamMatrix = writer.declLocale(
-			    "CamMatrix", writer.rotationMatrix(writer.CamRot));
-			CamPos = CamMatrix * CamPos;
-			rayDir = CamMatrix * rayDir;
-			aperture = CamMatrix * aperture;
-
-			outColorHDR = vec4(
-			    writer.pathTrace(vec3(0.0_f, 0.0_f, 0.0_f) + CamPos + aperture,
-			                     rayDir, seed) /
-			        15.0_f,
-			    0.5_f);
-			// outColorHDR.a() = 0.5_f;
-
-			outColor = outColorHDR;
+			// fragColor = vec4(bloomA, 1.0_f);
+			// fragColor = vec4(ACESFilm(col), 1.0_f);
+			fragColor = vec4(ACESFilm(col + bloomSum), 1.0_f);
+			// fragColor = vec4((col + bloomSum), 1.0_f);
+			// fragColor = vec4(col, 1.0_f);
+			// fragColor = vec4(in.fragCoord.xy() / vec2(writer.Width,
+			// writer.Height), 0.0_f, 1.0_f);
 		});
-
-		/*
-		void mainImage(out vec4 fragColor, in vec2 fragCoord)
-		{
-		    StepSize =
-		        min(1.0 / (VolumePrecision * Density), SceneRadius / 2.0);
-
-		    seed = sin(iTime) + cos(fragCoord.x) + sin(fragCoord.y);
-
-		    vec2 uv = (fragCoord + vec2(randomFloat(), randomFloat()) -
-		               iResolution.xy / 2.0) /
-		              iResolution.y;
-
-		    float samples = texelFetch(iChannel0, ivec2(0, 0), 0).a;
-		    if (iFrame > 0)
-		        CamRot = getVector(1).xyz;
-		    vec4 prevMouse = getVector(2);
-
-		    fragColor = texelFetch(iChannel0, ivec2(fragCoord), 0);
-
-		    bool mouseDragged =
-		        iMouse.z >= 0.0 && prevMouse.z >= 0.0 && iMouse != prevMouse;
-
-		    if (mouseDragged)
-		        CamRot.yx += (prevMouse.xy - iMouse.xy) / iResolution.y * 2.0;
-
-		    if (iFrame == 0 || mouseDragged)
-		    {
-		        fragColor = vec4(0.0);
-		        samples = 0.0;
-		    }
-
-		    setVector(1, vec4(CamRot, 0), fragCoord, fragColor);
-		    setVector(2, iMouse, fragCoord, fragColor);
-		    if (fragCoord - vec2(.5) == vec2(0))
-		        fragColor.a = samples + 1.0;
-
-		    vec3 focalPoint =
-		        vec3(uv * CamFocalDistance / CamFocalLength, CamFocalDistance);
-		    vec3 aperture = CamAperture * vec3(sampleAperture(6, 0.0), 0.0);
-		    vec3 rayDir = normalize(focalPoint - aperture);
-
-		    mat3 CamMatrix = rotationMatrix(CamRot);
-		    CamPos *= CamMatrix;
-		    rayDir *= CamMatrix;
-		    aperture *= CamMatrix;
-
-		    fragColor.rgb =
-		        mix(fragColor.rgb,
-		            pathTrace(vec3(.0, .0, .0) + CamPos + aperture, rayDir),
-		            1.0 / (samples + 1.0));
-		}
-		//*/
 
 		std::vector<uint32_t> bytecode =
 		    spirv::serialiseSpirv(writer.getShader());
@@ -636,15 +674,15 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			          << std::endl;
 			abort();
 		}
-	}
-#pragma endregion fragmentShaders
+	}  // namespace cdm
+#pragma endregion
 
-#pragma region computeShaders
-	std::cout << "computeShaders" << std::endl;
+#pragma region computeShader
+	std::cout << "computeShader" << std::endl;
 	{
 		using namespace sdw;
 
-		MandelbulbShaderLib<ComputeWriter> writer;
+		MandelbulbShaderLib<ComputeWriter> writer{ m_config };
 
 		auto in = writer.getIn();
 
@@ -653,10 +691,8 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		auto kernelImage =
 		    writer.declImage<RWFImg2DRgba32>("kernelImage", 0, 0);
 
-		auto ubo = sdw::Ubo(writer, "ubo", 1, 0);
-		ubo.declMember<Float>("samples");
-		ubo.declMember<Float>("seed");
-		ubo.end();
+		auto kernelSampledImage =
+		    writer.declSampledImage<FImg2DRgba32>("kernelSampledImage", 2, 0);
 
 		writer.implementMain([&]() {
 			Float x = writer.declLocale(
@@ -664,117 +700,88 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			Float y = writer.declLocale(
 			    "y", writer.cast<Float>(in.globalInvocationID.y()));
 
-			Float samples =
-			    writer.declLocale("samples", ubo.getMember<Float>("samples"));
-
-			Vec2 xy = writer.declLocale(
-			    "xy", vec2(x, y) * vec2(samples, samples * samples));
-
-			Float seed = writer.declLocale("seed", cos(x) + sin(y));
-
-			Vec2 screen_uv =
-			    writer.declLocale("screen_uv", xy);  // / vec2(4.0_f, 4.0_f));
-			                                         //(xy +
-			//          vec2(writer.randomFloat(seed) / writer.Width,
-			//               writer.randomFloat(seed) / writer.Height) -
-			//          vec2(writer.Width, writer.Height) / 2.0_f) /
-			//             vec2(writer.Height));
+			Vec2 xy = writer.declLocale("xy", vec2(x, y));
 
 			IVec2 iuv = writer.declLocale(
-			    "iuv", ivec2(writer.cast<Int>(screen_uv.x()),
-			                 writer.cast<Int>(screen_uv.y())));
+			    "iuv",
+			    ivec2(writer.cast<Int>(xy.x()), writer.cast<Int>(xy.y())));
 
-			Vec2 uv =
-			    writer.declLocale("uv", ((screen_uv * vec2(2.0_f)) /
-			                             vec2(writer.Width, writer.Height)) -
-			                                vec2(1.0_f));
+			Float samples = writer.declLocale(
+			    "samples", writer.ubo.getMember<Float>("samples"));
 
-			Vec3 focalPoint = writer.declLocale(
-			    "focalPoint",
-			    vec3(uv * writer.CamFocalDistance / writer.CamFocalLength,
-			         writer.CamFocalDistance));
-			Vec3 aperture = writer.declLocale(
-			    "aperture",
-			    writer.CamAperture *
-			        vec3(writer.sampleAperture(6_i, 0.0_f, seed), 0.0_f));
-			Vec3 rayDir =
-			    writer.declLocale("rayDir", normalize(focalPoint - aperture));
+			IF(writer, samples == -1.0_f)
+			{
+				imageStore(kernelImage, iuv, vec4(0.0_f));
+			}
+			ELSE
+			{
+				Float seed = writer.declLocale(
+				    "seed",
+				    cos(x) + sin(y) + writer.ubo.getMember<Float>("seed"));
 
-			Vec3 CamPos =
-			    writer.declLocale("CamPos", vec3(0.0_f, 0.0_f, -15.0_f));
+				auto CamFocalDistance = writer.declLocale(
+				    "CamFocalDistance",
+				    writer.ubo.getMember<Float>("camFocalDistance"));
+				auto CamFocalLength = writer.declLocale(
+				    "CamFocalLength",
+				    writer.ubo.getMember<Float>("camFocalLength"));
+				auto CamAperture = writer.declLocale(
+				    "CamAperture", writer.ubo.getMember<Float>("camAperture"));
+				auto CamRot = writer.declLocale(
+				    "CamRot", writer.ubo.getMember<Vec3>("camRot"));
 
-			Mat3 CamMatrix = writer.declLocale(
-			    "CamMatrix", writer.rotationMatrix(writer.CamRot));
-			CamPos = CamMatrix * CamPos;
-			rayDir = CamMatrix * rayDir;
-			aperture = CamMatrix * aperture;
+				Vec2 fragCoord = writer.declLocale(
+				    "fragCoord", vec2(x, -y + writer.Height - 1.0_f));
 
-			// clang-format off
-			Vec3 previousColor = writer.declLocale("previousColor", imageLoad(kernelImage, iuv).rgb());
-			Vec3 newColor = writer.declLocale("newColor", writer.pathTrace(CamPos + aperture, rayDir, seed));
-			Vec3 mixer = writer.declLocale("mixer", vec3(1.0_f / (samples + 1.0_f)));
-			Vec3 mixedColor = writer.declLocale("mixedColor", mix(previousColor, newColor, mixer));
-			Vec4 mixedColor4 = writer.declLocale("mixedColor4", vec4(mixedColor, samples + 1.0_f));
-			// clang-format on
+				Vec2 uv = writer.declLocale(
+				    "uv",
+				    (fragCoord +
+				     vec2(writer.randomFloat(seed), writer.randomFloat(seed)) -
+				     vec2(writer.Width, writer.Height) / vec2(2.0_f)) /
+				        vec2(writer.Height, writer.Height));
 
-			imageStore(kernelImage, iuv, mixedColor4);
-			// imageStore(kernelImage, iuv, vec4(newColor, 1.0_f));
-			// imageStore(kernelImage, iuv, vec4(1.0_f));
-			// imageStore(kernelImage, iuv, vec4(uv, 0.0_f, 0.0_f));
+				Vec3 focalPoint = writer.declLocale(
+				    "focalPoint", vec3(uv * CamFocalDistance / CamFocalLength,
+				                       CamFocalDistance));
+				Vec3 aperture = writer.declLocale(
+				    "aperture",
+				    CamAperture *
+				        vec3(writer.sampleAperture(6_i, 0.0_f, seed), 0.0_f));
+				Vec3 rayDir = writer.declLocale(
+				    "rayDir", normalize(focalPoint - aperture));
+
+				Vec3 CamPos =
+				    writer.declLocale("CamPos", vec3(0.0_f, 0.0_f, -15.0_f));
+
+				Mat3 CamMatrix = writer.declLocale(
+				    "CamMatrix", writer.rotationMatrix(CamRot));
+				CamPos = CamMatrix * CamPos;
+				rayDir = CamMatrix * rayDir;
+				aperture = CamMatrix * aperture;
+
+				// clang-format off
+				 Vec3 previousColor = writer.declLocale("previousColor",
+				 imageLoad(kernelImage, iuv).rgb()); Vec3 newColor =
+				 writer.declLocale("newColor", writer.pathTrace(CamPos +
+				 aperture, rayDir, seed)); Vec3 mixer =
+				 writer.declLocale("mixer", vec3(1.0_f / (samples + 1.0_f)));
+				 Vec3 mixedColor = writer.declLocale("mixedColor",
+				 mix(previousColor, newColor, mixer)); Vec4 mixedColor4 =
+				 writer.declLocale("mixedColor4", vec4(mixedColor, samples
+				 + 1.0_f));
+				// clang-format on
+
+				imageStore(kernelImage, iuv, mixedColor4);
+				// imageStore(kernelImage, iuv, vec4(uv, 0.0_f, 1.0_f));
+				// imageStore(kernelImage, iuv, vec4(0.0_f, fragCoord.y(),
+				// 0.0_f, 1.0_f)); imageStore(kernelImage, iuv,
+				// vec4(fragCoord.x(), 0.0_f, 0.0_f, 0.0_f));
+				// imageStore(kernelImage, iuv, vec4(x, 0.0_f, 0.0_f, 0.0_f));
+				// imageStore(kernelImage, iuv,
+				//           vec4(uv, 0.0_f, 0.0_f));
+			}
+			FI;
 		});
-
-		/*
-		void mainImage(out vec4 fragColor, in vec2 fragCoord)
-		{
-		    StepSize =
-		        min(1.0 / (VolumePrecision * Density), SceneRadius / 2.0);
-
-		    seed = sin(iTime) + cos(fragCoord.x) + sin(fragCoord.y);
-
-		    vec2 uv = (fragCoord + vec2(randomFloat(), randomFloat()) -
-		               iResolution.xy / 2.0) /
-		              iResolution.y;
-
-		    float samples = texelFetch(iChannel0, ivec2(0, 0), 0).a;
-		    if (iFrame > 0)
-		        CamRot = getVector(1).xyz;
-		    vec4 prevMouse = getVector(2);
-
-		    fragColor = texelFetch(iChannel0, ivec2(fragCoord), 0);
-
-		    bool mouseDragged =
-		        iMouse.z >= 0.0 && prevMouse.z >= 0.0 && iMouse != prevMouse;
-
-		    if (mouseDragged)
-		        CamRot.yx += (prevMouse.xy - iMouse.xy) / iResolution.y * 2.0;
-
-		    if (iFrame == 0 || mouseDragged)
-		    {
-		        fragColor = vec4(0.0);
-		        samples = 0.0;
-		    }
-
-		    setVector(1, vec4(CamRot, 0), fragCoord, fragColor);
-		    setVector(2, iMouse, fragCoord, fragColor);
-		    if (fragCoord - vec2(.5) == vec2(0))
-		        fragColor.a = samples + 1.0;
-
-		    vec3 focalPoint =
-		        vec3(uv * CamFocalDistance / CamFocalLength, CamFocalDistance);
-		    vec3 aperture = CamAperture * vec3(sampleAperture(6, 0.0), 0.0);
-		    vec3 rayDir = normalize(focalPoint - aperture);
-
-		    mat3 CamMatrix = rotationMatrix(CamRot);
-		    CamPos *= CamMatrix;
-		    rayDir *= CamMatrix;
-		    aperture *= CamMatrix;
-
-		    fragColor.rgb =
-		        mix(fragColor.rgb,
-		            pathTrace(vec3(.0, .0, .0) + CamPos + aperture, rayDir),
-		            1.0 / (samples + 1.0));
-		}
-		//*/
 
 		std::vector<uint32_t> bytecode =
 		    spirv::serialiseSpirv(writer.getShader());
@@ -791,34 +798,18 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			abort();
 		}
 	}
-#pragma endregion computeShaders
-
-	/*
-#pragma region pipelineLayout
-	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
-	pipelineLayoutInfo.setLayoutCount = 0;
-	pipelineLayoutInfo.pSetLayouts = nullptr;
-	pipelineLayoutInfo.pushConstantRangeCount = 0;
-	pipelineLayoutInfo.pPushConstantRanges = nullptr;
-
-	m_pipelineLayout = vk.create(pipelineLayoutInfo);
-	if (!m_pipelineLayout)
-	{
-	    std::cerr << "error: failed to create pipeline layout" << std::endl;
-	    abort();
-	}
-#pragma endregion pipelineLayout
-	//*/
+#pragma endregion
 
 #pragma region compute descriptor pool
 	std::array poolSizes{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
 	};
 
 	vk::DescriptorPoolCreateInfo poolInfo;
 	poolInfo.maxSets = 1;
-	poolInfo.poolSizeCount = 2;
+	poolInfo.poolSizeCount = 3;
 	poolInfo.pPoolSizes = poolSizes.data();
 
 	m_computePool = vk.create(poolInfo);
@@ -828,27 +819,36 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		          << std::endl;
 		abort();
 	}
-#pragma endregion compute descriptor pool
+#pragma endregion
 
 #pragma region compute descriptor set layout
-	VkDescriptorSetLayoutBinding layoutBindingKernelImage;
+	VkDescriptorSetLayoutBinding layoutBindingKernelImage{};
 	layoutBindingKernelImage.binding = 0;
 	layoutBindingKernelImage.descriptorCount = 1;
 	layoutBindingKernelImage.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	layoutBindingKernelImage.stageFlags =
 	    VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutBinding layoutBindingUbo;
+	VkDescriptorSetLayoutBinding layoutBindingUbo{};
 	layoutBindingUbo.binding = 1;
 	layoutBindingUbo.descriptorCount = 1;
 	layoutBindingUbo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindingUbo.stageFlags =
 	    VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array layoutBindings{ layoutBindingKernelImage, layoutBindingUbo };
+	VkDescriptorSetLayoutBinding layoutBindingImage{};
+	layoutBindingImage.binding = 2;
+	layoutBindingImage.descriptorCount = 1;
+	layoutBindingImage.descriptorType =
+	    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingImage.stageFlags =
+	    VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array layoutBindings{ layoutBindingKernelImage, layoutBindingUbo,
+		                       layoutBindingImage };
 
 	vk::DescriptorSetLayoutCreateInfo setLayoutInfo;
-	setLayoutInfo.bindingCount = 2;
+	setLayoutInfo.bindingCount = 3;
 	setLayoutInfo.pBindings = layoutBindings.data();
 
 	m_computeSetLayout = vk.create(setLayoutInfo);
@@ -857,7 +857,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		std::cerr << "error: failed to create compute set layout" << std::endl;
 		abort();
 	}
-#pragma endregion compute descriptor set layout
+#pragma endregion
 
 #pragma region compute descriptor set
 	vk::DescriptorSetAllocateInfo setAlloc;
@@ -873,7 +873,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		          << std::endl;
 		abort();
 	}
-#pragma endregion compute descriptor set
+#pragma endregion
 
 #pragma region compute pipeline layout
 	// VkPushConstantRange pcRange{};
@@ -895,7 +895,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		          << std::endl;
 		abort();
 	}
-#pragma endregion compute pipeline layout
+#pragma endregion
 
 #pragma region pipeline
 	std::cout << "pipeline" << std::endl;
@@ -929,8 +929,8 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	vertexInputInfo.pVertexAttributeDescriptions = &attribute;
 
 	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
-	// inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	// inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	inputAssembly.primitiveRestartEnable = false;
 
 	VkViewport viewport = {};
@@ -957,7 +957,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	rasterizer.rasterizerDiscardEnable = false;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.cullMode = VK_CULL_MODE_NONE;  // VK_CULL_MODE_BACK_BIT;
 	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rasterizer.depthBiasEnable = false;
 	rasterizer.depthBiasConstantFactor = 0.0f;
@@ -976,22 +976,22 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	colorBlendAttachment.colorWriteMask =
 	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
 	    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	// colorBlendAttachment.blendEnable = false;
-	// colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	// colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	// colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	// colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	// colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	// colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-	colorBlendAttachment.blendEnable = true;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	colorBlendAttachment.dstColorBlendFactor =
-	    VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.blendEnable = false;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
 	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	// colorBlendAttachment.blendEnable = true;
+	// colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	// colorBlendAttachment.dstColorBlendFactor =
+	//    VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	// colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	// colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	// colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	// colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	VkPipelineColorBlendAttachmentState colorHDRBlendAttachment = {};
 	colorHDRBlendAttachment.colorWriteMask =
@@ -1014,13 +1014,15 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	colorHDRBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorHDRBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-	std::array colorBlendAttachments{ colorBlendAttachment,
-		                              colorHDRBlendAttachment };
+	std::array colorBlendAttachments{
+		colorBlendAttachment,
+		// colorHDRBlendAttachment
+	};
 
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
 	colorBlending.logicOpEnable = VK_FALSE;
 	colorBlending.logicOp = VK_LOGIC_OP_COPY;
-	colorBlending.attachmentCount = 2;
+	colorBlending.attachmentCount = uint32_t(colorBlendAttachments.size());
 	colorBlending.pAttachments = colorBlendAttachments.data();
 	colorBlending.blendConstants[0] = 0.0f;
 	colorBlending.blendConstants[1] = 0.0f;
@@ -1057,7 +1059,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		std::cerr << "error: failed to create graphics pipeline" << std::endl;
 		abort();
 	}
-#pragma endregion pipeline
+#pragma endregion
 
 #pragma region compute pipeline
 	std::cout << "compute pipeline" << std::endl;
@@ -1076,17 +1078,19 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		std::cerr << "error: failed to create compute pipeline" << std::endl;
 		abort();
 	}
-#pragma endregion compute pipeline
+#pragma endregion
 
 #pragma region vertexBuffer
 	using Vertex = std::array<float, 2>;
-	std::vector<Vertex> vertices(POINT_COUNT);
+	// std::vector<Vertex> vertices(POINT_COUNT);
 
-	for (auto& vertex : vertices)
-	{
-		vertex[0] = dis(gen);
-		vertex[1] = dis(gen);
-	}
+	// for (auto& vertex : vertices)
+	//{
+	//	vertex[0] = dis(gen);
+	//	vertex[1] = dis(gen);
+	//}
+
+	std::vector<Vertex> vertices{ { -1, -1 }, { 3, -1 }, { -1, 3 } };
 
 	m_vertexBuffer = Buffer(
 	    rw, sizeof(Vertex) * vertices.size(),
@@ -1096,23 +1100,23 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	Vertex* data = m_vertexBuffer.map<Vertex>();
 	std::copy(vertices.begin(), vertices.end(), data);
 	m_vertexBuffer.unmap();
-#pragma endregion vertexBuffer
+#pragma endregion
 
 #pragma region compute UBO
 	m_computeUbo = Buffer(
-	    rw, sizeof(float) * 2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	    rw, sizeof(m_config), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-	{
-		float* data = m_computeUbo.map<float>();
-		data[0] = 1.0f;
-		data[1] = udis(gen);
-		m_computeUbo.unmap();
-	}
+	m_config.copyTo(m_computeUbo.map());
+	m_computeUbo.unmap();
+
+	CamAperture = m_config.camAperture;
+	CamFocalDistance = m_config.camFocalDistance;
+	CamFocalLength = m_config.camFocalLength;
 
 	VkDescriptorBufferInfo setBufferInfo{};
 	setBufferInfo.buffer = m_computeUbo.get();
-	setBufferInfo.range = sizeof(float);
+	setBufferInfo.range = sizeof(m_config);
 	setBufferInfo.offset = 0;
 
 	vk::WriteDescriptorSet uboWrite;
@@ -1124,32 +1128,39 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	uboWrite.pBufferInfo = &setBufferInfo;
 
 	vk.updateDescriptorSets(uboWrite);
-#pragma endregion compute UBO
+#pragma endregion
 
 #pragma region outputImage
 	m_outputImage = Texture2D(
 	    rw, width, height, VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	m_outputImage.transitionLayoutImediate(
-	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-#pragma endregion outputImage
+	m_outputImage.transitionLayoutImmediate(VK_IMAGE_LAYOUT_UNDEFINED,
+	                                        VK_IMAGE_LAYOUT_GENERAL);
+#pragma endregion
 
 #pragma region outputImageHDR
 	m_outputImageHDR = Texture2D(
 	    rw, width, height, VK_FORMAT_R32G32B32A32_SFLOAT,
 	    VK_IMAGE_TILING_LINEAR,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-	        VK_IMAGE_USAGE_STORAGE_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
+	        VK_IMAGE_USAGE_SAMPLED_BIT,
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, -1);
 
-	m_outputImageHDR.transitionLayoutImediate(
-	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	m_outputImageHDR.transitionLayoutImmediate(VK_IMAGE_LAYOUT_UNDEFINED,
+	                                           VK_IMAGE_LAYOUT_GENERAL);
 
 	VkDescriptorImageInfo setImageInfo{};
 	setImageInfo.imageView = m_outputImageHDR.view();
 	setImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+	VkDescriptorImageInfo setImageInfo2{};
+	setImageInfo2.imageView = m_outputImageHDR.view();
+	setImageInfo2.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	setImageInfo2.sampler = m_outputImageHDR.sampler();
 
 	vk::WriteDescriptorSet write;
 	write.descriptorCount = 1;
@@ -1159,14 +1170,26 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	write.dstSet = m_computeSet.get();
 	write.pImageInfo = &setImageInfo;
 
-	vk.updateDescriptorSets(write);
-#pragma endregion outputImageHDR
+	vk::WriteDescriptorSet write2;
+	write2.descriptorCount = 1;
+	write2.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write2.dstArrayElement = 0;
+	write2.dstBinding = 2;
+	write2.dstSet = m_computeSet.get();
+	write2.pImageInfo = &setImageInfo2;
+
+	std::array writes{ write, write2 };
+
+	vk.updateDescriptorSets(2, writes.data());
+#pragma endregion
 
 #pragma region framebuffer
 	vk::FramebufferCreateInfo framebufferInfo;
 	framebufferInfo.renderPass = m_renderPass.get();
-	framebufferInfo.attachmentCount = 2;
-	std::array attachments = { m_outputImage.view(), m_outputImageHDR.view() };
+	std::array attachments = {
+		m_outputImage.view()  //, m_outputImageHDR.view()
+	};
+	framebufferInfo.attachmentCount = uint32_t(attachments.size());
 	framebufferInfo.pAttachments = attachments.data();
 	framebufferInfo.width = width;
 	framebufferInfo.height = height;
@@ -1178,18 +1201,15 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		std::cerr << "error: failed to create framebuffer" << std::endl;
 		abort();
 	}
-#pragma endregion framebuffer
+#pragma endregion
 
-	vk.LogActive = false;
+	vk.setLogInactive();
 }
 
 Mandelbulb::~Mandelbulb() {}
 
 void Mandelbulb::render(CommandBuffer& cb)
 {
-	// uint32_t width = 1280 * 4;
-	// uint32_t height = 720 * 4;
-
 	std::array clearValues = { VkClearValue{}, VkClearValue{} };
 
 	vk::RenderPassBeginInfo rpInfo;
@@ -1197,7 +1217,7 @@ void Mandelbulb::render(CommandBuffer& cb)
 	rpInfo.renderPass = m_renderPass.get();
 	rpInfo.renderArea.extent.width = width;
 	rpInfo.renderArea.extent.height = height;
-	rpInfo.clearValueCount = 2;
+	rpInfo.clearValueCount = 1;
 	rpInfo.pClearValues = clearValues.data();
 
 	vk::SubpassBeginInfo subpassBeginInfo;
@@ -1211,8 +1231,8 @@ void Mandelbulb::render(CommandBuffer& cb)
 	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
 	                     m_computePipelineLayout.get(), 0, m_computeSet.get());
 	cb.bindVertexBuffer(m_vertexBuffer.get());
-	cb.draw(POINT_COUNT);
-	// cb.draw(3);
+	// cb.draw(POINT_COUNT);
+	cb.draw(3);
 
 	cb.endRenderPass2(subpassEndInfo);
 }
@@ -1222,7 +1242,80 @@ void Mandelbulb::compute(CommandBuffer& cb)
 	cb.bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline.get());
 	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE,
 	                     m_computePipelineLayout.get(), 0, m_computeSet.get());
-	cb.dispatch(1280 / 8, 720 / 8);
+	cb.dispatch(width / 8, height / 8);
+}
+
+void Mandelbulb::imgui(CommandBuffer& cb)
+{
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	{
+		static float f = 0.0f;
+		static int counter = 0;
+
+		ImGui::Begin("Controls");
+
+		bool changed = false;
+
+		changed |= ImGui::SliderFloat("CamFocalDistance",
+		                              &m_config.camFocalDistance, 0.1f, 30.0f);
+		changed |= ImGui::SliderFloat("CamFocalLength",
+		                              &m_config.camFocalLength, 0.0f, 20.0f);
+		changed |= ImGui::SliderFloat("CamAperture", &m_config.camAperture,
+		                              0.0f, 5.0f);
+
+		changed |= ImGui::DragFloat3("rotation", &m_config.camRot.x, 0.01f);
+		changed |= ImGui::DragFloat3("lightDir", &m_config.lightDir.x, 0.01f);
+
+		changed |= ImGui::SliderFloat("scene radius", &m_config.sceneRadius, 0.0f, 10.0f);
+
+		ImGui::SliderFloat("BloomAscale1", &m_config.bloomAscale1, 0.0f, 1.0f);
+		ImGui::SliderFloat("BloomAscale2", &m_config.bloomAscale2, 0.0f, 1.0f);
+		ImGui::SliderFloat("BloomBscale1", &m_config.bloomBscale1, 0.0f, 1.0f);
+		ImGui::SliderFloat("BloomBscale2", &m_config.bloomBscale2, 0.0f, 1.0f);
+
+		if (changed)
+			applyImguiParameters();
+
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+		            1000.0f / ImGui::GetIO().Framerate,
+		            ImGui::GetIO().Framerate);
+		ImGui::End();
+	}
+
+	ImGui::Render();
+
+	{
+		std::array clearValues = { VkClearValue{}, VkClearValue{} };
+
+		vk::RenderPassBeginInfo rpInfo;
+		rpInfo.framebuffer = m_framebuffer.get();
+		rpInfo.renderPass = rw.get().imguiRenderPass();
+		rpInfo.renderArea.extent.width = width;
+		rpInfo.renderArea.extent.height = height;
+		rpInfo.clearValueCount = 1;
+		rpInfo.pClearValues = clearValues.data();
+
+		vk::SubpassBeginInfo subpassBeginInfo;
+		subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
+
+		cb.beginRenderPass2(rpInfo, subpassBeginInfo);
+	}
+
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.get());
+
+	vk::SubpassEndInfo subpassEndInfo2;
+	cb.endRenderPass2(subpassEndInfo2);
+}
+
+void Mandelbulb::applyImguiParameters()
+{
+	auto& vk = rw.get().device();
+
+	m_config.samples = -1.0f;
+	mustClear = true;
 }
 
 void Mandelbulb::randomizePoints()
@@ -1242,19 +1335,16 @@ void Mandelbulb::randomizePoints()
 	std::copy(vertices.begin(), vertices.end(), static_cast<Vertex*>(data));
 	m_vertexBuffer.unmap();
 
-	{
-		float* data = m_computeUbo.map<float>();
-		// data[0] = 1.0f;
-		data[1] = udis(gen);
-		m_computeUbo.unmap();
-	}
+	m_config.seed = udis(gen);
+	m_config.copyTo(m_computeUbo.map());
+	m_computeUbo.unmap();
 }
 
 void Mandelbulb::setSampleAndRandomize(float s)
 {
-	float* data = m_computeUbo.map<float>();
-	data[0] = s;
-	data[1] = udis(gen);
+	m_config.samples = s;
+	m_config.seed = udis(gen);
+	m_config.copyTo(m_computeUbo.map());
 	m_computeUbo.unmap();
 }
 }  // namespace cdm

@@ -88,7 +88,7 @@ VulkanDeviceBase::VulkanDeviceBase(bool layers) noexcept : m_layers(layers)
 	if (layers)
 	{
 		validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-		validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
+		//validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
 		// validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 		// validationLayers.push_back("VK_LAYER_LUNARG_api_dump");
 
@@ -476,13 +476,12 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 		VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
 		VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
 		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-		VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+		 VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
 	};
 
-	/// TODO: add optional extensions
-	// std::vector<const char*> optionalDeviceExtensions = {
-	//	 VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
-	//};
+	std::vector<const char*> optionalDeviceExtensions = {
+		VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+	};
 
 	uint32_t extensionCount;
 	EnumerateDeviceExtensionProperties(physicalDevice(), nullptr,
@@ -499,6 +498,23 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 	for (const auto& extension : availableExtensions)
 	{
 		requiredExtensions.erase(extension.extensionName);
+	}
+
+	if (!requiredExtensions.empty())
+	{
+		std::set<std::string> requiredExtensionsCopy = requiredExtensions;
+		for (const auto& extension : requiredExtensionsCopy)
+		{
+			auto found = requiredExtensions.find(extension);
+			if (found != requiredExtensions.end())
+			{
+				requiredExtensions.erase(extension);
+
+				auto found2 = std::find(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end(), extension);
+				if (found2 != requiredDeviceExtensions.end())
+					requiredDeviceExtensions.erase(found2);
+			}
+		}
 	}
 
 	if (!requiredExtensions.empty())
@@ -1118,6 +1134,13 @@ UniqueFence VulkanDevice::createFence(
 	return UniqueFence(res, *this);
 }
 
+UniqueFence VulkanDevice::createFence(VkFenceCreateFlags flags) const
+{
+	cdm::vk::FenceCreateInfo createInfo;
+	createInfo.flags = flags;
+	return createFence(createInfo);
+}
+
 UniqueFramebuffer VulkanDevice::createFramebuffer(
     const cdm::vk::FramebufferCreateInfo& createInfo) const
 {
@@ -1292,7 +1315,9 @@ VkResult VulkanDevice::queueSubmit(VkQueue queue, const VkSubmitInfo& submit,
 	return queueSubmit(queue, 1, &submit, fence);
 }
 
-VkResult VulkanDevice::queueSubmit(VkQueue queue, VkCommandBuffer commandBuffer, VkFence fence) const
+VkResult VulkanDevice::queueSubmit(VkQueue queue,
+                                   VkCommandBuffer commandBuffer,
+                                   VkFence fence) const
 {
 	vk::SubmitInfo submit;
 	submit.commandBufferCount = 1;
@@ -1321,6 +1346,22 @@ VkResult VulkanDevice::waitForFences(uint32_t fenceCount,
                                      uint64_t timeout) const
 {
 	return WaitForFences(vkDevice(), fenceCount, pFences, waitAll, timeout);
+}
+
+VkResult VulkanDevice::resetFences(uint32_t fenceCount,
+                                   const VkFence* fences) const
+{
+	return ResetFences(vkDevice(), fenceCount, fences);
+}
+
+VkResult VulkanDevice::resetFences(std::initializer_list<VkFence> fences) const
+{
+	return resetFences(uint32_t(fences.size()), fences.begin());
+}
+
+VkResult VulkanDevice::resetFence(const VkFence& fence) const
+{
+	return resetFences(1, &fence);
 }
 
 void VulkanDevice::updateDescriptorSets(
@@ -1354,9 +1395,23 @@ void VulkanDevice::updateDescriptorSets(
 }
 
 void VulkanDevice::updateDescriptorSets(
+    std::initializer_list<vk::WriteDescriptorSet> descriptorWrites) const
+{
+	updateDescriptorSets(uint32_t(descriptorWrites.size()),
+	                     descriptorWrites.begin());
+}
+
+void VulkanDevice::updateDescriptorSets(
     const vk::CopyDescriptorSet& descriptorCopy) const
 {
 	updateDescriptorSets(1, &descriptorCopy);
+}
+
+void VulkanDevice::updateDescriptorSets(
+    std::initializer_list<vk::CopyDescriptorSet> descriptorCopies) const
+{
+	updateDescriptorSets(uint32_t(descriptorCopies.size()),
+	                     descriptorCopies.begin());
 }
 
 VkResult VulkanDevice::wait(uint32_t fenceCount, const VkFence* pFences,

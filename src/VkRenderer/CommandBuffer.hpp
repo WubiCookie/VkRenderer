@@ -28,6 +28,7 @@ public:
 	operator VkCommandBuffer() { return commandBuffer(); }
 
 	// clang-format off
+	VkResult begin();
 	VkResult begin(const cdm::vk::CommandBufferBeginInfo& beginInfo);
 	VkResult begin(VkCommandBufferUsageFlags usage);
 	void beginQuery(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags);
@@ -127,7 +128,7 @@ public:
 	void waitEvent(VkEvent event, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, const VkImageMemoryBarrier& imageMemoryBarrier);
 	void writeTimestamp(VkPipelineStageFlagBits pipelineStage, VkQueryPool queryPool, uint32_t query);
 	VkResult end();
-	VkResult reset(VkCommandBufferResetFlags flags);
+	VkResult reset(VkCommandBufferResetFlags flags = VkCommandBufferResetFlags());
 	// clang-format on
 
 private:

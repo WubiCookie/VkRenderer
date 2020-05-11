@@ -1,8 +1,12 @@
 #include "RenderWindow.hpp"
+#include "CommandBuffer.hpp"
 #include "Image.hpp"
 #include "ImageView.hpp"
 #include "VulkanDevice.hpp"
-#include "CommandBuffer.hpp"
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
 
 #define VK_NO_PROTOTYPES
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -48,6 +52,9 @@ struct RenderWindowPrivate
 	VkCommandPool commandPool = nullptr;
 	VkCommandPool oneTimeCommandPool = nullptr;
 
+	UniqueDescriptorPool imguiDescriptorPool;
+	UniqueRenderPass imguiRenderPass;
+
 	std::vector<SwapchainImage> swapchainImages;
 	std::vector<std::unique_ptr<ImageView>> swapchainImageViews;
 	VkFormat swapchainImageFormat;
@@ -68,7 +75,7 @@ struct RenderWindowPrivate
 
 	std::vector<PFN_keyCallback> keyCallbacks;
 
-	RenderWindowPrivate(int width, int height, bool layers) noexcept;
+	RenderWindowPrivate(int width, int height, bool layers);
 	~RenderWindowPrivate();
 
 	void createImageViews();
@@ -88,6 +95,7 @@ struct RenderWindowPrivate
 	void maximizeCallback(bool maximized);
 };
 
+#pragma region helpers
 // static void findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface,
 // uint32_t& outPresentFamily, const VulkanFunctions& vk)
 //{
@@ -253,12 +261,22 @@ static VkExtent2D chooseSwapExtent(
 	}
 }
 
-RenderWindowPrivate::RenderWindowPrivate(int width, int height,
-                                         bool layers) noexcept
+static void check_vk_result(VkResult err)
+{
+	if (err == 0)
+		return;
+	printf("VkResult %d\n", err);
+	if (err < 0)
+		abort();
+}
+#pragma endregion
+
+RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
     : vulkanDevice(layers)
 {
 	auto& vk = vulkanDevice;
 
+#pragma region window
 	if (!glfwInit())
 	{
 		std::cerr << "error: could not init GLFW" << std::endl;
@@ -295,7 +313,9 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
 
 		exit(1);
 	}
+#pragma endregion
 
+#pragma region vulkan
 	vk::Win32SurfaceCreateInfoKHR surfaceCreateInfo;
 	surfaceCreateInfo.hwnd = glfwGetWin32Window(window);
 	surfaceCreateInfo.hinstance = GetModuleHandleW(nullptr);
@@ -343,86 +363,181 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height,
 	}
 
 	recreateSwapchain(width, height);
+#pragma endregion
 
-	/*
-	VkSurfaceFormatKHR surfaceFormat =
-	    chooseSwapSurfaceFormat(swapChainSupport.formats);
-	VkPresentModeKHR presentMode =
-	    chooseSwapPresentMode(swapChainSupport.presentModes);
-	VkExtent2D extent =
-	    chooseSwapExtent(swapChainSupport.capabilities.surfaceCapabilities,
-	                     uint32_t(width), uint32_t(height));
+#pragma region imguirenderPass
+	VkAttachmentDescription colorAttachment = {};
+	colorAttachment.format = VkFormat::VK_FORMAT_B8G8R8A8_UNORM;
+	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-	swapchainImageFormat = surfaceFormat.format;
-	swapchainExtent = extent;
+	// VkAttachmentDescription colorHDRAttachment = {};
+	// colorHDRAttachment.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
+	// colorHDRAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	// colorHDRAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	// colorHDRAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	// colorHDRAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	// colorHDRAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	// colorHDRAttachment.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	// colorHDRAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
-	uint32_t imageCount =
-	    swapChainSupport.capabilities.surfaceCapabilities.minImageCount + 1;
+	// std::array colorAttachments{ colorAttachment, colorHDRAttachment };
+	std::array colorAttachments{ colorAttachment };
 
-	if (swapChainSupport.capabilities.surfaceCapabilities.maxImageCount > 0 &&
-	    imageCount >
-	        swapChainSupport.capabilities.surfaceCapabilities.maxImageCount)
+	VkAttachmentReference colorAttachmentRef = {};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// VkAttachmentReference colorHDRAttachmentRef = {};
+	// colorHDRAttachmentRef.attachment = 1;
+	// colorHDRAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	std::array colorAttachmentRefs{
+
+		colorAttachmentRef  //, colorHDRAttachmentRef
+	};
+
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = uint32_t(colorAttachmentRefs.size());
+	subpass.pColorAttachments = colorAttachmentRefs.data();
+	subpass.inputAttachmentCount = 0;
+	subpass.pInputAttachments = nullptr;
+	subpass.pResolveAttachments = nullptr;
+	subpass.pDepthStencilAttachment = nullptr;
+	subpass.preserveAttachmentCount = 0;
+	subpass.pPreserveAttachments = nullptr;
+
+	VkSubpassDependency dependency = {};
+	dependency.dependencyFlags = 0;
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+	                           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	vk::RenderPassCreateInfo renderPassInfo;
+	renderPassInfo.attachmentCount = uint32_t(colorAttachments.size());
+	renderPassInfo.pAttachments = colorAttachments.data();
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;
+	renderPassInfo.dependencyCount = 1;
+	renderPassInfo.pDependencies = &dependency;
+
+	imguiRenderPass = vk.create(renderPassInfo);
+	if (!imguiRenderPass)
 	{
-	    imageCount =
-	        swapChainSupport.capabilities.surfaceCapabilities.maxImageCount;
+		std::cerr << "error: failed to create imgui render pass" << std::endl;
+		abort();
 	}
+#pragma endregion
 
-	vk::SwapchainCreateInfoKHR swapchainCreateInfo;
-	swapchainCreateInfo.surface = surface;
-	swapchainCreateInfo.minImageCount = imageCount;
-	swapchainCreateInfo.imageFormat = surfaceFormat.format;
-	swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
-	swapchainCreateInfo.imageExtent = extent;
-	swapchainCreateInfo.imageArrayLayers = 1;
-	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+#pragma region imgui
+	VkDescriptorPoolSize pool_sizes[] = {
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
+	vk::DescriptorPoolCreateInfo pool_info;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
+	pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+	pool_info.pPoolSizes = pool_sizes;
+	imguiDescriptorPool = vk.create(pool_info);
 
-	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(),
-	                                  indices.presentFamily.value() };
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	(void)io;
 
-	if (indices.graphicsFamily != indices.presentFamily)
+	ImGui::StyleColorsDark();
+	// ImGui::StyleColorsClassic();
+
+	ImGui_ImplGlfw_InitForVulkan(window, true);
+	ImGui_ImplVulkan_InitInfo init_info = {};
+	init_info.Instance = vk.instance();
+	init_info.PhysicalDevice = vk.physicalDevice();
+	init_info.Device = vk.vkDevice();
+	init_info.QueueFamily = queueFamilyIndices.graphicsFamily.value();
+	init_info.Queue = vk.graphicsQueue();
+	init_info.PipelineCache = nullptr;
+	init_info.DescriptorPool = imguiDescriptorPool.get();
+	init_info.Allocator = nullptr;
+	init_info.MinImageCount = 2;
+	init_info.ImageCount = uint32_t(swapchainImages.size());
+	init_info.CheckVkResultFn = check_vk_result;
+	init_info.vk = &vulkanDevice;
+	ImGui_ImplVulkan_Init(&init_info, imguiRenderPass.get());
+
 	{
-	    swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-	    swapchainCreateInfo.queueFamilyIndexCount = 2;
-	    swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+		// Use any command queue
+		VkCommandPool command_pool = commandPool;
+		CommandBuffer command_buffer(vk, command_pool);
+		// VkCommandBuffer command_buffer =
+		// wd->Frames[wd->FrameIndex].CommandBuffer;
+
+		vk.ResetCommandPool(vk.vkDevice(), command_pool, 0);
+		command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+		// check_vk_result(err);
+		// vk::CommandBufferBeginInfo begin_info;
+		// begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		// begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		// err = vkBeginCommandBuffer(command_buffer, &begin_info);
+		// check_vk_result(err);
+
+		ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
+
+		command_buffer.end();
+
+		if (vk.queueSubmit(vk.graphicsQueue(), command_buffer.get()) !=
+		    VK_SUCCESS)
+		{
+			std::cerr << "error: failed to submit compute command buffer"
+			          << std::endl;
+			abort();
+		}
+		vk.wait();
+
+		// VkSubmitInfo end_info = {};
+		// end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		// end_info.commandBufferCount = 1;
+		// end_info.pCommandBuffers = &command_buffer;
+		// err = vkEndCommandBuffer(command_buffer);
+		// check_vk_result(err);
+		// err = vkQueueSubmit(g_Queue, 1, &end_info, VK_NULL_HANDLE);
+		// check_vk_result(err);
+
+		// err = vkDeviceWaitIdle(g_Device);
+		// check_vk_result(err);
+
+		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
-	else
-	{
-	    swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	    swapchainCreateInfo.queueFamilyIndexCount = 0;      // Optional
-	    swapchainCreateInfo.pQueueFamilyIndices = nullptr;  // Optional
-	}
-
-	swapchainCreateInfo.preTransform =
-	    swapChainSupport.capabilities.surfaceCapabilities.currentTransform;
-	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapchainCreateInfo.presentMode = presentMode;
-	swapchainCreateInfo.clipped = true;
-	swapchainCreateInfo.oldSwapchain = nullptr;
-
-	if (vk.create(swapchainCreateInfo, swapchain) != VK_SUCCESS)
-	{
-	    std::cerr << "error: failed to create swapchain" << std::endl;
-	    exit(1);
-	}
-
-	vk.GetSwapchainImagesKHR(vk.vkDevice(), swapchain, &imageCount, nullptr);
-	//swapchainImages.resize(imageCount);
-	swapchainImages.clear();
-	std::vector<VkImage> vkImages(imageCount);
-	vk.GetSwapchainImagesKHR(vk.vkDevice(), swapchain, &imageCount,
-	                         vkImages.data());
-	for (uint32_t i = 0; i < imageCount; i++)
-	    swapchainImages.emplace_back(SwapchainImage(vk, vkImages[i],
-	surfaceFormat.format));
-
-	createImageViews();
-	//*/
+#pragma endregion
 }
 
 RenderWindowPrivate::~RenderWindowPrivate()
 {
 	auto& vk = vulkanDevice;
 	auto instance = vk.instance();
+
+	ImGui_ImplVulkan_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
 	for (auto imageAvailableSemaphore : imageAvailableSemaphores)
 	{
@@ -544,7 +659,8 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 	swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
 	swapchainCreateInfo.imageExtent = extent;
 	swapchainCreateInfo.imageArrayLayers = 1;
-	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	swapchainCreateInfo.imageUsage =
+	    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(),
 		                              indices.presentFamily.value() };
@@ -633,7 +749,9 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 	for (auto& image : swapchainImages)
 	{
 		barrier.image = image.image();
-		transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
+		transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		                             VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
 	}
 	if (transitionCB.end() != VK_SUCCESS)
 	{
@@ -758,11 +876,33 @@ RenderWindow::RenderWindow(int width, int height, bool layers)
 {
 }
 
-RenderWindow::~RenderWindow()
-{
-}
+RenderWindow::~RenderWindow() {}
 
 void RenderWindow::pollEvents() { glfwPollEvents(); }
+
+uint32_t RenderWindow::acquireNextImage(VkSemaphore semaphore, VkFence fence)
+{
+	const auto& vk = device();
+
+	VkResult result =
+	    vk.AcquireNextImageKHR(vk.vkDevice(), swapchain(), UINT64_MAX,
+	                           semaphore, fence, &m_imageIndex);
+
+	if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		throw std::runtime_error("could not aquire next image");
+
+	return m_imageIndex;
+}
+
+uint32_t RenderWindow::acquireNextImage(VkSemaphore semaphore)
+{
+	return acquireNextImage(semaphore, nullptr);
+}
+
+uint32_t RenderWindow::acquireNextImage(VkFence fence)
+{
+	return acquireNextImage(nullptr, fence);
+}
 
 void RenderWindow::prerender()
 {
@@ -770,9 +910,10 @@ void RenderWindow::prerender()
 
 	vk.wait(p->inFlightFences[m_currentFrame]);
 
-	VkResult result = vk.AcquireNextImageKHR(
-	    vk.vkDevice(), swapchain(), UINT64_MAX,
-	    p->imageAvailableSemaphores[m_currentFrame], nullptr, &m_imageIndex);
+	acquireNextImage(p->imageAvailableSemaphores[m_currentFrame]);
+	// VkResult result = vk.AcquireNextImageKHR(
+	//    vk.vkDevice(), swapchain(), UINT64_MAX,
+	//    p->imageAvailableSemaphores[m_currentFrame], nullptr, &m_imageIndex);
 
 	if (p->imagesInFlight[m_imageIndex] != nullptr)
 	{
@@ -988,8 +1129,13 @@ RenderWindow::swapchainImageViews() const
 
 VkCommandPool RenderWindow::commandPool() const { return p->commandPool; }
 
-// VkCommandPool RenderWindow::oneTimeCommandPool() const
-//{
-//	return m_oneTimeCommandPool;
-//}
+VkCommandPool RenderWindow::oneTimeCommandPool() const
+{
+	return p->oneTimeCommandPool;
+}
+
+VkRenderPass RenderWindow::imguiRenderPass() const
+{
+	return p->imguiRenderPass.get();
+}
 }  // namespace cdm

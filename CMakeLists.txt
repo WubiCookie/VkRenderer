@@ -64,6 +64,16 @@ if (USE_SHADERC)
 	add_subdirectory("$ENV{VULKAN_SDK}/shaderc" "${CMAKE_CURRENT_BINARY_DIR}-shaderc")
 endif (USE_SHADERC)
 
+option(USE_IMGUI OFF)
+if (USE_IMGUI)
+	message("==============================================")
+	message("                     ImGUI                    ")
+	message("==============================================")
+	set(IMGUI_DIR CACHE PATH "")
+	include_directories(${IMGUI_DIR} ${IMGUI_DIR}/examples)
+	set(IMGUI_FILES ${IMGUI_DIR}/imconfig.h ${IMGUI_DIR}/imgui.h ${IMGUI_DIR}/examples/imgui_impl_glfw.cpp ${IMGUI_DIR}/examples/imgui_impl_vulkan.cpp ${IMGUI_DIR}/imgui.cpp ${IMGUI_DIR}/imgui_draw.cpp ${IMGUI_DIR}/imgui_demo.cpp ${IMGUI_DIR}/imgui_widgets.cpp)
+endif (USE_IMGUI)
+
 message("==============================================")
 message("                  VkRenderer                  ")
 message("==============================================")
@@ -94,6 +104,8 @@ add_library(VkRenderer STATIC
 	src/VkRenderer/VulkanDevice.cpp
 	src/VkRenderer/VulkanDevice.hpp
 	src/VkRenderer/VulkanDevice.inl
+
+	${IMGUI_FILES}
 )
 
 set_target_properties(VkRenderer PROPERTIES FOLDER "")

@@ -14,6 +14,7 @@
 #include "cdm_vulkan.hpp"
 #include "vk_mem_alloc.h"
 
+#include <initializer_list>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -44,8 +45,10 @@ protected:
 	// VulkanFunctions m_vk;
 	bool m_layers;
 
+	inline static size_t LogActive = 0;
 public:
-	inline static bool LogActive = false;
+	inline static void setLogActive() { LogActive++; }
+	inline static void setLogInactive() { if (LogActive != 0) LogActive--;  }
 
 	VulkanDeviceBase(bool layers = false) noexcept;
 	virtual ~VulkanDeviceBase();
@@ -441,6 +444,7 @@ public:                                                                         
 	UniqueEvent                    createEvent                    (const vk::EventCreateInfo& createInfo)                    const;
 	UniqueEvent                    create                         (const vk::EventCreateInfo& createInfo)                    const { return createEvent(createInfo); }
 	UniqueFence                    createFence                    (const vk::FenceCreateInfo& createInfo)                    const;
+	UniqueFence                    createFence                    (VkFenceCreateFlags flags = VkFenceCreateFlags{})          const;
 	UniqueFence                    create                         (const vk::FenceCreateInfo& createInfo)                    const { return createFence(createInfo); }
 	UniqueFramebuffer              createFramebuffer              (const vk::FramebufferCreateInfo& createInfo)              const;
 	UniqueFramebuffer              create                         (const vk::FramebufferCreateInfo& createInfo)              const { return createFramebuffer(createInfo); }
@@ -535,7 +539,12 @@ public:
 	PFN_vkResetCommandPool ResetCommandPool;
 	PFN_vkResetDescriptorPool ResetDescriptorPool;
 	PFN_vkResetEvent ResetEvent;
+
 	PFN_vkResetFences ResetFences;
+	VkResult resetFences(uint32_t fenceCount, const VkFence* fences) const;
+	VkResult resetFences(std::initializer_list<VkFence> fences) const;
+	VkResult resetFence(const VkFence& fence) const;
+
 	PFN_vkResetQueryPool ResetQueryPool;
 	PFN_vkSetEvent SetEvent;
 	PFN_vkSignalSemaphore SignalSemaphore;
@@ -547,7 +556,9 @@ public:
 	void updateDescriptorSets(uint32_t descriptorWriteCount, const vk::WriteDescriptorSet* descriptorWrites) const;
 	void updateDescriptorSets(uint32_t descriptorCopyCount, const vk::CopyDescriptorSet* descriptorCopies) const;
 	void updateDescriptorSets(const vk::WriteDescriptorSet& descriptorWrite) const;
+	void updateDescriptorSets(std::initializer_list<vk::WriteDescriptorSet> descriptorWrites) const;
 	void updateDescriptorSets(const vk::CopyDescriptorSet& descriptorCopy) const;
+	void updateDescriptorSets(std::initializer_list<vk::CopyDescriptorSet> descriptorCopies) const;
 
 	PFN_vkUpdateDescriptorSetWithTemplate UpdateDescriptorSetWithTemplate;
 
