@@ -5,7 +5,7 @@
 #include "Buffer.hpp"
 #include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
-#include "Texture.hpp"
+#include "Texture2D.hpp"
 
 #include <memory>
 #include <random>
@@ -115,6 +115,11 @@ private:
 	float CamFocalLength;
 	float CamAperture;
 
+	CommandBuffer computeCB;// (vk, rw.oneTimeCommandPool());
+	CommandBuffer imguiCB;// (vk, rw.oneTimeCommandPool());
+	CommandBuffer copyHDRCB;// (vk, rw.oneTimeCommandPool());
+	CommandBuffer cb;// (vk, rw.oneTimeCommandPool());
+
 	void applyImguiParameters();
 
 public:
@@ -124,6 +129,8 @@ public:
 	void render(CommandBuffer& cb);
 	void compute(CommandBuffer& cb);
 	void imgui(CommandBuffer& cb);
+
+	void standaloneDraw();
 
 	void randomizePoints();
 	void setSampleAndRandomize(float s);

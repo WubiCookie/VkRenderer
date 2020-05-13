@@ -527,6 +527,7 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 	deviceFeatures.shaderFloat64 = true;
+	deviceFeatures.fillModeNonSolid = true;
 
 	vk::DeviceCreateInfo createInfo;
 	createInfo.queueCreateInfoCount = uint32_t(queueCreateInfos.size());
@@ -885,6 +886,13 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 
 	vmaCreateAllocator(&allocatorInfo, &m_allocator.get());
 #pragma endregion allocator
+}
+
+VkFormatProperties VulkanDevice::getPhysicalDeviceFormatProperties(VkFormat format) const
+{
+	VkFormatProperties res{};
+	GetPhysicalDeviceFormatProperties(physicalDevice(), format, &res);
+	return res;
 }
 
 VkResult VulkanDevice::allocateCommandBuffers(

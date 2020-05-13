@@ -255,6 +255,18 @@ void CommandBuffer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
 	copyBuffer(srcBuffer, dstBuffer, 1, &region);
 }
 
+void CommandBuffer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
+                               VkDeviceSize size, VkDeviceSize srcOffset,
+                               VkDeviceSize dstOffset)
+{
+	VkBufferCopy region{};
+	region.size = size;
+	region.srcOffset = srcOffset;
+	region.dstOffset = dstOffset;
+
+	copyBuffer(srcBuffer, dstBuffer, region);
+}
+
 void CommandBuffer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
                                       VkImageLayout dstImageLayout,
                                       uint32_t regionCount,

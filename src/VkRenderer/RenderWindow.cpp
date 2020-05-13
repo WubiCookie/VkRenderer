@@ -74,6 +74,8 @@ struct RenderWindowPrivate
 	std::vector<std::shared_ptr<VkRenderPass>> screenFormatedRenderPasses;
 
 	std::vector<PFN_keyCallback> keyCallbacks;
+	std::vector<PFN_mouseButtonCallback> mouseButtonCallbacks;
+	std::vector<PFN_mousePosCallback> mousePosCallbacks;
 
 	RenderWindowPrivate(int width, int height, bool layers);
 	~RenderWindowPrivate();
@@ -83,6 +85,11 @@ struct RenderWindowPrivate
 
 	static void keyCallback(GLFWwindow* window, int key, int scancode,
 	                        int action, int mods);
+
+	static void mouseButtonCallback(GLFWwindow* window, int button, int action,
+	                                int mods);
+
+	static void mousePosCallback(GLFWwindow* window, double x, double y);
 
 	static void framebufferSizeCallback(GLFWwindow* window, int width,
 	                                    int height);
@@ -269,6 +276,47 @@ static void check_vk_result(VkResult err)
 	if (err < 0)
 		abort();
 }
+
+static VkFormat findSupportedFormat(const VulkanDevice& vk,
+                                    const std::vector<VkFormat>& candidates,
+                                    VkImageTiling tiling,
+                                    VkFormatFeatureFlags features)
+{
+	for (VkFormat format : candidates)
+	{
+		VkFormatProperties props =
+		    vk.getPhysicalDeviceFormatProperties(format);
+
+		if (tiling == VK_IMAGE_TILING_LINEAR &&
+		    (props.linearTilingFeatures & features) == features)
+		{
+			return format;
+		}
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL &&
+		         (props.optimalTilingFeatures & features) == features)
+		{
+			return format;
+		}
+	}
+
+	throw std::runtime_error("failed to find supported format");
+}
+
+static VkFormat findDepthFormat(const VulkanDevice& vk)
+{
+	return findSupportedFormat(
+	    vk,
+	    { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT,
+	      VK_FORMAT_D24_UNORM_S8_UINT },
+	    VK_IMAGE_TILING_OPTIMAL,
+	    VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+static bool hasStencilComponent(VkFormat format)
+{
+	return format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+	       format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
 #pragma endregion
 
 RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
@@ -299,6 +347,8 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 
 	glfwSetWindowUserPointer(window, this);
 	glfwSetKeyCallback(window, keyCallback);
+	glfwSetMouseButtonCallback(window, mouseButtonCallback);
+	glfwSetCursorPosCallback(window, mousePosCallback);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	glfwSetWindowIconifyCallback(window, iconifyCallback);
 	glfwSetWindowMaximizeCallback(window, maximizeCallback);
@@ -826,7 +876,29 @@ void RenderWindowPrivate::keyCallback(GLFWwindow* window, int key,
 
 	if (rwp)
 		for (auto cb : rwp->keyCallbacks)
-			cb(key, scancode, action, mods);
+			cb(Key(key), scancode, Action(action), mods);
+}
+
+void RenderWindowPrivate::mouseButtonCallback(GLFWwindow* window, int button,
+                                              int action, int mods)
+{
+	RenderWindowPrivate* rwp =
+	    (RenderWindowPrivate*)glfwGetWindowUserPointer(window);
+
+	if (rwp)
+		for (auto cb : rwp->mouseButtonCallbacks)
+			cb(MouseButton(button), Action(action), mods);
+}
+
+void RenderWindowPrivate::mousePosCallback(GLFWwindow* window, double x,
+                                           double y)
+{
+	RenderWindowPrivate* rwp =
+	    (RenderWindowPrivate*)glfwGetWindowUserPointer(window);
+
+	if (rwp)
+		for (auto cb : rwp->mousePosCallbacks)
+			cb(x, y);
 }
 
 void RenderWindowPrivate::framebufferSizeCallback(GLFWwindow* window,
@@ -1079,13 +1151,52 @@ void RenderWindow::registerKeyCallback(PFN_keyCallback keyCallback)
 
 void RenderWindow::unregisterKeyCallback(PFN_keyCallback keyCallback)
 {
-	if (keyCallback)
-	{
-		auto found = std::find(p->keyCallbacks.begin(), p->keyCallbacks.end(),
-		                       keyCallback);
-		if (found != p->keyCallbacks.end())
-			p->keyCallbacks.erase(found);
-	}
+	//if (keyCallback)
+	//{
+	//	auto found = std::find(p->keyCallbacks.begin(), p->keyCallbacks.end(),
+	//	                       keyCallback);
+	//	if (found != p->keyCallbacks.end())
+	//		p->keyCallbacks.erase(found);
+	//}
+}
+
+void RenderWindow::registerMouseButtonCallback(
+    PFN_mouseButtonCallback mouseButtonCallback)
+{
+	if (mouseButtonCallback)
+		p->mouseButtonCallbacks.push_back(mouseButtonCallback);
+}
+
+void RenderWindow::unregisterMouseButtonCallback(
+    PFN_mouseButtonCallback mouseButtonCallback)
+{
+	//if (mouseButtonCallback)
+	//{
+	//	auto found =
+	//	    std::find(p->mouseButtonCallbacks.begin(),
+	//	              p->mouseButtonCallbacks.end(), mouseButtonCallback);
+	//	if (found != p->mouseButtonCallbacks.end())
+	//		p->mouseButtonCallbacks.erase(found);
+	//}
+}
+
+void RenderWindow::registerMousePosCallback(
+    PFN_mousePosCallback mousePosCallback)
+{
+	if (mousePosCallback)
+		p->mousePosCallbacks.push_back(mousePosCallback);
+}
+
+void RenderWindow::unregisterMousePosCallback(
+    PFN_mousePosCallback mousePosCallback)
+{
+	//if (mousePosCallback)
+	//{
+	//	auto found = std::find(p->mousePosCallbacks.begin(),
+	//	                       p->mousePosCallbacks.end(), mousePosCallback);
+	//	if (found != p->mousePosCallbacks.end())
+	//		p->mousePosCallbacks.erase(found);
+	//}
 }
 
 const VulkanDevice& RenderWindow::device() const { return p->vulkanDevice; }
@@ -1098,6 +1209,8 @@ VkFormat RenderWindow::swapchainImageFormat()
 {
 	return p->swapchainImageFormat;
 }
+
+VkFormat RenderWindow::depthImageFormat() { return findDepthFormat(device()); }
 
 std::vector<VkImage> RenderWindow::swapchainImages() const
 {

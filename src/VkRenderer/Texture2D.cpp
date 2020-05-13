@@ -1,4 +1,4 @@
-#include "Texture.hpp"
+#include "Texture2D.hpp"
 
 #include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
@@ -7,7 +7,7 @@ namespace cdm
 {
 Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
                      uint32_t imageHeight, VkFormat imageFormat,
-                     VkImageTiling imageTiling, VkBufferUsageFlags usage,
+                     VkImageTiling imageTiling, VkImageUsageFlags usage,
                      VmaMemoryUsage memoryUsage,
                      VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels)
     : rw(&renderWindow)

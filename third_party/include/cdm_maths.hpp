@@ -2050,12 +2050,15 @@ inline matrix4 matrix4::translation(const vector3& t) { return {1.0f, 0.0f, 0.0f
 inline matrix4 matrix4::perspective(const radian& angle, float ratio, float near_plane, float far_plane)
 {
 	const float invTanHalfFovy = 1.0f / tanf(angle * 0.5f);
-	const float k = far_plane / (2.0f * (near_plane - far_plane));
+	//const float k = far_plane / (2.0f * (near_plane - far_plane));
+	const float k = far_plane / (near_plane - far_plane);
+
 	return {
-		invTanHalfFovy / ratio, 0.0f,           0.0f,  0.0f,
-		0.0f,                   invTanHalfFovy, 0.0f,  0.0f,
-		0.0f,                   0.0f,           k,     k * (1.0f + 2.0f * near_plane),
-		0.0f,                   0.0f,           -1.0f, 0.0f
+		invTanHalfFovy / ratio, 0.0f,            0.0f,  0.0f,
+		0.0f,                   -invTanHalfFovy, 0.0f,  0.0f,
+		0.0f,                   0.0f,            k,     k * (1.0f + 2.0f * near_plane),
+		//0.0f,                   0.0f,            k,     (near_plane * far_plane) / (near_plane - far_plane),
+		0.0f,                   0.0f,            -1.0f, 0.0f
 	};
 }
 inline matrix4 matrix4::rotation_around_x(const radian& angle) { return matrix4(matrix3::rotation_around_x(angle)); }

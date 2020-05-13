@@ -425,7 +425,13 @@ public:
 Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
     : rw(renderWindow),
       gen(rd()),
-      dis(0.0f, 0.3f)
+      dis(0.0f, 0.3f),
+      computeCB(
+          CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
+      imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
+      copyHDRCB(
+          CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
+      cb(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool()))
 {
 	auto& vk = rw.get().device();
 
@@ -706,8 +712,12 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			    "iuv",
 			    ivec2(writer.cast<Int>(xy.x()), writer.cast<Int>(xy.y())));
 
+			Vec4 previousColor = writer.declLocale(
+			    "previousColor", imageLoad(kernelImage, iuv));
+
 			Float samples = writer.declLocale(
 			    "samples", writer.ubo.getMember<Float>("samples"));
+			//"samples", previousColor.a());
 
 			IF(writer, samples == -1.0_f)
 			{
@@ -760,15 +770,10 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 				aperture = CamMatrix * aperture;
 
 				// clang-format off
-				 Vec3 previousColor = writer.declLocale("previousColor",
-				 imageLoad(kernelImage, iuv).rgb()); Vec3 newColor =
-				 writer.declLocale("newColor", writer.pathTrace(CamPos +
-				 aperture, rayDir, seed)); Vec3 mixer =
-				 writer.declLocale("mixer", vec3(1.0_f / (samples + 1.0_f)));
-				 Vec3 mixedColor = writer.declLocale("mixedColor",
-				 mix(previousColor, newColor, mixer)); Vec4 mixedColor4 =
-				 writer.declLocale("mixedColor4", vec4(mixedColor, samples
-				 + 1.0_f));
+				Vec3 newColor = writer.declLocale("newColor", writer.pathTrace(CamPos + aperture, rayDir, seed));
+				Vec3 mixer = writer.declLocale("mixer", vec3(1.0_f / (samples + 1.0_f)));
+				Vec3 mixedColor = writer.declLocale("mixedColor", mix(previousColor.rgb(), newColor, mixer));
+				Vec4 mixedColor4 = writer.declLocale("mixedColor4", vec4(mixedColor, samples + 1.0_f));
 				// clang-format on
 
 				imageStore(kernelImage, iuv, mixedColor4);
@@ -1269,7 +1274,8 @@ void Mandelbulb::imgui(CommandBuffer& cb)
 		changed |= ImGui::DragFloat3("rotation", &m_config.camRot.x, 0.01f);
 		changed |= ImGui::DragFloat3("lightDir", &m_config.lightDir.x, 0.01f);
 
-		changed |= ImGui::SliderFloat("scene radius", &m_config.sceneRadius, 0.0f, 10.0f);
+		changed |= ImGui::SliderFloat("scene radius", &m_config.sceneRadius,
+		                              0.0f, 10.0f);
 
 		ImGui::SliderFloat("BloomAscale1", &m_config.bloomAscale1, 0.0f, 1.0f);
 		ImGui::SliderFloat("BloomAscale2", &m_config.bloomAscale2, 0.0f, 1.0f);
@@ -1308,6 +1314,190 @@ void Mandelbulb::imgui(CommandBuffer& cb)
 
 	vk::SubpassEndInfo subpassEndInfo2;
 	cb.endRenderPass2(subpassEndInfo2);
+}
+
+void Mandelbulb::standaloneDraw()
+{
+	auto& vk = rw.get().device();
+
+	if (mustClear)
+	{
+		mustClear = false;
+		m_config.samples = -1.0f;
+
+		cb.reset();
+		cb.begin();
+
+		vk::ImageMemoryBarrier barrier;
+		barrier.image = outputImage();
+		barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = outputTexture().mipLevels();
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+		                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
+
+		VkClearColorValue clearColor{};
+		VkImageSubresourceRange range{};
+		range.aspectMask = VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+		range.layerCount = 1;
+		range.levelCount = 1;
+		cb.clearColorImage(outputImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		                   &clearColor, range);
+
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+		                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
+
+		cb.end();
+
+		if (vk.queueSubmit(vk.graphicsQueue(), imguiCB.get()) != VK_SUCCESS)
+		{
+			std::cerr << "error: failed to submit clear command buffer"
+			          << std::endl;
+			abort();
+		}
+
+		vk.wait(vk.graphicsQueue());
+		m_config.samples += 1.0f;
+	}
+
+	setSampleAndRandomize(m_config.samples);
+
+	computeCB.reset();
+	computeCB.begin();
+	computeCB.debugMarkerBegin("compute", 1.0f, 0.2f, 0.2f);
+	compute(computeCB);
+	computeCB.debugMarkerEnd();
+	computeCB.end();
+	if (vk.queueSubmit(vk.graphicsQueue(), computeCB.get()) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit imgui command buffer"
+		          << std::endl;
+		abort();
+	}
+	vk.wait(vk.graphicsQueue());
+
+	outputTextureHDR().generateMipmapsImmediate(VK_IMAGE_LAYOUT_GENERAL);
+
+	imguiCB.reset();
+	imguiCB.begin();
+	imguiCB.debugMarkerBegin("render", 0.2f, 0.2f, 1.0f);
+	// mandelbulb.compute(imguiCB);
+	render(imguiCB);
+	imgui(imguiCB);
+	imguiCB.debugMarkerEnd();
+	imguiCB.end();
+	if (vk.queueSubmit(vk.graphicsQueue(), imguiCB.get()) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit imgui command buffer"
+		          << std::endl;
+		abort();
+	}
+	vk.wait(vk.graphicsQueue());
+
+	m_config.samples += 1.0f;
+
+	auto swapImages = rw.get().swapchainImages();
+
+	vk.debugMarkerSetObjectName(copyHDRCB.get(),
+	                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+	                            "copyHDRCB");
+
+	copyHDRCB.reset();
+	copyHDRCB.begin();
+
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = outputImage();
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
+
+	for (auto swapImage : swapImages)
+	{
+		vk::ImageMemoryBarrier swapBarrier = barrier;
+		swapBarrier.image = swapImage;
+		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+		                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+		                          swapBarrier);
+
+		VkImageBlit blit{};
+		blit.srcOffsets[1].x = 1280;
+		blit.srcOffsets[1].y = 720;
+		blit.srcOffsets[1].z = 1;
+		blit.dstOffsets[1].x = 1280;
+		blit.dstOffsets[1].y = 720;
+		blit.dstOffsets[1].z = 1;
+		blit.srcSubresource.aspectMask =
+		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.baseArrayLayer = 0;
+		blit.srcSubresource.layerCount = 1;
+		blit.srcSubresource.mipLevel = 0;
+		blit.dstSubresource.aspectMask =
+		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.dstSubresource.baseArrayLayer = 0;
+		blit.dstSubresource.layerCount = 1;
+		blit.dstSubresource.mipLevel = 0;
+
+		copyHDRCB.blitImage(outputImage(),
+		                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapImage,
+		                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
+		                    VkFilter::VK_FILTER_LINEAR);
+
+		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		swapBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+		copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+		                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+		                          swapBarrier);
+	}
+
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
+
+	if (copyHDRCB.end() != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to record command buffer" << std::endl;
+		abort();
+	}
+
+	vk.wait(vk.graphicsQueue());
+
+	if (vk.queueSubmit(vk.graphicsQueue(), copyHDRCB.get()) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit draw command buffer"
+		          << std::endl;
+		abort();
+	}
+	vk.wait(vk.graphicsQueue());
 }
 
 void Mandelbulb::applyImguiParameters()

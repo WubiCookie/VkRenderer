@@ -83,6 +83,8 @@ add_library(VkRenderer STATIC
 	src/VkRenderer/CommandBuffer.cpp
 	src/VkRenderer/CommandBuffer.hpp
 	src/VkRenderer/CommandBuffer.inl
+	src/VkRenderer/DepthTexture.cpp
+	src/VkRenderer/DepthTexture.hpp
 	src/VkRenderer/Framebuffer.cpp
 	src/VkRenderer/Framebuffer.hpp
 	src/VkRenderer/Image.cpp
@@ -99,8 +101,11 @@ add_library(VkRenderer STATIC
 	src/VkRenderer/RenderPass.hpp
 	src/VkRenderer/RenderWindow.cpp
 	src/VkRenderer/RenderWindow.hpp
-	src/VkRenderer/Texture.cpp
-	src/VkRenderer/Texture.hpp
+	src/VkRenderer/ShaderBall.cpp
+	src/VkRenderer/ShaderBall.hpp
+	src/VkRenderer/Texture2D.cpp
+	src/VkRenderer/Texture2D.hpp
+	src/VkRenderer/TextureInterface.hpp
 	src/VkRenderer/VulkanDevice.cpp
 	src/VkRenderer/VulkanDevice.hpp
 	src/VkRenderer/VulkanDevice.inl

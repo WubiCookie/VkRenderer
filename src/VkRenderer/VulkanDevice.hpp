@@ -180,6 +180,8 @@ public:
 	using VulkanDeviceBase::destroySurface;
 
 	// clang-format off
+	VkFormatProperties getPhysicalDeviceFormatProperties(VkFormat format) const;
+
 	PFN_vkCreateHeadlessSurfaceEXT CreateHeadlessSurfaceEXT;
 	PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT GetPhysicalDeviceCalibrateableTimeDomainsEXT;
 	PFN_vkGetPhysicalDeviceMultisamplePropertiesEXT GetPhysicalDeviceMultisamplePropertiesEXT;
