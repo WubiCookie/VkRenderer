@@ -1134,7 +1134,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		irradianceMapTextureWrite.dstSet = m_descriptorSet;
 		irradianceMapTextureWrite.pImageInfo = &irradianceMapImageInfo;
 
-		PrefilterCubemap pfc(rw, 512, 5);
+		PrefilterCubemap pfc(rw, 1024, -1);
 		m_prefilteredMap = pfc.computeCubemap(m_environmentMap);
 
 		if (m_prefilteredMap.get() == nullptr)
