@@ -555,6 +555,7 @@ struct matrix4
 	static matrix4 rotation(const quaternion& q);
 	static matrix4 translation(const vector3& t);
 	static matrix4 perspective(const radian& angle, float ratio, float near_plane, float far_plane);
+	static matrix4 look_at(const vector3& from, const vector3& to, const vector3& up = { 0.0f, 1.0f, 0.0f });
 	static matrix4 rotation_around_x(const radian& angle);
 	static matrix4 rotation_around_y(const radian& angle);
 	static matrix4 rotation_around_z(const radian& angle);
@@ -2049,16 +2050,26 @@ inline matrix4 matrix4::rotation(const quaternion& q) { return matrix3::rotation
 inline matrix4 matrix4::translation(const vector3& t) { return {1.0f, 0.0f, 0.0f, t.x, 0.0f, 1.0f, 0.0f, t.y, 0.0f, 0.0f, 1.0f, t.z, 0.0f, 0.0f, 0.0f, 1.0f}; }
 inline matrix4 matrix4::perspective(const radian& angle, float ratio, float near_plane, float far_plane)
 {
-	const float invTanHalfFovy = 1.0f / tanf(angle * 0.5f);
-	//const float k = far_plane / (2.0f * (near_plane - far_plane));
-	const float k = far_plane / (near_plane - far_plane);
+	float tanHalfFovy = tan(angle / 2.0f);
 
 	return {
-		invTanHalfFovy / ratio, 0.0f,            0.0f,  0.0f,
-		0.0f,                   -invTanHalfFovy, 0.0f,  0.0f,
-		0.0f,                   0.0f,            k,     k * (1.0f + 2.0f * near_plane),
-		//0.0f,                   0.0f,            k,     (near_plane * far_plane) / (near_plane - far_plane),
-		0.0f,                   0.0f,            -1.0f, 0.0f
+		1.0f / (ratio * tanHalfFovy), 0.0f,                  0.0f,                                 0.0f,
+		0.0f,                         -1.0f / (tanHalfFovy), 0.0f,                                 0.0f,
+		0.0f,                         0.0f,                  far_plane / (near_plane - far_plane), -(far_plane * near_plane) / (far_plane - near_plane),
+		0.0f,                         0.0f,                  -1.0f,                                0.0f
+	};
+}
+inline matrix4 matrix4::look_at(const vector3& from, const vector3& to, const vector3& up)
+{
+	vector3 forward = (from - to).get_normalized();
+    vector3 right = up.get_normalized().cross(forward);
+    vector3 true_up = forward.cross(right);
+
+	return {
+		right.x, true_up.x, forward.x, from.x,
+		right.y, true_up.y, forward.y, from.y,
+		right.z, true_up.z, forward.z, from.z,
+		0.0f,    0.0f,      0.0f,      1.0f
 	};
 }
 inline matrix4 matrix4::rotation_around_x(const radian& angle) { return matrix4(matrix3::rotation_around_x(angle)); }
@@ -2880,3 +2891,4 @@ inline cdm::degree operator""_deg(long double d) { return cdm::degree(static_cas
 inline cdm::degree operator""_deg(unsigned long long int i) { return cdm::degree(static_cast<float>(i)); }
 
 #endif // CDM_MATHS_HPP
+

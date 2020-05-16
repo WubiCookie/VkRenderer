@@ -17,7 +17,7 @@ class Framebuffer final : public VulkanDeviceObject
 	std::reference_wrapper<RenderPass> m_renderPass;
 	std::vector<std::reference_wrapper<ImageView>> m_imageViews;
 
-	Moveable<VkFramebuffer> m_framebuffer;
+	Movable<VkFramebuffer> m_framebuffer;
 
 public:
 	Framebuffer(RenderWindow& renderWindow, RenderPass& renderPass,

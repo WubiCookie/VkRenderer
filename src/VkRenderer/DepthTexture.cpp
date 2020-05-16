@@ -101,25 +101,6 @@ DepthTexture::DepthTexture(RenderWindow& renderWindow, uint32_t imageWidth,
 		throw std::runtime_error("could not create sampler");
 }
 
-DepthTexture::DepthTexture(DepthTexture&& texture) noexcept
-{
-	rw = std::exchange(texture.rw, nullptr);
-
-	m_allocation = std::exchange(texture.m_allocation, nullptr);
-	m_image = std::exchange(texture.m_image, nullptr);
-	m_imageView = std::move(texture.m_imageView);
-	m_sampler = std::move(texture.m_sampler);
-
-	m_deviceMemory = std::exchange(texture.m_deviceMemory, nullptr);
-	m_offset = std::exchange(texture.m_offset, 0);
-	m_size = std::exchange(texture.m_size, 0);
-	m_mipLevels = std::exchange(texture.m_mipLevels, 0);
-
-	m_width = std::exchange(texture.m_width, 0);
-	m_height = std::exchange(texture.m_height, 0);
-	m_format = std::exchange(texture.m_format, VK_FORMAT_UNDEFINED);
-}
-
 DepthTexture::~DepthTexture()
 {
 	if (rw.get())
@@ -131,27 +112,6 @@ DepthTexture::~DepthTexture()
 		if (m_image)
 			vmaDestroyImage(vk.allocator(), m_image.get(), m_allocation.get());
 	}
-}
-
-DepthTexture& DepthTexture::operator=(DepthTexture&& texture) noexcept
-{
-	rw = std::exchange(texture.rw, nullptr);
-
-	m_allocation = std::exchange(texture.m_allocation, nullptr);
-	m_image = std::exchange(texture.m_image, nullptr);
-	m_imageView = std::move(texture.m_imageView);
-	m_sampler = std::move(texture.m_sampler);
-
-	m_deviceMemory = std::exchange(texture.m_deviceMemory, nullptr);
-	m_offset = std::exchange(texture.m_offset, 0);
-	m_size = std::exchange(texture.m_size, 0);
-	m_mipLevels = std::exchange(texture.m_mipLevels, 0);
-
-	m_width = std::exchange(texture.m_width, 0);
-	m_height = std::exchange(texture.m_height, 0);
-	m_format = std::exchange(texture.m_format, VK_FORMAT_UNDEFINED);
-
-	return *this;
 }
 
 void DepthTexture::transitionLayoutImmediate(VkImageLayout oldLayout,

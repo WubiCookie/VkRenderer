@@ -57,7 +57,17 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& cb) noexcept
 
 VkCommandBuffer& CommandBuffer::get() { return m_commandBuffer.get(); }
 
+const VkCommandBuffer& CommandBuffer::get() const
+{
+	return m_commandBuffer.get();
+}
+
 VkCommandBuffer& CommandBuffer::commandBuffer()
+{
+	return m_commandBuffer.get();
+}
+
+const VkCommandBuffer& CommandBuffer::commandBuffer() const
 {
 	return m_commandBuffer.get();
 }
@@ -711,6 +721,11 @@ void CommandBuffer::setViewport(uint32_t firstViewport,
                                 const VkViewport& viewport)
 {
 	setViewport(firstViewport, 1, &viewport);
+}
+
+void CommandBuffer::setViewport(const VkViewport& viewport)
+{
+	setViewport(0, 1, &viewport);
 }
 
 void CommandBuffer::updateBuffer(VkBuffer dstBuffer, VkDeviceSize dstOffset,

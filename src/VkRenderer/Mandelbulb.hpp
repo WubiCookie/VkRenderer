@@ -28,7 +28,7 @@ class Mandelbulb final
 
 	UniqueDescriptorPool m_computePool;
 	UniqueDescriptorSetLayout m_computeSetLayout;
-	Moveable<VkDescriptorSet> m_computeSet;
+	Movable<VkDescriptorSet> m_computeSet;
 	UniquePipelineLayout m_computePipelineLayout;
 	UniquePipeline m_computePipeline;
 

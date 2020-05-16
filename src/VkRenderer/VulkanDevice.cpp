@@ -88,7 +88,7 @@ VulkanDeviceBase::VulkanDeviceBase(bool layers) noexcept : m_layers(layers)
 	if (layers)
 	{
 		validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-		//validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
+		validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
 		// validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 		// validationLayers.push_back("VK_LAYER_LUNARG_api_dump");
 
@@ -921,6 +921,18 @@ VkResult VulkanDevice::allocate(
     VkDescriptorSet* pDescriptorSets) const
 {
 	return allocateDescriptorSets(allocateInfo, pDescriptorSets);
+}
+
+VkDescriptorSet VulkanDevice::allocate(VkDescriptorPool pool, VkDescriptorSetLayout layout) const
+{
+	cdm::vk::DescriptorSetAllocateInfo allocateInfo;
+	allocateInfo.descriptorPool = pool;
+	allocateInfo.descriptorSetCount = 1;
+	allocateInfo.pSetLayouts = &layout;
+
+	VkDescriptorSet res = nullptr;
+	allocate(allocateInfo, &res);
+	return res;
 }
 
 VkResult VulkanDevice::allocateMemory(

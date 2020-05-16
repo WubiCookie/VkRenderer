@@ -27,11 +27,11 @@ class Material final : public VulkanDeviceObject
 	std::string m_vertexShaderGLSL;
 	std::string m_fragmentShaderGLSL;
 
-	Moveable<VkShaderModule> m_vertexModule;
-	Moveable<VkShaderModule> m_fragmentModule;
+	Movable<VkShaderModule> m_vertexModule;
+	Movable<VkShaderModule> m_fragmentModule;
 
-	Moveable<VkPipelineLayout> m_pipelineLayout;
-	Moveable<VkPipeline> m_pipeline;
+	Movable<VkPipelineLayout> m_pipelineLayout;
+	Movable<VkPipeline> m_pipeline;
 
 	std::reference_wrapper<RenderPass> m_renderPass;
 

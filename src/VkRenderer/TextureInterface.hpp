@@ -17,14 +17,16 @@ public:
 	virtual VkFormat format() const = 0;
 	virtual uint32_t mipLevels() const = 0;
 	virtual VkDeviceMemory deviceMemory() const = 0;
+	virtual VkImage& get() = 0;
 	virtual const VkImage& get() const = 0;
-	const VkImage& image() const { return get(); };
+	const VkImage& image() const { return get(); }
+	operator VkImage&() { return get(); }
+	operator const VkImage&() const { return get(); }
 	virtual const VkImageView& view() const = 0;
 	virtual const VkSampler& sampler() const = 0;
 	virtual const VmaAllocation& allocation() const = 0;
 
 	virtual void transitionLayoutImmediate(VkImageLayout initialLayout,
-	                                      VkImageLayout finalLayout) = 0;
-	virtual void generateMipmapsImmediate(VkImageLayout currentLayout) = 0;
+	                                       VkImageLayout finalLayout) = 0;
 };
 }  // namespace cdm

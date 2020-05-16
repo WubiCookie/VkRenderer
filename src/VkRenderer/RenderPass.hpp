@@ -6,7 +6,7 @@ namespace cdm
 {
 class RenderPass final : public VulkanDeviceObject
 {
-	Moveable<VkRenderPass> m_renderPass;
+	Movable<VkRenderPass> m_renderPass;
 
 public:
 	RenderPass(const VulkanDevice& device_, VkFormat format);

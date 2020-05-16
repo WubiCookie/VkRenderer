@@ -135,33 +135,57 @@ using CopyDescriptorSet                    = CreateInfo<VkCopyDescriptorSet,    
 } // namespace vk
 
 template<typename T, auto DefaultValue = nullptr>
-class Moveable
+class Movable
 {
     T m_obj = DefaultValue;
 
 public:
-    Moveable() = default;
-    Moveable(const Moveable&) = default;
-    Moveable(Moveable&& obj) noexcept : m_obj(std::exchange(obj.m_obj, DefaultValue)) {}
-    Moveable(T obj) noexcept : m_obj(obj) {}
+    Movable() = default;
+    Movable(const Movable&) = default;
+    Movable(Movable&& obj) noexcept : m_obj(std::exchange(obj.m_obj, DefaultValue)) {}
+    Movable(T obj) noexcept : m_obj(obj) {}
 
-    Moveable& operator=(const Moveable&) = default;
-    Moveable& operator=(Moveable&& ptr) noexcept
+    Movable& operator=(const Movable&) = default;
+    Movable& operator=(Movable&& ptr) noexcept
     {
-        m_obj = std::exchange(ptr.m_obj, DefaultValue);
+        std::swap(m_obj, ptr.m_obj);
         return *this;
     }
-    Moveable& operator=(T ptr) noexcept
-    {
-        m_obj = ptr;
-        return *this;
-    }
+
+    void reset(T obj = DefaultValue) { m_obj = obj; }
 
     T& get() noexcept { return m_obj; }
     const T& get() const noexcept { return m_obj; }
 
+    operator T& () noexcept { return get(); }
+    operator const T& () const noexcept { return get(); }
+
     operator bool() const { return !!m_obj; }
 };
+
+template<typename T, auto DefaultValue = nullptr>
+bool operator==(const Movable<T, DefaultValue>& lhs, bool rhs)
+{
+    return bool(lhs) == rhs;
+}
+
+template<typename T, auto DefaultValue = nullptr>
+bool operator==(bool lhs, const Movable<T, DefaultValue>& rhs)
+{
+    return lhs == bool(rhs);
+}
+
+template<typename T, auto DefaultValue = nullptr>
+bool operator!=(const Movable<T, DefaultValue>& lhs, bool rhs)
+{
+    return !(lhs == rhs);
+}
+
+template<typename T, auto DefaultValue = nullptr>
+bool operator!=(bool lhs, const Movable<T, DefaultValue>& rhs)
+{
+    return !(lhs == rhs);
+}
 
 template<typename T, typename Owner, auto Deleter>
 class Unique
@@ -190,8 +214,8 @@ public:
     Unique& operator=(const Unique&) = delete;
     Unique& operator=(Unique&& ptr) noexcept
     {
-        m_obj = std::exchange(ptr.m_obj, nullptr);
-        m_owner = std::exchange(ptr.m_owner, nullptr);
+        std::swap(m_obj, ptr.m_obj);
+        std::swap(m_owner, ptr.m_owner);
         return *this;
     }
 
@@ -228,6 +252,9 @@ public:
 
     T& get() noexcept { return m_obj; }
     const T& get() const noexcept { return m_obj; }
+
+    operator T& () noexcept { return get(); }
+    operator const T& () const noexcept { return get(); }
 
     const Owner* owner() const { return m_owner; }
 

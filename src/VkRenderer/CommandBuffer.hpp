@@ -8,8 +8,8 @@ namespace cdm
 {
 class CommandBuffer final : public VulkanDeviceObject
 {
-	Moveable<VkCommandPool> m_parentCommandPool;
-	Moveable<VkCommandBuffer> m_commandBuffer;
+	Movable<VkCommandPool> m_parentCommandPool;
+	Movable<VkCommandBuffer> m_commandBuffer;
 
 public:
 	CommandBuffer(
@@ -23,9 +23,11 @@ public:
 	CommandBuffer& operator=(CommandBuffer&& cb) noexcept;
 
 	VkCommandBuffer& get();
+	const VkCommandBuffer& get() const;
 	VkCommandBuffer& commandBuffer();
-	// const VkCommandBuffer& commandBuffer();
-	operator VkCommandBuffer() { return commandBuffer(); }
+	const VkCommandBuffer& commandBuffer() const;
+	operator VkCommandBuffer&() { return commandBuffer(); }
+	operator const VkCommandBuffer&() const { return commandBuffer(); }
 
 	// clang-format off
 	VkResult begin();
@@ -113,6 +115,7 @@ public:
 	void setStencilWriteMask(VkStencilFaceFlags faceMask, uint32_t writeMask);
 	void setViewport(uint32_t firstViewport, uint32_t viewportCount, const VkViewport* pViewports);
 	void setViewport(uint32_t firstViewport, const VkViewport& viewport);
+	void setViewport(const VkViewport& viewport);
 	void updateBuffer(VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize dataSize, const void* pData);
 	void waitEvents(uint32_t eventCount, const VkEvent* pEvents, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier* pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier* pImageMemoryBarriers);
 	void waitEvents(uint32_t eventCount, const VkEvent* pEvents, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers);

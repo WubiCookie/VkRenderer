@@ -26,7 +26,7 @@ public:
 
 class Image : public AbstractImage
 {
-	cdm::Moveable<VkImage> m_image;
+	cdm::Movable<VkImage> m_image;
 
 public:
 	Image(const VulkanDevice& device_, VkFormat format);
@@ -42,7 +42,7 @@ private:
 
 class SwapchainImage final : public Image
 {
-	Moveable<VkImage> m_image = nullptr;
+	Movable<VkImage> m_image = nullptr;
 
 public:
 	SwapchainImage(const VulkanDevice& device_, VkImage image_,

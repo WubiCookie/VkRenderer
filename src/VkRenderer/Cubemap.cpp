@@ -1,16 +1,16 @@
-#include "Texture2D.hpp"
+#include "Cubemap.hpp"
 
+#include "Buffer.hpp"
 #include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
-#include "StagingBuffer.hpp"
 
 namespace cdm
 {
-Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
-                     uint32_t imageHeight, VkFormat imageFormat,
-                     VkImageTiling imageTiling, VkImageUsageFlags usage,
-                     VmaMemoryUsage memoryUsage,
-                     VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels)
+Cubemap::Cubemap(RenderWindow& renderWindow, uint32_t imageWidth,
+                 uint32_t imageHeight, VkFormat imageFormat,
+                 VkImageTiling imageTiling, VkImageUsageFlags usage,
+                 VmaMemoryUsage memoryUsage,
+                 VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels)
     : rw(&renderWindow)
 {
 	auto& vk = rw.get()->device();
@@ -21,19 +21,19 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
 	                                    1);
 
 	vk::ImageCreateInfo info;
+	info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 	info.imageType = VK_IMAGE_TYPE_2D;
 	info.extent.width = imageWidth;
 	info.extent.height = imageHeight;
 	info.extent.depth = 1;
 	info.mipLevels = mipLevels;
-	info.arrayLayers = 1;
+	info.arrayLayers = 6;
 	info.format = imageFormat;
 	info.tiling = imageTiling;
 	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	info.usage = usage;
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	info.samples = VK_SAMPLE_COUNT_1_BIT;
-	info.flags = 0;
 
 	VmaAllocationCreateInfo imageAllocCreateInfo = {};
 	imageAllocCreateInfo.usage = memoryUsage;
@@ -57,10 +57,10 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
 	m_mipLevels = mipLevels;
 	m_format = imageFormat;
 
-#pragma region view
+#pragma region views
 	vk::ImageViewCreateInfo viewInfo;
 	viewInfo.image = m_image.get();
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
 	viewInfo.format = imageFormat;
 	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -70,11 +70,26 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
 	viewInfo.subresourceRange.baseMipLevel = 0;
 	viewInfo.subresourceRange.levelCount = mipLevels;
 	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
+	viewInfo.subresourceRange.layerCount = 6;
 
 	m_imageView = vk.create(viewInfo);
 	if (!m_imageView)
 		throw std::runtime_error("could not create image view");
+
+	viewInfo.subresourceRange.layerCount = 1;
+	uint32_t baseArrayLayer = 0;
+	for (UniqueImageView& view :
+	     { std::ref(m_imageViewFace0), std::ref(m_imageViewFace1),
+	       std::ref(m_imageViewFace2), std::ref(m_imageViewFace3),
+	       std::ref(m_imageViewFace4), std::ref(m_imageViewFace5) })
+	{
+		viewInfo.subresourceRange.baseArrayLayer = baseArrayLayer;
+		view = vk.create(viewInfo);
+		if (!view)
+			throw std::runtime_error("could not create image view");
+
+		baseArrayLayer++;
+	}
 #pragma endregion
 
 #pragma region sampler
@@ -96,7 +111,7 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
 #pragma endregion
 }
 
-Texture2D::~Texture2D()
+Cubemap::~Cubemap()
 {
 	if (rw.get())
 	{
@@ -109,8 +124,26 @@ Texture2D::~Texture2D()
 	}
 }
 
-void Texture2D::transitionLayoutImmediate(VkImageLayout oldLayout,
-                                          VkImageLayout newLayout)
+UniqueImageView Cubemap::createView(
+    const VkImageSubresourceRange& subresourceRange) const
+{
+	auto& vk = rw.get()->device();
+
+	vk::ImageViewCreateInfo viewInfo;
+	viewInfo.image = m_image.get();
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	viewInfo.format = m_format;
+	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.subresourceRange = subresourceRange;
+
+	return vk.create(viewInfo);
+}
+
+void Cubemap::transitionLayoutImmediate(VkImageLayout oldLayout,
+                                        VkImageLayout newLayout)
 {
 	if (rw.get() == nullptr)
 		return;
@@ -130,7 +163,7 @@ void Texture2D::transitionLayoutImmediate(VkImageLayout oldLayout,
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = m_mipLevels;
 	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.layerCount = 6;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = 0;
 	transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -145,7 +178,13 @@ void Texture2D::transitionLayoutImmediate(VkImageLayout oldLayout,
 	vk.wait(vk.graphicsQueue());
 }
 
-void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
+void Cubemap::generateMipmapsImmediate(VkImageLayout currentLayout)
+{
+	generateMipmapsImmediate(currentLayout, currentLayout);
+}
+
+void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
+                                       VkImageLayout finalLayout)
 {
 	if (rw.get() == nullptr)
 		return;
@@ -160,7 +199,7 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 	mipmapCB.debugMarkerBegin("mipmap generation");
 	vk::ImageMemoryBarrier barrier;
 	barrier.image = image();
-	barrier.oldLayout = currentLayout;
+	barrier.oldLayout = initialLayout;
 	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -168,7 +207,7 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.layerCount = 6;
 	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 	mipmapCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -180,7 +219,7 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 	for (uint32_t i = 1; i < m_mipLevels; i++)
 	{
 		barrier.subresourceRange.baseMipLevel = i;
-		barrier.oldLayout = currentLayout;
+		barrier.oldLayout = initialLayout;
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -193,7 +232,7 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		blit.srcSubresource.mipLevel = 0;
 		blit.srcSubresource.baseArrayLayer = 0;
-		blit.srcSubresource.layerCount = 1;
+		blit.srcSubresource.layerCount = 6;
 
 		blit.dstOffsets[0] = { 0, 0, 0 };
 		blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1,
@@ -201,14 +240,14 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		blit.dstSubresource.mipLevel = i;
 		blit.dstSubresource.baseArrayLayer = 0;
-		blit.dstSubresource.layerCount = 1;
+		blit.dstSubresource.layerCount = 6;
 
 		mipmapCB.blitImage(image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		                   image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
 		                   VK_FILTER_LINEAR);
 
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.newLayout = currentLayout;
+		barrier.newLayout = finalLayout;
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		mipmapCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -223,7 +262,7 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	barrier.newLayout = currentLayout;
+	barrier.newLayout = finalLayout;
 	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	mipmapCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -240,24 +279,33 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 	vk.wait(vk.graphicsQueue());
 }
 
-void Texture2D::uploadDataImmediate(const void* texels, size_t size,
-                                    const VkBufferImageCopy& region,
-                                    VkImageLayout currentLayout)
+void Cubemap::uploadDataImmediate(const void* texels,
+                                  const VkBufferImageCopy& region,
+                                  uint32_t layer, VkImageLayout currentLayout)
 {
-	uploadDataImmediate(texels, size, region, currentLayout, currentLayout);
+	uploadDataImmediate(texels, region, layer, currentLayout, currentLayout);
 }
 
-void Texture2D::uploadDataImmediate(const void* texels, size_t size,
-                                    const VkBufferImageCopy& region,
-                                    VkImageLayout initialLayout,
-                                    VkImageLayout finalLayout)
+void Cubemap::uploadDataImmediate(const void* texels,
+                                  const VkBufferImageCopy& region,
+                                  uint32_t layer, VkImageLayout initialLayout,
+                                  VkImageLayout finalLayout)
 {
 	if (rw.get() == nullptr)
 		return;
 
 	auto& vk = rw.get()->device();
 
-	StagingBuffer stagingBuffer(*(rw.get()), texels, size);
+	Buffer stagingBuffer(*(rw.get()),
+	                     region.imageExtent.width * region.imageExtent.height *
+	                         4 /* TODO: FIX THIS OMG */,
+	                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	                     VMA_MEMORY_USAGE_CPU_TO_GPU,
+	                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+	stagingBuffer.upload(texels, region.imageExtent.width *
+	                                 region.imageExtent.height *
+	                                 4 /* TODO: FIX THIS OMG */);
 
 	CommandBuffer cb(vk, rw.get()->commandPool());
 
@@ -272,7 +320,7 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
 	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = mipLevels();
-	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.baseArrayLayer = layer;
 	barrier.subresourceRange.layerCount = 1;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;

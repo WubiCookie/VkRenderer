@@ -155,7 +155,7 @@ class VulkanDevice final : public VulkanDeviceBase
 	VkQueue m_presentQueue = nullptr;
 	QueueFamilyIndices m_queueFamilyIndices;
 
-	Moveable<VmaAllocator> m_allocator = nullptr;
+	Movable<VmaAllocator> m_allocator = nullptr;
 
 public:
 	VulkanDevice(bool layers = false) noexcept;
@@ -226,6 +226,7 @@ public:
 public:
 	VkResult allocateDescriptorSets(const vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
 	VkResult allocate(const vk::DescriptorSetAllocateInfo& allocateInfo, VkDescriptorSet* pDescriptorSets) const;
+	VkDescriptorSet allocate(VkDescriptorPool pool, VkDescriptorSetLayout layout) const;
 
 	PFN_vkAllocateMemory AllocateMemory;
 public:

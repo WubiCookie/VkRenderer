@@ -78,13 +78,25 @@ message("==============================================")
 message("                  VkRenderer                  ")
 message("==============================================")
 add_library(VkRenderer STATIC
+	src/third_party/stb_image.cpp
+
+	src/VkRenderer/BrdfLutGenerator.cpp
+	src/VkRenderer/BrdfLutGenerator.hpp
 	src/VkRenderer/Buffer.cpp
 	src/VkRenderer/Buffer.hpp
 	src/VkRenderer/CommandBuffer.cpp
 	src/VkRenderer/CommandBuffer.hpp
 	src/VkRenderer/CommandBuffer.inl
+	src/VkRenderer/Cubemap.cpp
+	src/VkRenderer/Cubemap.hpp
 	src/VkRenderer/DepthTexture.cpp
 	src/VkRenderer/DepthTexture.hpp
+	src/VkRenderer/EquirectangularToCubemap.cpp
+	src/VkRenderer/EquirectangularToCubemap.hpp
+	src/VkRenderer/EquirectangularToIrradianceMap.cpp
+	src/VkRenderer/EquirectangularToIrradianceMap.hpp
+	src/VkRenderer/PrefilterCubemap.cpp
+	src/VkRenderer/PrefilterCubemap.hpp
 	src/VkRenderer/Framebuffer.cpp
 	src/VkRenderer/Framebuffer.hpp
 	src/VkRenderer/Image.cpp
@@ -103,6 +115,10 @@ add_library(VkRenderer STATIC
 	src/VkRenderer/RenderWindow.hpp
 	src/VkRenderer/ShaderBall.cpp
 	src/VkRenderer/ShaderBall.hpp
+	src/VkRenderer/Skybox.cpp
+	src/VkRenderer/Skybox.hpp
+	src/VkRenderer/StagingBuffer.cpp
+	src/VkRenderer/StagingBuffer.hpp
 	src/VkRenderer/Texture2D.cpp
 	src/VkRenderer/Texture2D.hpp
 	src/VkRenderer/TextureInterface.hpp

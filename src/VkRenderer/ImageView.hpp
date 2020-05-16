@@ -12,7 +12,7 @@ class ImageView final : public VulkanDeviceObject
 {
 	std::reference_wrapper<Image> m_image;
 
-	Moveable<VkImageView> m_imageView = nullptr;
+	Movable<VkImageView> m_imageView = nullptr;
 
 	VkFormat m_format;
 

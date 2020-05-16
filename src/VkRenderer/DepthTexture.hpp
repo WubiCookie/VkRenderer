@@ -6,17 +6,17 @@ namespace cdm
 {
 class RenderWindow;
 
-class DepthTexture final : TextureInterface
+class DepthTexture final : public TextureInterface
 {
-	Moveable<RenderWindow*> rw;
+	Movable<RenderWindow*> rw;
 
-	Moveable<VmaAllocation> m_allocation;
-	Moveable<VkImage> m_image;
+	Movable<VmaAllocation> m_allocation;
+	Movable<VkImage> m_image;
 	UniqueImageView m_imageView;
 
 	UniqueSampler m_sampler;
 
-	Moveable<VkDeviceMemory> m_deviceMemory;
+	Movable<VkDeviceMemory> m_deviceMemory;
 	VkDeviceSize m_offset = 0;
 	VkDeviceSize m_size = 0;
 
@@ -39,11 +39,11 @@ public:
 	             VmaMemoryUsage memoryUsage,
 	             VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels = 1);
 	DepthTexture(const DepthTexture&) = delete;
-	DepthTexture(DepthTexture&& texture) noexcept;
+	DepthTexture(DepthTexture&& texture) = default;
 	~DepthTexture();
 
 	DepthTexture& operator=(const DepthTexture&) = delete;
-	DepthTexture& operator=(DepthTexture&& texture) noexcept;
+	DepthTexture& operator=(DepthTexture&& texture) = default;
 
 	uint32_t width() const override { return m_width; }
 	uint32_t height() const override { return m_height; }
@@ -56,6 +56,7 @@ public:
 	{
 		return m_deviceMemory.get();
 	}
+	VkImage& get() override { return m_image.get(); }
 	const VkImage& get() const override { return m_image.get(); }
 	const VkImageView& view() const override { return m_imageView.get(); }
 	const VkSampler& sampler() const override { return m_sampler.get(); }
@@ -66,6 +67,6 @@ public:
 
 	void transitionLayoutImmediate(VkImageLayout initialLayout,
 	                               VkImageLayout finalLayout) override;
-	void generateMipmapsImmediate(VkImageLayout currentLayout) override;
+	void generateMipmapsImmediate(VkImageLayout currentLayout);
 };
 }  // namespace cdm

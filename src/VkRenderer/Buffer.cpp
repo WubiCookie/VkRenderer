@@ -30,16 +30,6 @@ Buffer::Buffer(RenderWindow& renderWindow, VkDeviceSize bufferSize,
 		throw std::runtime_error("could not create buffer");
 }
 
-Buffer::Buffer(Buffer&& buffer) noexcept
-{
-	rw = std::exchange(buffer.rw, nullptr);
-
-	m_allocation = std::exchange(buffer.m_allocation, nullptr);
-	m_buffer = std::exchange(buffer.m_buffer, nullptr);
-
-	m_allocInfo = std::exchange(buffer.m_allocInfo, VmaAllocationInfo{});
-}
-
 Buffer::~Buffer()
 {
 	if (rw.get())
@@ -52,16 +42,14 @@ Buffer::~Buffer()
 	}
 }
 
-Buffer& Buffer::operator=(Buffer&& buffer) noexcept
+void Buffer::setName(std::string_view name)
 {
-	rw = std::exchange(buffer.rw, nullptr);
-
-	m_allocation = std::exchange(buffer.m_allocation, nullptr);
-	m_buffer = std::exchange(buffer.m_buffer, nullptr);
-
-	m_allocInfo = std::exchange(buffer.m_allocInfo, VmaAllocationInfo{});
-
-	return *this;
+	if (get())
+	{
+		auto& vk = rw.get()->device();
+		vk.debugMarkerSetObjectName(
+		    get(), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, name);
+	}
 }
 
 void* Buffer::map()
@@ -76,5 +64,12 @@ void Buffer::unmap()
 {
 	auto& vk = rw.get()->device();
 	vmaUnmapMemory(vk.allocator(), m_allocation.get());
+}
+
+void Buffer::upload(const void* data, size_t size)
+{
+	/// TODO: check buffer size
+	std::memcpy(map(), data, size);
+	unmap();
 }
 }  // namespace cdm

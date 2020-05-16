@@ -14,6 +14,12 @@
 
 //#define STB_IMAGE_WRITE_IMPLEMENTATION 1
 //#include "stb_image_write.h"
+#include "stb_image.h"
+
+#include "EquirectangularToCubemap.hpp"
+#include "EquirectangularToIrradianceMap.hpp"
+#include "PrefilterCubemap.hpp"
+#include "BrdfLutGenerator.hpp"
 
 int main()
 {
@@ -23,6 +29,74 @@ int main()
 
 	auto& vk = rw.device();
 	vk.setLogActive();
+
+	/*
+	int w, h, c;
+	float* imageData = stbi_loadf(
+	    "D:/Projects/git/VkRenderer-data/PaperMill_Ruins_E/"
+	    "PaperMill_E_3k.hdr",
+	    &w, &h, &c, 4);
+
+	if (!imageData)
+		throw std::runtime_error("could not load equirectangular map");
+
+	Texture2D m_equirectangularTexture = Texture2D(
+	    rw, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL,
+	    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	VkBufferImageCopy copy{};
+	copy.bufferRowLength = w;
+	copy.bufferImageHeight = h;
+	copy.imageExtent.width = w;
+	copy.imageExtent.height = h;
+	copy.imageExtent.depth = 1;
+	copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copy.imageSubresource.baseArrayLayer = 0;
+	copy.imageSubresource.layerCount = 1;
+	copy.imageSubresource.mipLevel = 0;
+
+	m_equirectangularTexture.uploadDataImmediate(
+	    imageData, w * h * 4 * sizeof(float), copy, VK_IMAGE_LAYOUT_UNDEFINED,
+	    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	stbi_image_free(imageData);
+
+	cdm::UniqueFence fence = vk.createFence();
+
+	//BrdfLutGenerator blg(rw, 1024);
+	EquirectangularToIrradianceMap e2i(rw, 512);
+
+	rw.acquireNextImage(fence.get());
+	rw.present();
+	vk.wait(fence.get());
+	vk.resetFence(fence.get());
+
+	//EquirectangularToCubemap e2c(rw, 1024);
+	//Cubemap cubemap = e2c.computeCubemap(m_equirectangularTexture);
+
+	//if (cubemap.get() == nullptr)
+	//	throw std::runtime_error("could not create cubemap");
+
+	//rw.acquireNextImage(fence.get());
+	//rw.present();
+	//vk.wait(fence.get());
+	//vk.resetFence(fence.get());
+
+	//PrefilterCubemap pfc(rw, 512, 5);
+	//auto cm = pfc.computeCubemap(cubemap);
+
+	//Texture2D lut = blg.computeBrdfLut();
+
+	auto irr = e2i.computeCubemap(m_equirectangularTexture);
+
+	rw.acquireNextImage(fence.get());
+	rw.present();
+	vk.wait(fence.get());
+	vk.resetFence(fence.get());
+
+	return 0;
+	//*/
 
 	{
 		cdm::UniqueFence fence = vk.createFence();
@@ -53,7 +127,7 @@ int main()
 		double deltaX = 0.0;
 		double deltaY = 0.0;
 
-		double rotationX = 180.0;
+		double rotationX = 0.0;
 		double rotationY = 0.0;
 
 		constexpr double mouseSpeed = 1.0;
