@@ -2,6 +2,8 @@
 
 #include "VulkanDevice.hpp"
 
+#include <vector>
+
 namespace cdm
 {
 class RenderWindow;
@@ -48,10 +50,21 @@ public:
 	void upload(const T* data, size_t count)
 	{
 		upload(static_cast<const void*>(data), count * sizeof(T));
-	}template <typename T>
+	}
+	template <typename T>
 	void upload(const T& data)
 	{
 		upload(&data, sizeof(T));
+	}
+
+	template <typename T = uint8_t>
+	std::vector<T> download()
+	{
+		std::vector<T> res(size() / sizeof(T));
+		T* ptr = map<T>();
+		std::memcpy(res.data(), ptr, size());
+		unmap();
+		return res;
 	}
 
 	operator const VkBuffer&() const noexcept { return get(); }

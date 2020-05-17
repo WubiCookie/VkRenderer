@@ -28,11 +28,11 @@ class EquirectangularToIrradianceMap final
 
 	Buffer m_vertexBuffer;
 
-	uint32_t m_cubemapWidth;
+	uint32_t m_resolution;
 
 public:
 	EquirectangularToIrradianceMap(RenderWindow& renderWindow,
-	                               uint32_t cubemapWidth);
+	                               uint32_t resolution);
 	~EquirectangularToIrradianceMap();
 
 	Cubemap computeCubemap(Texture2D& equirectangularTexture);

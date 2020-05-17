@@ -12,6 +12,12 @@ class StagingBuffer final : public Buffer
 {
 public:
 	StagingBuffer() = default;
+	StagingBuffer(RenderWindow& renderWindow, VkDeviceSize dataSize)
+	    : Buffer(renderWindow, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	             VMA_MEMORY_USAGE_CPU_TO_GPU,
+	             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+	{
+	}
 	StagingBuffer(RenderWindow& renderWindow, const void* data,
 	              VkDeviceSize dataSize)
 	    : Buffer(renderWindow, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -23,7 +29,8 @@ public:
 	template <typename T>
 	StagingBuffer(RenderWindow& renderWindow, const T* data,
 	              VkDeviceSize count)
-		: StagingBuffer(renderWindow, static_cast<const void*>(data), count * sizeof(T))
+	    : StagingBuffer(renderWindow, static_cast<const void*>(data),
+	                    count * sizeof(T))
 	{
 	}
 	template <typename T>

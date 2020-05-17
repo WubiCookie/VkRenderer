@@ -297,4 +297,72 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
 
 	vk.wait(vk.graphicsQueue());
 }
+
+Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout currentLayout)
+{
+	return downloadDataToBufferImmediate(currentLayout, currentLayout);
+}
+
+Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
+                                                VkImageLayout finalLayout)
+{
+	if (rw.get() == nullptr || m_image.get() == nullptr)
+		return {};
+
+	auto& vk = rw.get()->device();
+
+	VkDeviceSize dataSize = size();
+
+	Buffer tmpBuffer(*(rw.get()), dataSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	                 VMA_MEMORY_USAGE_GPU_TO_CPU,
+	                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+	VkBufferImageCopy copy{};
+	copy.bufferRowLength = width();
+	copy.bufferImageHeight = height();
+	copy.imageExtent = extent3D();
+	copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copy.imageSubresource.layerCount = 1;
+
+	CommandBuffer cb(vk, rw.get()->commandPool());
+
+	cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = initialLayout;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = image();
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = mipLevels();
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+
+	cb.copyImageToBuffer(image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	                     tmpBuffer, copy);
+
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.newLayout = finalLayout;
+	barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	barrier.dstAccessMask = 0;
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+
+	if (cb.end() != VK_SUCCESS)
+		throw std::runtime_error("failed to record upload command buffer");
+
+	if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
+		throw std::runtime_error("failed to submit upload command buffer");
+
+	vk.wait(vk.graphicsQueue());
+
+	// return tmpBuffer.download();
+	return tmpBuffer;
+}
 }  // namespace cdm

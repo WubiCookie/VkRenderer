@@ -12,6 +12,8 @@ public:
 	virtual uint32_t width() const = 0;
 	virtual uint32_t height() const = 0;
 	virtual uint32_t depth() const = 0;
+	virtual VkExtent2D extent2D() const = 0;
+	virtual VkExtent3D extent3D() const = 0;
 	virtual VkDeviceSize size() const = 0;
 	virtual VkDeviceSize offset() const = 0;
 	virtual VkFormat format() const = 0;

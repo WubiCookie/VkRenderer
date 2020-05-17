@@ -28,12 +28,12 @@ CommandBuffer::CommandBuffer(const VulkanDevice& device_,
 	}
 }
 
-CommandBuffer::CommandBuffer(CommandBuffer&& cb) noexcept
-    : VulkanDeviceObject(std::move(cb)),
-      m_parentCommandPool(std::exchange(cb.m_parentCommandPool, nullptr)),
-      m_commandBuffer(std::exchange(cb.m_commandBuffer, nullptr))
-{
-}
+//CommandBuffer::CommandBuffer(CommandBuffer&& cb) noexcept
+//    : VulkanDeviceObject(std::move(cb)),
+//      m_parentCommandPool(std::exchange(cb.m_parentCommandPool, nullptr)),
+//      m_commandBuffer(std::exchange(cb.m_commandBuffer, nullptr))
+//{
+//}
 
 CommandBuffer::~CommandBuffer()
 {
@@ -45,15 +45,15 @@ CommandBuffer::~CommandBuffer()
 	}
 }
 
-CommandBuffer& CommandBuffer::operator=(CommandBuffer&& cb) noexcept
-{
-	VulkanDeviceObject::operator=(std::move(cb));
-
-	m_parentCommandPool = std::exchange(cb.m_parentCommandPool, nullptr);
-	m_commandBuffer = std::exchange(cb.m_commandBuffer, nullptr);
-
-	return *this;
-}
+//CommandBuffer& CommandBuffer::operator=(CommandBuffer&& cb) noexcept
+//{
+//	VulkanDeviceObject::operator=(std::move(cb));
+//
+//	m_parentCommandPool = std::exchange(cb.m_parentCommandPool, nullptr);
+//	m_commandBuffer = std::exchange(cb.m_commandBuffer, nullptr);
+//
+//	return *this;
+//}
 
 VkCommandBuffer& CommandBuffer::get() { return m_commandBuffer.get(); }
 

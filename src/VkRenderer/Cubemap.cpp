@@ -3,6 +3,7 @@
 #include "Buffer.hpp"
 #include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
+#include "StagingBuffer.hpp"
 
 namespace cdm
 {
@@ -279,14 +280,15 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 	vk.wait(vk.graphicsQueue());
 }
 
-void Cubemap::uploadDataImmediate(const void* texels,
+void Cubemap::uploadDataImmediate(const void* texels, size_t size,
                                   const VkBufferImageCopy& region,
                                   uint32_t layer, VkImageLayout currentLayout)
 {
-	uploadDataImmediate(texels, region, layer, currentLayout, currentLayout);
+	uploadDataImmediate(texels, size, region, layer, currentLayout,
+	                    currentLayout);
 }
 
-void Cubemap::uploadDataImmediate(const void* texels,
+void Cubemap::uploadDataImmediate(const void* texels, size_t size,
                                   const VkBufferImageCopy& region,
                                   uint32_t layer, VkImageLayout initialLayout,
                                   VkImageLayout finalLayout)
@@ -296,16 +298,7 @@ void Cubemap::uploadDataImmediate(const void* texels,
 
 	auto& vk = rw.get()->device();
 
-	Buffer stagingBuffer(*(rw.get()),
-	                     region.imageExtent.width * region.imageExtent.height *
-	                         4 /* TODO: FIX THIS OMG */,
-	                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-	                     VMA_MEMORY_USAGE_CPU_TO_GPU,
-	                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-
-	stagingBuffer.upload(texels, region.imageExtent.width *
-	                                 region.imageExtent.height *
-	                                 4 /* TODO: FIX THIS OMG */);
+	StagingBuffer stagingBuffer(*(rw.get()), texels, size);
 
 	CommandBuffer cb(vk, rw.get()->commandPool());
 
@@ -344,5 +337,82 @@ void Cubemap::uploadDataImmediate(const void* texels,
 		throw std::runtime_error("failed to submit upload command buffer");
 
 	vk.wait(vk.graphicsQueue());
+}
+
+Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
+                                              uint32_t mipLevel,
+                                              VkImageLayout currentLayout)
+{
+	return downloadDataToBufferImmediate(layer, mipLevel, currentLayout,
+	                                     currentLayout);
+}
+
+Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
+                                              uint32_t mipLevel,
+                                              VkImageLayout initialLayout,
+                                              VkImageLayout finalLayout)
+{
+	if (rw.get() == nullptr || m_image.get() == nullptr)
+		return {};
+
+	auto& vk = rw.get()->device();
+
+	VkDeviceSize dataSize = size();
+
+	Buffer tmpBuffer(*(rw.get()), dataSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	                 VMA_MEMORY_USAGE_GPU_TO_CPU,
+	                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+	VkBufferImageCopy copy{};
+	copy.bufferRowLength = width() * std::pow(0.5, mipLevel);
+	copy.bufferImageHeight = height() * std::pow(0.5, mipLevel);
+	copy.imageExtent = extent3D();
+	copy.imageExtent.width *= std::pow(0.5, mipLevel);
+	copy.imageExtent.height *= std::pow(0.5, mipLevel);
+	copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copy.imageSubresource.baseArrayLayer = layer;
+	copy.imageSubresource.layerCount = 1;
+	copy.imageSubresource.mipLevel = mipLevel;
+
+	CommandBuffer cb(vk, rw.get()->commandPool());
+
+	cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = initialLayout;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = image();
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = mipLevel;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = layer;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+
+	cb.copyImageToBuffer(image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	                     tmpBuffer, copy);
+
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.newLayout = finalLayout;
+	barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	barrier.dstAccessMask = 0;
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+
+	if (cb.end() != VK_SUCCESS)
+		throw std::runtime_error("failed to record upload command buffer");
+
+	if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
+		throw std::runtime_error("failed to submit upload command buffer");
+
+	vk.wait(vk.graphicsQueue());
+
+	// return tmpBuffer.download();
+	return tmpBuffer;
 }
 }  // namespace cdm

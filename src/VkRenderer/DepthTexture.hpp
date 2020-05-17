@@ -48,6 +48,14 @@ public:
 	uint32_t width() const override { return m_width; }
 	uint32_t height() const override { return m_height; }
 	uint32_t depth() const override { return 1; }
+	VkExtent2D extent2D() const override
+	{
+		return VkExtent2D{ width(), height() };
+	};
+	VkExtent3D extent3D() const override
+	{
+		return VkExtent3D{ width(), height(), depth() };
+	};
 	VkDeviceSize size() const override { return m_size; }
 	VkDeviceSize offset() const override { return m_offset; }
 	VkFormat format() const override { return m_format; }

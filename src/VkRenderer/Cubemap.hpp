@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Buffer.hpp"
 #include "TextureInterface.hpp"
+
+#include <vector>
 
 namespace cdm
 {
@@ -48,6 +51,14 @@ public:
 	uint32_t width() const override { return m_width; }
 	uint32_t height() const override { return m_height; }
 	uint32_t depth() const override { return 1; }
+	VkExtent2D extent2D() const override
+	{
+		return VkExtent2D{ width(), height() };
+	};
+	VkExtent3D extent3D() const override
+	{
+		return VkExtent3D{ width(), height(), depth() };
+	};
 	VkDeviceSize size() const override { return m_size; }
 	VkDeviceSize offset() const override { return m_offset; }
 	VkFormat format() const override { return m_format; }
@@ -79,12 +90,39 @@ public:
 	void generateMipmapsImmediate(VkImageLayout initialLayout,
 	                              VkImageLayout finalLayout);
 
-	void uploadDataImmediate(const void* texels,
+	void uploadDataImmediate(const void* texels, size_t size,
 	                         const VkBufferImageCopy& region, uint32_t layer,
 	                         VkImageLayout currentLayout);
-	void uploadDataImmediate(const void* texels,
+	void uploadDataImmediate(const void* texels, size_t size,
 	                         const VkBufferImageCopy& region, uint32_t layer,
 	                         VkImageLayout initialLayout,
 	                         VkImageLayout finalLayout);
+
+	Buffer downloadDataToBufferImmediate(uint32_t layer, uint32_t mipLevel,
+	                                     VkImageLayout currentLayout);
+	Buffer downloadDataToBufferImmediate(uint32_t layer, uint32_t mipLevel,
+	                                     VkImageLayout initialLayout,
+	                                     VkImageLayout finalLayout);
+
+	template <typename T = uint8_t>
+	std::vector<T> downloadDataImmediate(uint32_t layer, uint32_t mipLevel,
+	                                     VkImageLayout currentLayout)
+	{
+		return downloadDataImmediate<T>(layer, mipLevel, currentLayout,
+		                                currentLayout);
+	}
+	template <typename T = uint8_t>
+	std::vector<T> downloadDataImmediate(uint32_t layer, uint32_t mipLevel,
+	                                     VkImageLayout initialLayout,
+	                                     VkImageLayout finalLayout)
+	{
+		Buffer tmpBuffer = downloadDataToBufferImmediate(
+		    layer, mipLevel, initialLayout, finalLayout);
+
+		if (tmpBuffer.get() == nullptr)
+			return {};
+
+		return tmpBuffer.download<T>();
+	}
 };
 }  // namespace cdm

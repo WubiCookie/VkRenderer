@@ -36,9 +36,9 @@ struct EquirectangularToIrradianceMapPushConstant
 };
 
 EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
-    RenderWindow& renderWindow, uint32_t cubemapWidth)
+    RenderWindow& renderWindow, uint32_t resolution)
     : rw(renderWindow),
-      m_cubemapWidth(cubemapWidth)
+      m_resolution(resolution)
 {
 	auto& vk = rw.get().device();
 
@@ -406,15 +406,15 @@ EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = float(m_cubemapWidth);
-	viewport.height = float(m_cubemapWidth);
+	viewport.width = float(m_resolution);
+	viewport.height = float(m_resolution);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent.width = m_cubemapWidth;
-	scissor.extent.height = m_cubemapWidth;
+	scissor.extent.width = m_resolution;
+	scissor.extent.height = m_resolution;
 
 	vk::PipelineViewportStateCreateInfo viewportState;
 	viewportState.viewportCount = 1;
@@ -526,11 +526,14 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 
 #pragma region cubemap
 	Cubemap cubemap(
-	    rw, m_cubemapWidth, m_cubemapWidth, VK_FORMAT_R32G32B32A32_SFLOAT,
+	    rw, m_resolution, m_resolution, VK_FORMAT_R32G32B32A32_SFLOAT,
 	    VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+	    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	        VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	vk.debugMarkerSetObjectName(cubemap.image(), VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "irradiance cubemap");
+	vk.debugMarkerSetObjectName(cubemap.image(),
+	                            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
+	                            "irradiance cubemap");
 
 	cubemap.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -541,8 +544,8 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 	framebufferInfo.renderPass = m_renderPass;
 	framebufferInfo.attachmentCount = 1;
 	framebufferInfo.pAttachments = &cubemap.viewFace0();
-	framebufferInfo.width = m_cubemapWidth;
-	framebufferInfo.height = m_cubemapWidth;
+	framebufferInfo.width = m_resolution;
+	framebufferInfo.height = m_resolution;
 	framebufferInfo.layers = 1;
 
 	framebufferInfo.pAttachments = &cubemap.viewFace0();
@@ -623,8 +626,8 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 
 	vk::RenderPassBeginInfo rpInfo;
 	rpInfo.renderPass = m_renderPass;
-	rpInfo.renderArea.extent.width = m_cubemapWidth;
-	rpInfo.renderArea.extent.height = m_cubemapWidth;
+	rpInfo.renderArea.extent.width = m_resolution;
+	rpInfo.renderArea.extent.height = m_resolution;
 	rpInfo.clearValueCount = uint32_t(clearValues.size());
 	rpInfo.pClearValues = clearValues.data();
 

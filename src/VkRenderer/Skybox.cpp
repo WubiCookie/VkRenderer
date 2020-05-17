@@ -24,15 +24,6 @@
 #include <iostream>
 #include <stdexcept>
 
-constexpr size_t POINT_COUNT = 2000;
-
-#define mandelbulbTexScale 1
-
-constexpr uint32_t width = 1280 * mandelbulbTexScale;
-constexpr uint32_t height = 720 * mandelbulbTexScale;
-constexpr float widthf = 1280.0f * mandelbulbTexScale;
-constexpr float heightf = 720.0f * mandelbulbTexScale;
-
 namespace cdm
 {
 void Skybox::Config::copyTo(void* ptr)

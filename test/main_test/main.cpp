@@ -13,13 +13,129 @@
 #include <vector>
 
 //#define STB_IMAGE_WRITE_IMPLEMENTATION 1
-//#include "stb_image_write.h"
 #include "stb_image.h"
+#include "stb_image_write.h"
 
+#include "BrdfLut.hpp"
+#include "BrdfLutGenerator.hpp"
 #include "EquirectangularToCubemap.hpp"
 #include "EquirectangularToIrradianceMap.hpp"
+#include "IrradianceMap.hpp"
 #include "PrefilterCubemap.hpp"
-#include "BrdfLutGenerator.hpp"
+#include "PrefilteredCubemap.hpp"
+
+using namespace cdm;
+
+/*
+struct TestMesh
+{
+	struct MaterialData
+	{
+		std::array<uint32_t, 5> textureIndices;
+		float uShift = 0.0f;
+		float uScale = 1.0f;
+		float vShift = 0.0f;
+		float vScale = 1.0f;
+	};
+
+	MaterialData materialData;
+
+	Movable<RenderWindow*> rw;
+
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
+
+	Buffer vertexBuffer;
+	Buffer indexBuffer;
+};
+
+class Test
+{
+	std::reference_wrapper<RenderWindow> rw;
+
+	UniqueRenderPass m_renderPass;
+
+	UniqueFramebuffer m_framebuffer;
+
+	UniqueShaderModule m_vertexModule;
+	UniqueShaderModule m_fragmentModule;
+
+	UniqueDescriptorPool m_descriptorPool;
+	UniqueDescriptorSetLayout m_descriptorSetLayout;
+	Movable<VkDescriptorSet> m_descriptorSet;
+	UniquePipelineLayout m_pipelineLayout;
+	UniquePipeline m_pipeline;
+
+	std::vector<TestMesh> m_meshes;
+	// std::vector<Vertex> vertices;
+	// std::vector<uint32_t> indices;
+
+	// Buffer m_vertexBuffer;
+	// Buffer m_indexBuffer;
+	Buffer m_matricesUBO;
+	Buffer m_materialUBO;
+
+	Texture2D m_equirectangularTexture;
+
+	Cubemap m_environmentMap;
+
+	IrradianceMap m_irradianceMap;
+	PrefilteredCubemap m_prefilteredMap;
+	BrdfLut m_brdfLut;
+
+	Texture2D m_defaultTexture;
+
+	std::array<Texture2D, 16> m_albedos;
+	std::array<Texture2D, 16> m_displacements;
+	std::array<Texture2D, 16> m_metalnesses;
+	std::array<Texture2D, 16> m_normals;
+	std::array<Texture2D, 16> m_roughnesses;
+
+	Texture2D m_colorAttachmentTexture;
+	DepthTexture m_depthTexture;
+
+	std::unique_ptr<Skybox> m_skybox;
+
+public:
+	struct Config
+	{
+		matrix4 model = matrix4::identity();
+		matrix4 view = matrix4::identity();
+		matrix4 proj = matrix4::identity();
+
+		vector3 viewPos;
+		float _0 = 0.0f;
+
+		vector3 lightPos{ 0, 15, 0 };
+		float _1 = 0.0f;
+
+		void copyTo(void* ptr);
+	};
+
+	transform3d cameraTr;
+	transform3d modelTr;
+
+private:
+	Config m_config;
+
+	CommandBuffer imguiCB;
+	CommandBuffer copyHDRCB;
+
+public:
+	Test(RenderWindow& renderWindow)
+    : rw(renderWindow),
+      imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
+      copyHDRCB(
+          CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool()))
+	{}
+	Test(const Test&) = delete;
+	Test(Test&&) = default;
+	~Test() = default;
+
+	Test& operator=(const Test&) = delete;
+	Test& operator=(Test&&) = default;
+};
+//*/
 
 int main()
 {
@@ -29,6 +145,16 @@ int main()
 
 	auto& vk = rw.device();
 	vk.setLogActive();
+
+	// BrdfLut lut(rw, 1024, "brdfLut.hdr");
+
+	// cdm::UniqueFence fence = vk.createFence();
+	// rw.acquireNextImage(fence.get());
+	// rw.present();
+	// vk.wait(fence.get());
+	// vk.resetFence(fence.get());
+
+	// return 0;
 
 	/*
 	int w, h, c;
@@ -64,31 +190,38 @@ int main()
 
 	cdm::UniqueFence fence = vk.createFence();
 
-	//BrdfLutGenerator blg(rw, 1024);
-	EquirectangularToIrradianceMap e2i(rw, 512);
+	// BrdfLutGenerator blg(rw, 1024);
+	// EquirectangularToIrradianceMap e2i(rw, 512);
+	// EquirectangularToCubemap e2c(rw, 1024);
+
+	// rw.acquireNextImage(fence.get());
+	// rw.present();
+	// vk.wait(fence.get());
+	// vk.resetFence(fence.get());
+
+	// EquirectangularToCubemap e2c(rw, 1024);
+	// Cubemap cubemap = e2c.computeCubemap(m_equirectangularTexture);
+
+	// if (cubemap.get() == nullptr)
+	//	throw std::runtime_error("could not create cubemap");
 
 	rw.acquireNextImage(fence.get());
 	rw.present();
 	vk.wait(fence.get());
 	vk.resetFence(fence.get());
 
-	//EquirectangularToCubemap e2c(rw, 1024);
-	//Cubemap cubemap = e2c.computeCubemap(m_equirectangularTexture);
+	// PrefilterCubemap pfc(rw, 512, 5);
+	// auto cm = pfc.computeCubemap(cubemap);
 
-	//if (cubemap.get() == nullptr)
-	//	throw std::runtime_error("could not create cubemap");
+	// Texture2D lut = blg.computeBrdfLut();
 
-	//rw.acquireNextImage(fence.get());
-	//rw.present();
-	//vk.wait(fence.get());
-	//vk.resetFence(fence.get());
+	// auto irr = e2i.computeCubemap(m_equirectangularTexture);
+	// auto cubemap = e2c.computeCubemap(m_equirectangularTexture);
 
-	//PrefilterCubemap pfc(rw, 512, 5);
-	//auto cm = pfc.computeCubemap(cubemap);
-
-	//Texture2D lut = blg.computeBrdfLut();
-
-	auto irr = e2i.computeCubemap(m_equirectangularTexture);
+	// PrefilteredCubemap pfCubemap(rw, 1024, 5, cubemap,
+	// "PaperMill_E_prefiltered.hdr");
+	IrradianceMap irradiance(rw, 512, m_equirectangularTexture,
+	                         "PaperMill_E_irradiance.hdr");
 
 	rw.acquireNextImage(fence.get());
 	rw.present();
@@ -262,7 +395,14 @@ int main()
 			shaderBall.standaloneDraw();
 
 			rw.acquireNextImage(fence.get());
-			rw.present();
+
+			bool swapchainRecreated = false;
+			rw.present(swapchainRecreated);
+
+			if (swapchainRecreated)
+			{
+				shaderBall = ShaderBall(rw);
+			}
 		}
 
 		vk.wait(fence.get());

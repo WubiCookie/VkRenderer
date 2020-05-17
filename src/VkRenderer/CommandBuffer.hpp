@@ -16,11 +16,11 @@ public:
 	    const VulkanDevice& device, VkCommandPool parentCommanPool,
 	    VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	CommandBuffer(const CommandBuffer&) = delete;
-	CommandBuffer(CommandBuffer&& cb) noexcept;
+	CommandBuffer(CommandBuffer&& cb) = default;
 	~CommandBuffer();
 
 	CommandBuffer& operator=(const CommandBuffer&) = delete;
-	CommandBuffer& operator=(CommandBuffer&& cb) noexcept;
+	CommandBuffer& operator=(CommandBuffer&& cb) = default;
 
 	VkCommandBuffer& get();
 	const VkCommandBuffer& get() const;

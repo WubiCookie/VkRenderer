@@ -2,10 +2,13 @@
 
 #include "VulkanDevice.hpp"
 
+#include "BrdfLut.hpp"
 #include "Buffer.hpp"
 #include "CommandBuffer.hpp"
 #include "Cubemap.hpp"
 #include "DepthTexture.hpp"
+#include "IrradianceMap.hpp"
+#include "PrefilteredCubemap.hpp"
 #include "RenderWindow.hpp"
 #include "Skybox.hpp"
 #include "Texture2D.hpp"
@@ -80,9 +83,9 @@ class ShaderBall final
 
 	Cubemap m_environmentMap;
 
-	Cubemap m_irradianceMap;
-	Cubemap m_prefilteredMap;
-	Texture2D m_brdfLut;
+	IrradianceMap m_irradianceMap;
+	PrefilteredCubemap m_prefilteredMap;
+	BrdfLut m_brdfLut;
 
 	Texture2D m_defaultTexture;
 
@@ -96,11 +99,6 @@ class ShaderBall final
 	DepthTexture m_depthTexture;
 
 	std::unique_ptr<Skybox> m_skybox;
-
-	std::random_device rd;
-	std::mt19937 gen;
-	std::normal_distribution<float> dis;
-	std::uniform_real_distribution<float> udis;
 
 public:
 	struct Config
@@ -124,18 +122,19 @@ public:
 private:
 	Config m_config;
 
-	CommandBuffer computeCB;  // (vk, rw.oneTimeCommandPool());
-	CommandBuffer imguiCB;    // (vk, rw.oneTimeCommandPool());
-	CommandBuffer copyHDRCB;  // (vk, rw.oneTimeCommandPool());
-	CommandBuffer cb;         // (vk, rw.oneTimeCommandPool());
+	CommandBuffer imguiCB;
+	CommandBuffer copyHDRCB;
 
 public:
 	ShaderBall(RenderWindow& renderWindow);
+	ShaderBall(const ShaderBall&) = delete;
+	ShaderBall(ShaderBall&&) = default;
 	~ShaderBall();
 
+	ShaderBall& operator=(const ShaderBall&) = delete;
+	ShaderBall& operator=(ShaderBall&&) = default;
+
 	void renderOpaque(CommandBuffer& cb);
-	// void renderTransparent(CommandBuffer& cb);
-	// void renderOverlay(CommandBuffer& cb);
 
 	void standaloneDraw();
 };

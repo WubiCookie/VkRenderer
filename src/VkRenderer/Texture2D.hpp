@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Buffer.hpp"
 #include "TextureInterface.hpp"
+
+#include <vector>
 
 namespace cdm
 {
@@ -42,6 +45,14 @@ public:
 	uint32_t width() const override { return m_width; }
 	uint32_t height() const override { return m_height; }
 	uint32_t depth() const override { return 1; }
+	VkExtent2D extent2D() const override
+	{
+		return VkExtent2D{ width(), height() };
+	};
+	VkExtent3D extent3D() const override
+	{
+		return VkExtent3D{ width(), height(), depth() };
+	};
 	VkDeviceSize size() const override { return m_size; }
 	VkDeviceSize offset() const override { return m_offset; }
 	VkFormat format() const override { return m_format; }
@@ -59,8 +70,6 @@ public:
 		return m_allocation.get();
 	}
 
-	void setName(std::string_view name) noexcept;
-
 	void transitionLayoutImmediate(VkImageLayout initialLayout,
 	                               VkImageLayout finalLayout) override;
 	void generateMipmapsImmediate(VkImageLayout currentLayout);
@@ -72,5 +81,27 @@ public:
 	                         const VkBufferImageCopy& region,
 	                         VkImageLayout initialLayout,
 	                         VkImageLayout finalLayout);
+
+	Buffer downloadDataToBufferImmediate(VkImageLayout currentLayout);
+	Buffer downloadDataToBufferImmediate(VkImageLayout initialLayout,
+	                                     VkImageLayout finalLayout);
+
+	template <typename T = uint8_t>
+	std::vector<T> downloadDataImmediate(VkImageLayout currentLayout)
+	{
+		return downloadDataImmediate<T>(currentLayout, currentLayout);
+	}
+	template <typename T = uint8_t>
+	std::vector<T> downloadDataImmediate(VkImageLayout initialLayout,
+	                                     VkImageLayout finalLayout)
+	{
+		Buffer tmpBuffer =
+		    downloadDataToBufferImmediate(initialLayout, finalLayout);
+
+		if (tmpBuffer.get() == nullptr)
+			return {};
+
+		return tmpBuffer.download<T>();
+	}
 };
 }  // namespace cdm

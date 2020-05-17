@@ -1,9 +1,8 @@
 #include "ShaderBall.hpp"
 
-#include "BrdfLutGenerator.hpp"
 #include "EquirectangularToCubemap.hpp"
-#include "EquirectangularToIrradianceMap.hpp"
-#include "PrefilterCubemap.hpp"
+//#include "EquirectangularToIrradianceMap.hpp"
+//#include "PrefilterCubemap.hpp"
 
 #include "CompilerSpirV/compileSpirV.hpp"
 #include "ShaderWriter/Intrinsics/Intrinsics.hpp"
@@ -22,15 +21,6 @@
 #include <array>
 #include <iostream>
 #include <stdexcept>
-
-constexpr size_t POINT_COUNT = 2000;
-
-#define mandelbulbTexScale 1
-
-constexpr uint32_t width = 1280 * mandelbulbTexScale;
-constexpr uint32_t height = 720 * mandelbulbTexScale;
-constexpr float widthf = 1280.0f * mandelbulbTexScale;
-constexpr float heightf = 720.0f * mandelbulbTexScale;
 
 namespace cdm
 {
@@ -213,14 +203,9 @@ static void processNode(RenderWindow& rw, aiNode* node, const aiScene* scene,
 
 ShaderBall::ShaderBall(RenderWindow& renderWindow)
     : rw(renderWindow),
-      gen(rd()),
-      dis(0.0f, 0.3f),
-      computeCB(
-          CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
       imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
       copyHDRCB(
-          CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
-      cb(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool()))
+          CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool()))
 {
 	auto& vk = rw.get().device();
 
@@ -592,29 +577,30 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			Locale(specular, vec4(0.0_f));
 
 			// FOR
-			//Locale(L, normalize(fragTanLightPos - fragTanFragPos));
-			//Locale(H, normalize(V + L));
-			//Locale(distance, length(fragTanLightPos - fragTanFragPos));
-			//Locale(attenuation, 1.0_f / (distance * distance));
-			//Locale(radiance, vec4(attenuation));
+			// Locale(L, normalize(fragTanLightPos - fragTanFragPos));
+			// Locale(H, normalize(V + L));
+			// Locale(distance, length(fragTanLightPos - fragTanFragPos));
+			// Locale(attenuation, 1.0_f / (distance * distance));
+			// Locale(radiance, vec4(attenuation));
 			//
-			//Locale(NDF, DistributionGGX(N, H, roughness));
-			//Locale(G, GeometrySmith(N, V, L, roughness));
-			//F = fresnelSchlick(max(dot(H, V), 0.0_f), F0);
+			// Locale(NDF, DistributionGGX(N, H, roughness));
+			// Locale(G, GeometrySmith(N, V, L, roughness));
+			// F = fresnelSchlick(max(dot(H, V), 0.0_f), F0);
 			//
-			//Locale(nominator, NDF * G * F);
-			//Locale(denominator,
+			// Locale(nominator, NDF * G * F);
+			// Locale(denominator,
 			//       4.0_f * max(dot(N, V), 0.0_f) * max(dot(N, L), 0.0_f) +
 			//           0.001_f);
-			//Locale(specular, nominator / vec4(denominator));
+			// Locale(specular, nominator / vec4(denominator));
 			//
-			//kS = F;
-			//kD = vec4(1.0_f) - kS;
-			//kD = kD * vec4(1.0_f - metalness);
+			// kS = F;
+			// kD = vec4(1.0_f) - kS;
+			// kD = kD * vec4(1.0_f - metalness);
 			//
-			//Locale(NdotL, max(dot(N, L), 0.0_f));
+			// Locale(NdotL, max(dot(N, L), 0.0_f));
 			//
-			//Lo += (kD * albedo / vec4(PI) + specular) * radiance * vec4(NdotL);
+			// Lo += (kD * albedo / vec4(PI) + specular) * radiance *
+			// vec4(NdotL);
 			// ROF
 
 			F = fresnelSchlickRoughness(max(dot(N, V), 0.0_f), F0, roughness);
@@ -624,7 +610,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			kD = kD * vec4(1.0_f - metalness);
 
 			Locale(B, cross(fragNormal, fragTangent));
-			//Locale(TBN, inverse(transpose(mat3(fragTangent, B, fragNormal))));
+			// Locale(TBN, inverse(transpose(mat3(fragTangent, B,
+			// fragNormal))));
 			Locale(TBN, inverse(transpose(mat3(fragTangent, B, fragNormal))));
 
 			Locale(R, reflect(TBN * -V, TBN * N));
@@ -1025,7 +1012,10 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	m_config.model = matrix4(modelTr).get_transposed();
 	m_config.view = matrix4(cameraTr).get_transposed().get_inversed();
 	m_config.proj =
-	    matrix4::perspective(90_deg, 1280.0f / 720.0f, 0.01f, 100.0f);
+	    matrix4::perspective(90_deg,
+	                         float(rw.get().swapchainExtent().width) /
+	                             float(rw.get().swapchainExtent().height),
+	                         0.01f, 100.0f);
 
 	m_config.viewPos = cameraTr.position;
 
@@ -1113,8 +1103,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		if (m_environmentMap.get() == nullptr)
 			throw std::runtime_error("could not create environmentMap");
 
-		EquirectangularToIrradianceMap e2i(rw, 512);
-		m_irradianceMap = e2i.computeCubemap(m_equirectangularTexture);
+		m_irradianceMap = IrradianceMap(rw, 512, m_equirectangularTexture,
+		                                "PaperMill_E_irradiance.hdr");
 
 		if (m_irradianceMap.get() == nullptr)
 			throw std::runtime_error("could not create irradianceMap");
@@ -1122,8 +1112,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		VkDescriptorImageInfo irradianceMapImageInfo{};
 		irradianceMapImageInfo.imageLayout =
 		    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		irradianceMapImageInfo.imageView = m_irradianceMap.view();
-		irradianceMapImageInfo.sampler = m_irradianceMap.sampler();
+		irradianceMapImageInfo.imageView = m_irradianceMap.get().view();
+		irradianceMapImageInfo.sampler = m_irradianceMap.get().sampler();
 
 		vk::WriteDescriptorSet irradianceMapTextureWrite;
 		irradianceMapTextureWrite.descriptorCount = 1;
@@ -1134,17 +1124,17 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		irradianceMapTextureWrite.dstSet = m_descriptorSet;
 		irradianceMapTextureWrite.pImageInfo = &irradianceMapImageInfo;
 
-		PrefilterCubemap pfc(rw, 1024, -1);
-		m_prefilteredMap = pfc.computeCubemap(m_environmentMap);
+		m_prefilteredMap = PrefilteredCubemap(rw, 1024, -1, m_environmentMap,
+		                                      "PaperMill_E_prefiltered.hdr");
 
-		if (m_prefilteredMap.get() == nullptr)
+		if (m_prefilteredMap.get().get() == nullptr)
 			throw std::runtime_error("could not create prefilteredMap");
 
 		VkDescriptorImageInfo prefilteredMapImageInfo{};
 		prefilteredMapImageInfo.imageLayout =
 		    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		prefilteredMapImageInfo.imageView = m_prefilteredMap.view();
-		prefilteredMapImageInfo.sampler = m_prefilteredMap.sampler();
+		prefilteredMapImageInfo.imageView = m_prefilteredMap.get().view();
+		prefilteredMapImageInfo.sampler = m_prefilteredMap.get().sampler();
 
 		vk::WriteDescriptorSet prefilteredMapTextureWrite;
 		prefilteredMapTextureWrite.descriptorCount = 1;
@@ -1155,8 +1145,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		prefilteredMapTextureWrite.dstSet = m_descriptorSet;
 		prefilteredMapTextureWrite.pImageInfo = &prefilteredMapImageInfo;
 
-		BrdfLutGenerator blg(rw, 128);
-		m_brdfLut = blg.computeBrdfLut();
+		m_brdfLut = BrdfLut(rw, 128);
 
 		if (m_brdfLut.get() == nullptr)
 			throw std::runtime_error("could not create brdfLut");
@@ -1164,8 +1153,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		VkDescriptorImageInfo brdfLutImageInfo{};
 		brdfLutImageInfo.imageLayout =
 		    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		brdfLutImageInfo.imageView = m_brdfLut.view();
-		brdfLutImageInfo.sampler = m_brdfLut.sampler();
+		brdfLutImageInfo.imageView = m_brdfLut.get().view();
+		brdfLutImageInfo.sampler = m_brdfLut.get().sampler();
 
 		vk::WriteDescriptorSet brdfLutTextureWrite;
 		brdfLutTextureWrite.descriptorCount = 1;
@@ -1310,19 +1299,19 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	};
 
 	std::string resourcePath = "D:/Projects/git/VkRenderer-data/";
-	//resourcePath += "Metal007_4K-JPG/";
-	resourcePath += "Marble009_8K-JPG/";
-	//resourcePath += "Leather011_8K-JPG/";
-	//resourcePath += "ChristmasTreeOrnament006_8K-JPG/";
-	//resourcePath += "Chip001_4K-JPG";
+	resourcePath += "Metal007_4K-JPG/";
+	// resourcePath += "Marble009_8K-JPG/";
+	// resourcePath += "Leather011_8K-JPG/";
+	// resourcePath += "ChristmasTreeOrnament006_8K-JPG/";
+	// resourcePath += "Chip001_4K-JPG";
 
 	// updateTextureDescriptor(
 	//    "D:/Projects/git/VkRenderer-data/Marble009_2K-JPG/"
 	//    "Marble009_2K_Color.jpg",
 	//    m_albedos, 1);
 	updateTextureDescriptor(resourcePath + "/Color.jpg", m_albedos, 1);
-	updateTextureDescriptor(resourcePath + "/Displacement.jpg", m_displacements,
-	                        1);
+	updateTextureDescriptor(resourcePath + "/Displacement.jpg",
+	                        m_displacements, 1);
 	updateTextureDescriptor(resourcePath + "/Metalness.jpg", m_metalnesses, 1);
 	updateTextureDescriptor(resourcePath + "/Normal.jpg", m_normals, 1);
 	updateTextureDescriptor(resourcePath + "/Roughness.jpg", m_roughnesses, 1);
@@ -1366,8 +1355,8 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 	vk::RenderPassBeginInfo rpInfo;
 	rpInfo.framebuffer = m_framebuffer;
 	rpInfo.renderPass = m_renderPass;
-	rpInfo.renderArea.extent.width = width;
-	rpInfo.renderArea.extent.height = height;
+	rpInfo.renderArea.extent.width = rw.get().swapchainExtent().width;
+	rpInfo.renderArea.extent.height = rw.get().swapchainExtent().height;
 	rpInfo.clearValueCount = 2;
 	rpInfo.pClearValues = clearValues.data();
 
@@ -1404,7 +1393,10 @@ void ShaderBall::standaloneDraw()
 	m_config.model = matrix4(modelTr).get_transposed();
 	m_config.view = matrix4(cameraTr).get_transposed().get_inversed();
 	m_config.proj =
-	    matrix4::perspective(90_deg, 1280.0f / 720.0f, 0.01f, 100.0f)
+	    matrix4::perspective(90_deg,
+	                         float(rw.get().swapchainExtent().width) /
+	                             float(rw.get().swapchainExtent().height),
+	                         0.01f, 100.0f)
 	        .get_transposed();
 	m_config.viewPos = cameraTr.position;
 
@@ -1467,11 +1459,11 @@ void ShaderBall::standaloneDraw()
 		                          swapBarrier);
 
 		VkImageBlit blit{};
-		blit.srcOffsets[1].x = 1280;
-		blit.srcOffsets[1].y = 720;
+		blit.srcOffsets[1].x = rw.get().swapchainExtent().width;
+		blit.srcOffsets[1].y = rw.get().swapchainExtent().height;
 		blit.srcOffsets[1].z = 1;
-		blit.dstOffsets[1].x = 1280;
-		blit.dstOffsets[1].y = 720;
+		blit.dstOffsets[1].x = rw.get().swapchainExtent().width;
+		blit.dstOffsets[1].y = rw.get().swapchainExtent().height;
 		blit.dstOffsets[1].z = 1;
 		blit.srcSubresource.aspectMask =
 		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
@@ -1522,329 +1514,4 @@ void ShaderBall::standaloneDraw()
 	}
 	vk.wait(vk.graphicsQueue());
 }
-
-// void ShaderBall::render(CommandBuffer& cb)
-//{
-//	std::array clearValues = { VkClearValue{}, VkClearValue{} };
-//
-//	vk::RenderPassBeginInfo rpInfo;
-//	rpInfo.framebuffer = m_framebuffer.get();
-//	rpInfo.renderPass = m_renderPass.get();
-//	rpInfo.renderArea.extent.width = width;
-//	rpInfo.renderArea.extent.height = height;
-//	rpInfo.clearValueCount = 1;
-//	rpInfo.pClearValues = clearValues.data();
-//
-//	vk::SubpassBeginInfo subpassBeginInfo;
-//	subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
-//
-//	vk::SubpassEndInfo subpassEndInfo;
-//
-//	cb.beginRenderPass2(rpInfo, subpassBeginInfo);
-//
-//	cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.get());
-//	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
-//	                     m_computePipelineLayout.get(), 0, m_computeSet.get());
-//	cb.bindVertexBuffer(m_vertexBuffer.get());
-//	// cb.draw(POINT_COUNT);
-//	cb.draw(3);
-//
-//	cb.endRenderPass2(subpassEndInfo);
-//}
-//
-// void ShaderBall::compute(CommandBuffer& cb)
-//{
-//	cb.bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline.get());
-//	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE,
-//	                     m_computePipelineLayout.get(), 0, m_computeSet.get());
-//	cb.dispatch(width / 8, height / 8);
-//}
-//
-// void ShaderBall::imgui(CommandBuffer& cb)
-//{
-//	ImGui_ImplVulkan_NewFrame();
-//	ImGui_ImplGlfw_NewFrame();
-//	ImGui::NewFrame();
-//
-//	{
-//		static float f = 0.0f;
-//		static int counter = 0;
-//
-//		ImGui::Begin("Controls");
-//
-//		bool changed = false;
-//
-//		changed |= ImGui::SliderFloat("CamFocalDistance",
-//		                              &m_config.camFocalDistance, 0.1f, 30.0f);
-//		changed |= ImGui::SliderFloat("CamFocalLength",
-//		                              &m_config.camFocalLength, 0.0f, 20.0f);
-//		changed |= ImGui::SliderFloat("CamAperture", &m_config.camAperture,
-//		                              0.0f, 5.0f);
-//
-//		changed |= ImGui::DragFloat3("rotation", &m_config.camRot.x, 0.01f);
-//		changed |= ImGui::DragFloat3("lightDir", &m_config.lightDir.x, 0.01f);
-//
-//		changed |= ImGui::SliderFloat("scene radius", &m_config.sceneRadius,
-//		                              0.0f, 10.0f);
-//
-//		ImGui::SliderFloat("BloomAscale1", &m_config.bloomAscale1, 0.0f, 1.0f);
-//		ImGui::SliderFloat("BloomAscale2", &m_config.bloomAscale2, 0.0f, 1.0f);
-//		ImGui::SliderFloat("BloomBscale1", &m_config.bloomBscale1, 0.0f, 1.0f);
-//		ImGui::SliderFloat("BloomBscale2", &m_config.bloomBscale2, 0.0f, 1.0f);
-//
-//		if (changed)
-//			applyImguiParameters();
-//
-//		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-//		            1000.0f / ImGui::GetIO().Framerate,
-//		            ImGui::GetIO().Framerate);
-//		ImGui::End();
-//	}
-//
-//	ImGui::Render();
-//
-//	{
-//		std::array clearValues = { VkClearValue{}, VkClearValue{} };
-//
-//		vk::RenderPassBeginInfo rpInfo;
-//		rpInfo.framebuffer = m_framebuffer.get();
-//		rpInfo.renderPass = rw.get().imguiRenderPass();
-//		rpInfo.renderArea.extent.width = width;
-//		rpInfo.renderArea.extent.height = height;
-//		rpInfo.clearValueCount = 1;
-//		rpInfo.pClearValues = clearValues.data();
-//
-//		vk::SubpassBeginInfo subpassBeginInfo;
-//		subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
-//
-//		cb.beginRenderPass2(rpInfo, subpassBeginInfo);
-//	}
-//
-//	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.get());
-//
-//	vk::SubpassEndInfo subpassEndInfo2;
-//	cb.endRenderPass2(subpassEndInfo2);
-//}
-//
-// void ShaderBall::standaloneDraw()
-//{
-//	auto& vk = rw.get().device();
-//
-//	if (mustClear)
-//	{
-//		mustClear = false;
-//		m_config.samples = -1.0f;
-//
-//		cb.reset();
-//		cb.begin();
-//
-//		vk::ImageMemoryBarrier barrier;
-//		barrier.image = outputImage();
-//		barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-//		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-//		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-//		barrier.subresourceRange.baseMipLevel = 0;
-//		barrier.subresourceRange.levelCount = outputTexture().mipLevels();
-//		barrier.subresourceRange.baseArrayLayer = 0;
-//		barrier.subresourceRange.layerCount = 1;
-//		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//		cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-//		                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
-//
-//		VkClearColorValue clearColor{};
-//		VkImageSubresourceRange range{};
-//		range.aspectMask = VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-//		range.layerCount = 1;
-//		range.levelCount = 1;
-//		cb.clearColorImage(outputImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-//		                   &clearColor, range);
-//
-//		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-//		barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-//		cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-//		                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
-//
-//		cb.end();
-//
-//		if (vk.queueSubmit(vk.graphicsQueue(), imguiCB.get()) != VK_SUCCESS)
-//		{
-//			std::cerr << "error: failed to submit clear command buffer"
-//			          << std::endl;
-//			abort();
-//		}
-//
-//		vk.wait(vk.graphicsQueue());
-//		m_config.samples += 1.0f;
-//	}
-//
-//	setSampleAndRandomize(m_config.samples);
-//
-//	computeCB.reset();
-//	computeCB.begin();
-//	computeCB.debugMarkerBegin("compute", 1.0f, 0.2f, 0.2f);
-//	compute(computeCB);
-//	computeCB.debugMarkerEnd();
-//	computeCB.end();
-//	if (vk.queueSubmit(vk.graphicsQueue(), computeCB.get()) != VK_SUCCESS)
-//	{
-//		std::cerr << "error: failed to submit imgui command buffer"
-//		          << std::endl;
-//		abort();
-//	}
-//	vk.wait(vk.graphicsQueue());
-//
-//	outputTextureHDR().generateMipmapsImmediate(VK_IMAGE_LAYOUT_GENERAL);
-//
-//	imguiCB.reset();
-//	imguiCB.begin();
-//	imguiCB.debugMarkerBegin("render", 0.2f, 0.2f, 1.0f);
-//	// ShaderBall.compute(imguiCB);
-//	render(imguiCB);
-//	imgui(imguiCB);
-//	imguiCB.debugMarkerEnd();
-//	imguiCB.end();
-//	if (vk.queueSubmit(vk.graphicsQueue(), imguiCB.get()) != VK_SUCCESS)
-//	{
-//		std::cerr << "error: failed to submit imgui command buffer"
-//		          << std::endl;
-//		abort();
-//	}
-//	vk.wait(vk.graphicsQueue());
-//
-//	m_config.samples += 1.0f;
-//
-//	auto swapImages = rw.get().swapchainImages();
-//
-//	vk.debugMarkerSetObjectName(copyHDRCB.get(),
-//	                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
-//	                            "copyHDRCB");
-//
-//	copyHDRCB.reset();
-//	copyHDRCB.begin();
-//
-//	vk::ImageMemoryBarrier barrier;
-//	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-//	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-//	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//	barrier.image = outputImage();
-//	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-//	barrier.subresourceRange.baseMipLevel = 0;
-//	barrier.subresourceRange.levelCount = 1;
-//	barrier.subresourceRange.baseArrayLayer = 0;
-//	barrier.subresourceRange.layerCount = 1;
-//	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-//	copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-//	                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
-//
-//	for (auto swapImage : swapImages)
-//	{
-//		vk::ImageMemoryBarrier swapBarrier = barrier;
-//		swapBarrier.image = swapImage;
-//		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-//		swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-//		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-//		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//		copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-//		                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-//		                          swapBarrier);
-//
-//		VkImageBlit blit{};
-//		blit.srcOffsets[1].x = 1280;
-//		blit.srcOffsets[1].y = 720;
-//		blit.srcOffsets[1].z = 1;
-//		blit.dstOffsets[1].x = 1280;
-//		blit.dstOffsets[1].y = 720;
-//		blit.dstOffsets[1].z = 1;
-//		blit.srcSubresource.aspectMask =
-//		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-//		blit.srcSubresource.baseArrayLayer = 0;
-//		blit.srcSubresource.layerCount = 1;
-//		blit.srcSubresource.mipLevel = 0;
-//		blit.dstSubresource.aspectMask =
-//		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-//		blit.dstSubresource.baseArrayLayer = 0;
-//		blit.dstSubresource.layerCount = 1;
-//		blit.dstSubresource.mipLevel = 0;
-//
-//		copyHDRCB.blitImage(outputImage(),
-//		                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapImage,
-//		                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
-//		                    VkFilter::VK_FILTER_LINEAR);
-//
-//		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-//		swapBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-//		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-//
-//		copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-//		                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-//		                          swapBarrier);
-//	}
-//
-//	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-//	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-//	barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-//	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//	copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-//	                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
-//
-//	if (copyHDRCB.end() != VK_SUCCESS)
-//	{
-//		std::cerr << "error: failed to record command buffer" << std::endl;
-//		abort();
-//	}
-//
-//	vk.wait(vk.graphicsQueue());
-//
-//	if (vk.queueSubmit(vk.graphicsQueue(), copyHDRCB.get()) != VK_SUCCESS)
-//	{
-//		std::cerr << "error: failed to submit draw command buffer"
-//		          << std::endl;
-//		abort();
-//	}
-//	vk.wait(vk.graphicsQueue());
-//}
-//
-// void ShaderBall::applyImguiParameters()
-//{
-//	auto& vk = rw.get().device();
-//
-//	m_config.samples = -1.0f;
-//	mustClear = true;
-//}
-//
-// void ShaderBall::randomizePoints()
-//{
-//	auto& vk = rw.get().device();
-//
-//	using Vertex = std::array<float, 2>;
-//	std::vector<Vertex> vertices(POINT_COUNT);
-//
-//	for (auto& vertex : vertices)
-//	{
-//		vertex[0] = dis(gen);
-//		vertex[1] = dis(gen);
-//	}
-//
-//	Vertex* data = m_vertexBuffer.map<Vertex>();
-//	std::copy(vertices.begin(), vertices.end(), static_cast<Vertex*>(data));
-//	m_vertexBuffer.unmap();
-//
-//	m_config.seed = udis(gen);
-//	m_config.copyTo(m_computeUbo.map());
-//	m_computeUbo.unmap();
-//}
-//
-// void ShaderBall::setSampleAndRandomize(float s)
-//{
-//	m_config.samples = s;
-//	m_config.seed = udis(gen);
-//	m_config.copyTo(m_computeUbo.map());
-//	m_computeUbo.unmap();
-//}
 }  // namespace cdm

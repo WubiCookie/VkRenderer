@@ -80,6 +80,8 @@ message("==============================================")
 add_library(VkRenderer STATIC
 	src/third_party/stb_image.cpp
 
+	src/VkRenderer/BrdfLut.cpp
+	src/VkRenderer/BrdfLut.hpp
 	src/VkRenderer/BrdfLutGenerator.cpp
 	src/VkRenderer/BrdfLutGenerator.hpp
 	src/VkRenderer/Buffer.cpp
@@ -97,12 +99,16 @@ add_library(VkRenderer STATIC
 	src/VkRenderer/EquirectangularToIrradianceMap.hpp
 	src/VkRenderer/PrefilterCubemap.cpp
 	src/VkRenderer/PrefilterCubemap.hpp
+	src/VkRenderer/PrefilteredCubemap.cpp
+	src/VkRenderer/PrefilteredCubemap.hpp
 	src/VkRenderer/Framebuffer.cpp
 	src/VkRenderer/Framebuffer.hpp
 	src/VkRenderer/Image.cpp
 	src/VkRenderer/Image.hpp
 	src/VkRenderer/ImageView.cpp
 	src/VkRenderer/ImageView.hpp
+	src/VkRenderer/IrradianceMap.cpp
+	src/VkRenderer/IrradianceMap.hpp
 	src/VkRenderer/Mandelbulb.cpp
 	src/VkRenderer/Mandelbulb.hpp
 	src/VkRenderer/Material.cpp
