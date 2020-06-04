@@ -22,7 +22,7 @@ class Renderer
 	std::vector<VkSemaphore> m_renderFinishedSemaphores;
 
 	RenderPass m_defaultRenderPass;
-	Material m_defaultMaterial;
+	//Material m_defaultMaterial;
 
 public:
 	Renderer(RenderWindow& renderWindow);
@@ -33,6 +33,6 @@ public:
 	std::vector<Framebuffer>& framebuffers();
 
 	RenderPass& defaultRenderPass();
-	Material& defaultMaterial();
+	//Material& defaultMaterial();
 };
 }  // namespace cdm

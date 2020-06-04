@@ -512,7 +512,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region vertexShader
-	std::cout << "vertexShader" << std::endl;
 	{
 		using namespace sdw;
 
@@ -546,7 +545,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region fragmentShader
-	std::cout << "fragmentShader" << std::endl;
 	{
 		using namespace sdw;
 		MandelbulbShaderLib<FragmentWriter> writer{ m_config };
@@ -684,7 +682,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region computeShader
-	std::cout << "computeShader" << std::endl;
 	{
 		using namespace sdw;
 
@@ -903,7 +900,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region pipeline
-	std::cout << "pipeline" << std::endl;
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	vertShaderStageInfo.module = m_vertexModule.get();
@@ -1067,7 +1063,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region compute pipeline
-	std::cout << "compute pipeline" << std::endl;
 	vk::ComputePipelineCreateInfo computePipelineInfo;
 	computePipelineInfo.layout = m_computePipelineLayout.get();
 	computePipelineInfo.stage = vk::PipelineShaderStageCreateInfo();

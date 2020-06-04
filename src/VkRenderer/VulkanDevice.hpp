@@ -46,9 +46,14 @@ protected:
 	bool m_layers;
 
 	inline static size_t LogActive = 0;
+
 public:
 	inline static void setLogActive() { LogActive++; }
-	inline static void setLogInactive() { if (LogActive != 0) LogActive--;  }
+	inline static void setLogInactive()
+	{
+		if (LogActive != 0)
+			LogActive--;
+	}
 
 	VulkanDeviceBase(bool layers = false) noexcept;
 	virtual ~VulkanDeviceBase();
@@ -738,6 +743,34 @@ public:
 	VkResult debugMarkerSetObjectName(const vk::DebugMarkerObjectNameInfoEXT& nameInfo) const;
 	template<typename VkHandle>
 	VkResult debugMarkerSetObjectName(VkHandle object, VkDebugReportObjectTypeEXT objectType, std::string_view objectName) const;
+	VkResult debugMarkerSetObjectName(VkInstance object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkPhysicalDevice object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkDevice object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkQueue object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkSemaphore object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkCommandBuffer object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkFence object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkDeviceMemory object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkBuffer object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkImage object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkEvent object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkQueryPool object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkBufferView object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkImageView object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkShaderModule object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkPipelineCache object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkPipelineLayout object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkRenderPass object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkPipeline object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkDescriptorSetLayout object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkSampler object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkDescriptorPool object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkDescriptorSet object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkFramebuffer object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkCommandPool object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkSurfaceKHR object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT, objectName); }
+    VkResult debugMarkerSetObjectName(VkSwapchainKHR object, std::string_view objectName) const { return debugMarkerSetObjectName(object, VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT, objectName); }
+
 	VkResult debugMarkerSetObjectTag(const vk::DebugMarkerObjectTagInfoEXT& tagInfo) const;
 	template<typename VkHandle, typename T>
 	VkResult debugMarkerSetObjectTag(VkHandle object, VkDebugReportObjectTypeEXT objectType, uint64_t tagName, const T& tag) const;

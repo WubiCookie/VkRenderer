@@ -104,7 +104,6 @@ EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
 #define Constant(name, value) auto name = writer.declConstant(#name, value);
 
 #pragma region vertexShader
-	std::cout << "vertexShader" << std::endl;
 	{
 		using namespace sdw;
 		VertexWriter writer;
@@ -142,7 +141,6 @@ EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
 #pragma endregion
 
 #pragma region fragmentShader
-	std::cout << "fragmentShader" << std::endl;
 	{
 		using namespace sdw;
 		FragmentWriter writer;
@@ -365,7 +363,6 @@ EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
 #pragma endregion
 
 #pragma region pipeline
-	std::cout << "pipeline" << std::endl;
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	vertShaderStageInfo.module = m_vertexModule;

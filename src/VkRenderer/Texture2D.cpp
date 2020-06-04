@@ -4,6 +4,8 @@
 #include "RenderWindow.hpp"
 #include "StagingBuffer.hpp"
 
+#include <stdexcept>
+
 namespace cdm
 {
 Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,

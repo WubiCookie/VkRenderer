@@ -8,19 +8,26 @@
 #include "Cubemap.hpp"
 #include "DepthTexture.hpp"
 #include "IrradianceMap.hpp"
+#include "Materials/DefaultMaterial.hpp"
+#include "Model.hpp"
+#include "PbrShadingModel.hpp"
 #include "PrefilteredCubemap.hpp"
 #include "RenderWindow.hpp"
 #include "Skybox.hpp"
+#include "Scene.hpp"
+#include "SceneObject.hpp"
+#include "StandardMesh.hpp"
 #include "Texture2D.hpp"
 
 #include "cdm_maths.hpp"
 
 #include <memory>
 #include <random>
+#include <functional>
 
 namespace cdm
 {
-struct Vertex
+struct ShaderBallVertex
 {
 	vector3 position;
 	vector3 normal;
@@ -28,22 +35,27 @@ struct Vertex
 	vector3 tangent;
 };
 
-struct Mesh
+struct ShaderBallMesh
 {
 	struct MaterialData
 	{
+		uint32_t objectID = -1;
 		std::array<uint32_t, 5> textureIndices;
 		float uShift = 0.0f;
 		float uScale = 1.0f;
 		float vShift = 0.0f;
 		float vScale = 1.0f;
+		float metalnessShift = 0.0f;
+		float metalnessScale = 1.0f;
+		float roughnessShift = 0.0f;
+		float roughnessScale = 1.0f;
 	};
 
 	MaterialData materialData;
 
 	Movable<RenderWindow*> rw;
 
-	std::vector<Vertex> vertices;
+	std::vector<ShaderBallVertex> vertices;
 	std::vector<uint32_t> indices;
 
 	Buffer vertexBuffer;
@@ -58,19 +70,43 @@ class ShaderBall final
 	std::reference_wrapper<RenderWindow> rw;
 
 	UniqueRenderPass m_renderPass;
+	UniqueRenderPass m_highlightRenderPass;
 
 	UniqueFramebuffer m_framebuffer;
+	UniqueFramebuffer m_highlightFramebuffer;
+
+	UniqueDescriptorPool m_descriptorPool;
 
 	UniqueShaderModule m_vertexModule;
 	UniqueShaderModule m_fragmentModule;
 
-	UniqueDescriptorPool m_descriptorPool;
 	UniqueDescriptorSetLayout m_descriptorSetLayout;
 	Movable<VkDescriptorSet> m_descriptorSet;
 	UniquePipelineLayout m_pipelineLayout;
 	UniquePipeline m_pipeline;
 
-	std::vector<Mesh> m_meshes;
+	UniqueShaderModule m_highlightVertexModule;
+	UniqueShaderModule m_highlightFragmentModule;
+
+	UniqueDescriptorSetLayout m_highlightDescriptorSetLayout;
+	Movable<VkDescriptorSet> m_highlightDescriptorSet;
+	UniquePipelineLayout m_highlightPipelineLayout;
+	UniquePipeline m_highlightPipeline;
+
+	PbrShadingModel m_shadingModel;
+	DefaultMaterial m_defaultMaterial;
+	MaterialInstance* m_materialInstance1;
+	MaterialInstance* m_materialInstance2;
+	StandardMesh m_bunnyMesh;
+	//Model m_bunnyModel;
+	//Pipeline m_bunnyPipeline;
+
+	Scene m_scene;
+	SceneObject* m_bunnySceneObject;
+	SceneObject* m_bunnySceneObject2;
+	SceneObject* m_bunnySceneObject3;
+
+	std::vector<ShaderBallMesh> m_meshes;
 	// std::vector<Vertex> vertices;
 	// std::vector<uint32_t> indices;
 
@@ -96,9 +132,19 @@ class ShaderBall final
 	std::array<Texture2D, 16> m_roughnesses;
 
 	Texture2D m_colorAttachmentTexture;
+	Texture2D m_objectIDAttachmentTexture;
 	DepthTexture m_depthTexture;
 
+	Texture2D m_highlightColorAttachmentTexture;
+
 	std::unique_ptr<Skybox> m_skybox;
+
+	uint32_t m_highlightID = 4294967294;
+	uint32_t m_lastSelectedHighlightID = 4294967294;
+
+	bool m_showMaterialWindow = false;
+
+	double m_creationTime = 0.0;
 
 public:
 	struct Config
@@ -135,7 +181,12 @@ public:
 	ShaderBall& operator=(ShaderBall&&) = default;
 
 	void renderOpaque(CommandBuffer& cb);
+	void imgui(CommandBuffer& cb);
 
 	void standaloneDraw();
+
+private:
+	bool mustRebuild() const;
+	void rebuild();
 };
 }  // namespace cdm

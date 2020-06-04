@@ -28,7 +28,7 @@ CommandBuffer::CommandBuffer(const VulkanDevice& device_,
 	}
 }
 
-//CommandBuffer::CommandBuffer(CommandBuffer&& cb) noexcept
+// CommandBuffer::CommandBuffer(CommandBuffer&& cb) noexcept
 //    : VulkanDeviceObject(std::move(cb)),
 //      m_parentCommandPool(std::exchange(cb.m_parentCommandPool, nullptr)),
 //      m_commandBuffer(std::exchange(cb.m_commandBuffer, nullptr))
@@ -45,7 +45,7 @@ CommandBuffer::~CommandBuffer()
 	}
 }
 
-//CommandBuffer& CommandBuffer::operator=(CommandBuffer&& cb) noexcept
+// CommandBuffer& CommandBuffer::operator=(CommandBuffer&& cb) noexcept
 //{
 //	VulkanDeviceObject::operator=(std::move(cb));
 //
@@ -128,12 +128,20 @@ void CommandBuffer::bindDescriptorSets(VkPipelineBindPoint pipelineBindPoint,
 void CommandBuffer::bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint,
                                       VkPipelineLayout layout,
                                       uint32_t firstSet,
-                                      VkDescriptorSet descriptorSet,
-                                      uint32_t dynamicOffsetCount,
-                                      const uint32_t* pDynamicOffsets)
+                                      VkDescriptorSet descriptorSet)
 {
 	bindDescriptorSets(pipelineBindPoint, layout, firstSet, 1, &descriptorSet,
-	                   dynamicOffsetCount, pDynamicOffsets);
+	                   0, nullptr);
+}
+
+void CommandBuffer::bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint,
+                                      VkPipelineLayout layout,
+                                      uint32_t firstSet,
+                                      VkDescriptorSet descriptorSet,
+                                      uint32_t dynamicOffset)
+{
+	bindDescriptorSets(pipelineBindPoint, layout, firstSet, 1, &descriptorSet,
+	                   1, &dynamicOffset);
 }
 
 void CommandBuffer::bindIndexBuffer(VkBuffer buffer, VkDeviceSize offset,
@@ -687,6 +695,11 @@ void CommandBuffer::setScissor(uint32_t firstScissor, uint32_t scissorCount,
 void CommandBuffer::setScissor(uint32_t firstScissor, const VkRect2D& scissor)
 {
 	setScissor(firstScissor, 1, &scissor);
+}
+
+void CommandBuffer::setScissor(const VkRect2D& scissor)
+{
+	setScissor(0, 1, &scissor);
 }
 
 void CommandBuffer::setStencilCompareMask(VkStencilFaceFlags faceMask,

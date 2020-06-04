@@ -141,6 +141,7 @@ enum class Key : int
 	RightAlt = 346,
 	RightSuper = 347,
 	Menu = 348,
+	COUNT
 };
 
 enum class MouseButton : int
@@ -156,6 +157,7 @@ enum class MouseButton : int
 	Left = _1,
 	Right,
 	Middle,
+	COUNT
 };
 
 enum class Action : int
@@ -163,6 +165,14 @@ enum class Action : int
 	Release,
 	Press,
 	Repeat
+};
+
+enum class ButtonState : int
+{
+	Released = int(Action::Release),
+	Pressed = int(Action::Press),
+	Idle,
+	Pressing,
 };
 
 using PFN_keyCallback = std::function<void(Key, int, Action, int)>;
@@ -246,5 +256,14 @@ public:
 	VkCommandPool oneTimeCommandPool() const;
 
 	VkRenderPass imguiRenderPass() const;
+
+	double swapchainCreationTime() const;
+
+	double getTime() const;
+
+	ButtonState mouseState(MouseButton button) const;
+	bool mouseState(MouseButton button, ButtonState state) const;
+
+	std::pair<double, double> mousePos() const;
 };
 }  // namespace cdm

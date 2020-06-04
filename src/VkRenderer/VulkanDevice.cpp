@@ -34,7 +34,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDeviceBase::DebugUtilsMessengerCallback(
 	if (LogActive)
 	{
 		if (pCallbackData->pMessageIdName && pCallbackData->pMessage)
-			std::cerr << "messenger: " << pCallbackData->pMessageIdName << ": "
+ 			std::cerr << "messenger: " << pCallbackData->pMessageIdName << ": "
 			          << pCallbackData->pMessage << std::endl;
 		else if (pCallbackData->pMessage)
 			std::cerr << "messenger: " << pCallbackData->pMessage << std::endl;

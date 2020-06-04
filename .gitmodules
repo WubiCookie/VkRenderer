@@ -7,3 +7,12 @@
 [submodule "third_party/ShaderWriter"]
 	path = third_party/ShaderWriter
 	url = https://github.com/DragonJoker/ShaderWriter
+[submodule "shaderc"]
+	path = third_party/shaderc
+	url = https://github.com/google/shaderc.git
+[submodule "third_party/--recursive"]
+	path = third_party/--recursive
+	url = https://github.com/google/shaderc.git
+[submodule "third_party/shaderc"]
+	path = third_party/shaderc
+	url = https://github.com/google/shaderc.git

@@ -77,6 +77,10 @@ struct RenderWindowPrivate
 	std::vector<PFN_mouseButtonCallback> mouseButtonCallbacks;
 	std::vector<PFN_mousePosCallback> mousePosCallbacks;
 
+	std::array<ButtonState, int(MouseButton::COUNT)> mouseButtonsStates;
+
+	double swapchainCreationTime = 0.0;
+
 	RenderWindowPrivate(int width, int height, bool layers);
 	~RenderWindowPrivate();
 
@@ -866,6 +870,8 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 		imageAvailableSemaphores.push_back(imageAvailableSemaphore);
 		inFlightFences.push_back(inFlightFence);
 	}
+
+	swapchainCreationTime = glfwGetTime();
 }
 
 void RenderWindowPrivate::keyCallback(GLFWwindow* window, int key,
@@ -886,8 +892,15 @@ void RenderWindowPrivate::mouseButtonCallback(GLFWwindow* window, int button,
 	    (RenderWindowPrivate*)glfwGetWindowUserPointer(window);
 
 	if (rwp)
+	{
+		if (ButtonState(action) == ButtonState::Released)
+			rwp->mouseButtonsStates[button] = ButtonState::Released;
+		else if (ButtonState(action) == ButtonState::Pressed)
+			rwp->mouseButtonsStates[button] = ButtonState::Pressed;
+
 		for (auto cb : rwp->mouseButtonCallbacks)
 			cb(MouseButton(button), Action(action), mods);
+	}
 }
 
 void RenderWindowPrivate::mousePosCallback(GLFWwindow* window, double x,
@@ -950,7 +963,19 @@ RenderWindow::RenderWindow(int width, int height, bool layers)
 
 RenderWindow::~RenderWindow() {}
 
-void RenderWindow::pollEvents() { glfwPollEvents(); }
+void RenderWindow::pollEvents()
+{
+	for (auto& btn : p->mouseButtonsStates)
+	{
+		if (btn == ButtonState::Released)
+			btn = ButtonState::Idle;
+		else if (btn == ButtonState::Pressed)
+			btn = ButtonState::Pressing;
+	}
+
+	glfwPollEvents();
+
+}
 
 uint32_t RenderWindow::acquireNextImage(VkSemaphore semaphore, VkFence fence)
 {
@@ -1151,7 +1176,7 @@ void RenderWindow::registerKeyCallback(PFN_keyCallback keyCallback)
 
 void RenderWindow::unregisterKeyCallback(PFN_keyCallback keyCallback)
 {
-	//if (keyCallback)
+	// if (keyCallback)
 	//{
 	//	auto found = std::find(p->keyCallbacks.begin(), p->keyCallbacks.end(),
 	//	                       keyCallback);
@@ -1170,7 +1195,7 @@ void RenderWindow::registerMouseButtonCallback(
 void RenderWindow::unregisterMouseButtonCallback(
     PFN_mouseButtonCallback mouseButtonCallback)
 {
-	//if (mouseButtonCallback)
+	// if (mouseButtonCallback)
 	//{
 	//	auto found =
 	//	    std::find(p->mouseButtonCallbacks.begin(),
@@ -1190,7 +1215,7 @@ void RenderWindow::registerMousePosCallback(
 void RenderWindow::unregisterMousePosCallback(
     PFN_mousePosCallback mousePosCallback)
 {
-	//if (mousePosCallback)
+	// if (mousePosCallback)
 	//{
 	//	auto found = std::find(p->mousePosCallbacks.begin(),
 	//	                       p->mousePosCallbacks.end(), mousePosCallback);
@@ -1250,5 +1275,29 @@ VkCommandPool RenderWindow::oneTimeCommandPool() const
 VkRenderPass RenderWindow::imguiRenderPass() const
 {
 	return p->imguiRenderPass.get();
+}
+
+double RenderWindow::swapchainCreationTime() const
+{
+	return p->swapchainCreationTime;
+}
+
+double RenderWindow::getTime() const { return glfwGetTime(); }
+
+ButtonState RenderWindow::mouseState(MouseButton button) const
+{
+	return p->mouseButtonsStates[int(button)];
+}
+
+bool RenderWindow::mouseState(MouseButton button, ButtonState state) const
+{
+	return p->mouseButtonsStates[int(button)] == state;
+}
+
+std::pair<double, double> RenderWindow::mousePos() const
+{
+	std::pair<double, double> res;
+	glfwGetCursorPos(p->window, &res.first, &res.second);
+	return res;
 }
 }  // namespace cdm

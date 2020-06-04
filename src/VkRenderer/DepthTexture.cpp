@@ -3,6 +3,8 @@
 #include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
 
+#include <stdexcept>
+
 namespace cdm
 {
 DepthTexture::DepthTexture(RenderWindow& renderWindow, VkImageUsageFlags usage,

@@ -110,6 +110,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 		auto fragPosition = writer.declInput<Vec3>("fragPosition", 0);
 
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
+		auto fragID = writer.declOutput<UInt>("fragID", 1);
 
 		auto environmentMap =
 		    writer.declSampledImage<FImgCubeRgba32>("environmentMap", 1, 0);
@@ -126,6 +127,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 			envColor = pow(envColor, vec4(1.0_f / 2.2_f));
 
 			fragColor = envColor;
+			fragID = -1_u;
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -387,17 +389,17 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 	// colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	// colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-	VkPipelineColorBlendAttachmentState colorHDRBlendAttachment = {};
-	colorHDRBlendAttachment.colorWriteMask =
+	VkPipelineColorBlendAttachmentState objectIDBlendAttachment = {};
+	objectIDBlendAttachment.colorWriteMask =
 	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
 	    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorHDRBlendAttachment.blendEnable = false;
-	colorHDRBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorHDRBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorHDRBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	colorHDRBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorHDRBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorHDRBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+	objectIDBlendAttachment.blendEnable = false;
+	objectIDBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	objectIDBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	objectIDBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	objectIDBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	objectIDBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	objectIDBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	// colorHDRBlendAttachment.blendEnable = true;
 	// colorHDRBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
@@ -408,10 +410,8 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 	// colorHDRBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	// colorHDRBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-	std::array colorBlendAttachments{
-		colorBlendAttachment,
-		// colorHDRBlendAttachment
-	};
+	std::array colorBlendAttachments{ colorBlendAttachment,
+		                              objectIDBlendAttachment };
 
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
 	colorBlending.logicOpEnable = false;
@@ -518,7 +518,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 	//
 	//	m_equirectangularTexture.uploadDataImmediate(
 	//	    imageData, w * h * 4 * sizeof(float), copy,
-	//VK_IMAGE_LAYOUT_UNDEFINED, 	    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	// VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	//
 	//	stbi_image_free(imageData);
 	//#pragma endregion

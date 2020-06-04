@@ -5,6 +5,8 @@
 #include "RenderWindow.hpp"
 #include "StagingBuffer.hpp"
 
+#include <stdexcept>
+
 namespace cdm
 {
 Cubemap::Cubemap(RenderWindow& renderWindow, uint32_t imageWidth,

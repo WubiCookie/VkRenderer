@@ -2,6 +2,8 @@
 
 #include "VulkanDevice.hpp"
 
+#include "cdm_vulkan.hpp"
+
 #include <array>
 
 namespace cdm
@@ -37,8 +39,9 @@ public:
 	void beginRenderPass(const cdm::vk::RenderPassBeginInfo& renderPassInfo, VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE);
 	void beginRenderPass2(const cdm::vk::RenderPassBeginInfo& renderPassInfo, const cdm::vk::SubpassBeginInfo& subpassInfo);
 	void bindDescriptorSets(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount = 0, const uint32_t* pDynamicOffsets = nullptr);
-	void bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, VkDescriptorSet descriptorSet, uint32_t dynamicOffsetCount = 0, const uint32_t* pDynamicOffsets = nullptr);
-	void bindIndexBuffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType indexType);
+	void bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, VkDescriptorSet descriptorSet);
+	void bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, VkDescriptorSet descriptorSet, uint32_t dynamicOffset);
+	void bindIndexBuffer(VkBuffer buffer, VkDeviceSize offset = 0, VkIndexType indexType = VK_INDEX_TYPE_UINT32);
 	void bindPipeline(VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline);
 	void bindVertexBuffers(uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* pBuffers, const VkDeviceSize* pOffsets);
 	void bindVertexBuffer(uint32_t firstBinding, VkBuffer buffer, VkDeviceSize offset = 0);
@@ -110,6 +113,7 @@ public:
 	void setLineWidth(float lineWidth);
 	void setScissor(uint32_t firstScissor, uint32_t scissorCount, const VkRect2D* pScissors);
 	void setScissor(uint32_t firstScissor, const VkRect2D& scissor);
+	void setScissor(const VkRect2D& scissor);
 	void setStencilCompareMask(VkStencilFaceFlags faceMask, uint32_t compareMask);
 	void setStencilReference(VkStencilFaceFlags faceMask, uint32_t reference);
 	void setStencilWriteMask(VkStencilFaceFlags faceMask, uint32_t writeMask);

@@ -109,7 +109,6 @@ PrefilterCubemap::PrefilterCubemap(RenderWindow& renderWindow,
 #define Constant(name, value) auto name = writer.declConstant(#name, value);
 
 #pragma region vertexShader
-	std::cout << "vertexShader" << std::endl;
 	{
 		using namespace sdw;
 		VertexWriter writer;
@@ -149,7 +148,6 @@ PrefilterCubemap::PrefilterCubemap(RenderWindow& renderWindow,
 #pragma endregion
 
 #pragma region fragmentShader
-	std::cout << "fragmentShader" << std::endl;
 	{
 		using namespace sdw;
 		FragmentWriter writer;
@@ -304,8 +302,6 @@ PrefilterCubemap::PrefilterCubemap(RenderWindow& renderWindow,
 		std::vector<uint32_t> bytecode =
 		    spirv::serialiseSpirv(writer.getShader());
 
-		std::cout << spirv::writeSpirv(writer.getShader()) << std::endl;
-
 		vk::ShaderModuleCreateInfo createInfo;
 		createInfo.codeSize = bytecode.size() * sizeof(*bytecode.data());
 		createInfo.pCode = bytecode.data();
@@ -459,7 +455,6 @@ PrefilterCubemap::PrefilterCubemap(RenderWindow& renderWindow,
 #pragma endregion
 
 #pragma region pipeline
-	std::cout << "pipeline" << std::endl;
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	vertShaderStageInfo.module = m_vertexModule;

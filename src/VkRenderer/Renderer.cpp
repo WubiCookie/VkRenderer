@@ -7,6 +7,9 @@
 #include "ShaderWriter/Intrinsics/Intrinsics.hpp"
 #include "ShaderWriter/Source.hpp"
 
+#include <stdexcept>
+
+/*
 namespace cdm
 {
 Renderer::Renderer(RenderWindow& renderWindow)
@@ -140,7 +143,6 @@ void main()
 
 )");
 	}
-	//*/
 
 	m_defaultMaterial.buildPipeline();
 
@@ -298,3 +300,4 @@ RenderPass& Renderer::defaultRenderPass() { return m_defaultRenderPass; }
 
 Material& Renderer::defaultMaterial() { return m_defaultMaterial; }
 }  // namespace cdm
+//*/
