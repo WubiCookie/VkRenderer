@@ -4,9 +4,9 @@
 //#include "EquirectangularToIrradianceMap.hpp"
 //#include "PrefilterCubemap.hpp"
 
-#include "CompilerSpirV/compileSpirV.hpp"
-#include "ShaderWriter/Intrinsics/Intrinsics.hpp"
-#include "ShaderWriter/Source.hpp"
+#include <CompilerSpirV/compileSpirV.hpp>
+#include <ShaderWriter/Intrinsics/Intrinsics.hpp>
+#include <ShaderWriter/Source.hpp>
 
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -14,7 +14,7 @@
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan.h"
+#include "my_imgui_impl_vulkan.h"
 
 #include "stb_image.h"
 

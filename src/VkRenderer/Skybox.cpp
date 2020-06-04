@@ -14,10 +14,6 @@
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan.h"
-
 #include "stb_image.h"
 
 #include <array>
