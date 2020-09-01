@@ -19,6 +19,7 @@
 #include "stb_image.h"
 
 #include <array>
+#include <chrono>
 #include <iostream>
 #include <stdexcept>
 
@@ -208,31 +209,30 @@ public:
 			    Locale(specular, vec4(0.0_f));
 
 			    // FOR
-			    // Locale(L, normalize(fragTanLightPos - fragTanFragPos));
-			    // Locale(H, normalize(V + L));
-			    // Locale(distance, length(fragTanLightPos - fragTanFragPos));
-			    // Locale(attenuation, 1.0_f / (distance * distance));
-			    // Locale(radiance, vec4(attenuation));
-			    //
-			    // Locale(NDF, DistributionGGX(N, H, roughness));
-			    // Locale(G, GeometrySmith(N, V, L, roughness));
-			    // F = fresnelSchlick(max(dot(H, V), 0.0_f), F0);
-			    //
-			    // Locale(nominator, NDF * G * F);
-			    // Locale(denominator,
-			    //       4.0_f * max(dot(N, V), 0.0_f) * max(dot(N, L), 0.0_f)
-			    //       +
-			    //           0.001_f);
-			    // Locale(specular, nominator / vec4(denominator));
-			    //
-			    // kS = F;
-			    // kD = vec4(1.0_f) - kS;
-			    // kD = kD * vec4(1.0_f - metalness);
-			    //
-			    // Locale(NdotL, max(dot(N, L), 0.0_f));
-			    //
-			    // Lo += (kD * albedo / vec4(PI) + specular) * radiance *
-			    // vec4(NdotL);
+			    Locale(L, normalize(fragTanLightPos - fragTanFragPos));
+			    Locale(H, normalize(V + L));
+			    Locale(distance, length(fragTanLightPos - fragTanFragPos));
+			    Locale(attenuation, 1.0_f / (distance * distance));
+			    Locale(radiance, vec4(1000.0_f * attenuation));
+
+			    Locale(NDF, DistributionGGX(N, H, roughness));
+			    Locale(G, GeometrySmith(N, V, L, roughness));
+			    F = fresnelSchlick(max(dot(H, V), 0.0_f), F0);
+
+			    Locale(nominator, NDF * G * F);
+			    Locale(denominator,
+			           4.0_f * max(dot(N, V), 0.0_f) * max(dot(N, L), 0.0_f) +
+			               0.001_f);
+			    specular = nominator / vec4(denominator);
+
+			    kS = F;
+			    kD = vec4(1.0_f) - kS;
+			    kD = kD * vec4(1.0_f - metalness);
+
+			    Locale(NdotL, max(dot(N, L), 0.0_f));
+
+			    Lo += (kD * albedo / vec4(PI) + specular) * radiance *
+			          vec4(NdotL);
 			    // ROF
 
 			    F = fresnelSchlickRoughness(max(dot(N, V), 0.0_f), F0,
@@ -417,10 +417,13 @@ static void processNode(RenderWindow& rw, aiNode* node, const aiScene* scene,
 	}
 }
 
+static std::chrono::time_point<std::chrono::steady_clock> chrono;
+
 ShaderBall::ShaderBall(RenderWindow& renderWindow)
     : rw(renderWindow),
       m_shadingModel(rw),
       m_defaultMaterial(rw, m_shadingModel, 2),
+      m_customMaterial(rw, m_shadingModel, 0),
       m_scene(renderWindow),
       imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
       copyHDRCB(
@@ -525,6 +528,91 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	}
 	// for (auto& mesh : m_meshes)
 	//	mesh.init();
+#pragma endregion
+
+#pragma region cube mesh
+	{
+		std::vector<StandardMesh::Vertex> vertices;
+		vertices.resize(m_meshes[9].vertices.size());
+		for (unsigned int i = 0; i < m_meshes[9].vertices.size(); i++)
+		{
+			vertices[i].position = m_meshes[9].vertices[i].position;
+			vertices[i].normal = m_meshes[9].vertices[i].normal;
+			vertices[i].uv = m_meshes[9].vertices[i].uv;
+			vertices[i].tangent = m_meshes[9].vertices[i].tangent;
+		}
+
+		m_cubeMesh =
+		    StandardMesh(rw, std::move(vertices), m_meshes[9].indices);
+
+		/*const aiScene* cubeScene = importer.ReadFile(
+		    "D:/Projects/git/VkRenderer-data/box.fbx",
+		    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
+		    aiProcess_CalcTangentSpace);
+
+		if (!cubeScene || cubeScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
+		    !cubeScene->mRootNode)
+		    throw std::runtime_error(std::string("assimp error: ") +
+		        importer.GetErrorString());
+
+		assert(cubeScene->mNumMeshes == 1);
+
+		{
+		    auto& mesh = cubeScene->mMeshes[0];
+		    std::vector<StandardMesh::Vertex> vertices;
+		    vertices.reserve(mesh->mNumVertices);
+		    for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+		    {
+		        StandardMesh::Vertex vertex;
+		        vertex.position.x = mesh->mVertices[i].x;
+		        vertex.position.y = mesh->mVertices[i].y;
+		        vertex.position.z = mesh->mVertices[i].z;
+		        if (mesh->HasNormals())
+		        {
+		            vertex.normal.x = mesh->mNormals[i].x;
+		            vertex.normal.y = mesh->mNormals[i].y;
+		            vertex.normal.z = mesh->mNormals[i].z;
+		        }
+		        else
+		        {
+		            vertex.normal = { 1, 0, 0 };
+		        }
+		        if (mesh->mTextureCoords[0])
+		        {
+		            vertex.uv.x = mesh->mTextureCoords[0][i].x;
+		            vertex.uv.y = mesh->mTextureCoords[0][i].y;
+		        }
+		        else
+		        {
+		            vertex.uv = {};
+		        }
+		        if (mesh->HasTangentsAndBitangents())
+		        {
+		            vertex.tangent.x = mesh->mTangents[i].x;
+		            vertex.tangent.y = mesh->mTangents[i].y;
+		            vertex.tangent.z = mesh->mTangents[i].z;
+		        }
+		        else
+		        {
+		            vertex.tangent = { 0, 1, 0 };
+		        }
+
+		        vertices.push_back(vertex);
+		    }
+
+		    std::vector<uint32_t> indices;
+		    indices.reserve(mesh->mNumFaces * 3);
+		    for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+		    {
+		        const aiFace& face = mesh->mFaces[i];
+		        for (unsigned int j = 0; j < face.mNumIndices; j++)
+		            indices.push_back(face.mIndices[j]);
+		    }
+
+		    m_cubeMesh =
+		        StandardMesh(rw, std::move(vertices), std::move(indices));
+		}*/
+	}
 #pragma endregion
 
 #pragma region renderPass
@@ -965,10 +1053,10 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma region equirectangularHDR
 	int w, h, c;
 	float* imageData = stbi_loadf(
-	    "D:/Projects/git/VkRenderer-data/PaperMill_Ruins_E/"
-	    "PaperMill_E_3k.hdr",
-	    //"D:/Projects/git/VkRenderer-data/Milkyway/"
-	    //"Milkyway_small.hdr",
+	    //"D:/Projects/git/VkRenderer-data/PaperMill_Ruins_E/"
+	    //"PaperMill_E_3k.hdr",
+	    "D:/Projects/git/VkRenderer-data/Milkyway/"
+	    "Milkyway_small.hdr",
 	    //"D:/Projects/git/VkRenderer-data/UV-Testgrid/"
 	    //"testgrid.jpg",
 	    &w, &h, &c, 4);
@@ -1023,7 +1111,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			throw std::runtime_error("could not create environmentMap");
 
 		m_irradianceMap = IrradianceMap(rw, 512, m_equirectangularTexture,
-		                                "PaperMill_E_irradiance.hdr");
+		                                //"PaperMill_E_irradiance.hdr"
+		                                "Milkyway_small_irradiance.hdr");
 
 		if (m_irradianceMap.get() == nullptr)
 			throw std::runtime_error("could not create irradianceMap");
@@ -1043,8 +1132,10 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		irradianceMapTextureWrite.dstSet = m_descriptorSet;
 		irradianceMapTextureWrite.pImageInfo = &irradianceMapImageInfo;
 
-		m_prefilteredMap = PrefilteredCubemap(rw, 1024, -1, m_environmentMap,
-		                                      "PaperMill_E_prefiltered.hdr");
+		m_prefilteredMap =
+		    PrefilteredCubemap(rw, 1024, -1, m_environmentMap,
+		                       //"PaperMill_E_prefiltered.hdr"
+		                       "Milkyway_small_prefiltered.hdr");
 
 		if (m_prefilteredMap.get().get() == nullptr)
 			throw std::runtime_error("could not create prefilteredMap");
@@ -1278,9 +1369,14 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	m_bunnySceneObject2->setMesh(m_bunnyMesh);
 	m_bunnySceneObject2->setMaterial(*m_materialInstance1);
 
+	m_customMaterial.setTexture2DParameter("albedo", &m_albedos[9]);
+	m_customMaterial.setTexture2DParameter("normal", &m_normals[1]);
+	m_customMaterial.setTexture2DParameter("metalness", &m_roughnesses[1]);
+	m_customMaterial.setTexture2DParameter("roughness", &m_roughnesses[1]);
+
 	m_bunnySceneObject3 = &m_scene.instantiateSceneObject();
-	m_bunnySceneObject3->setMesh(m_bunnyMesh);
-	m_bunnySceneObject3->setMaterial(*m_materialInstance2);
+	m_bunnySceneObject3->setMesh(m_cubeMesh);
+	m_bunnySceneObject3->setMaterial(m_customMaterial);
 
 	{
 		VkDescriptorImageInfo irradianceMapImageInfo{};
@@ -1333,6 +1429,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		                          brdfLutTextureWrite });
 	}
 #pragma endregion
+
+	chrono = std::chrono::steady_clock::now();
 }
 
 ShaderBall::~ShaderBall() {}
@@ -1674,8 +1772,26 @@ void ShaderBall::standaloneDraw()
 	m_bunnySceneObject->transform.scale = { 6, 6, 6 };
 	m_bunnySceneObject2->transform.position = { 10, 0, -20 };
 	m_bunnySceneObject2->transform.scale = { 6, 6, 6 };
-	m_bunnySceneObject3->transform.position = { -10, 0, -20 };
-	m_bunnySceneObject3->transform.scale = { 6, 6, 6 };
+
+	static std::chrono::duration<float> diff = std::chrono::duration<float>();
+	static float scale = 1.0f;
+
+	auto end = std::chrono::steady_clock::now();
+
+	diff += (end - chrono) * scale;
+	chrono = end;
+
+	float sin_v = std::sin(diff.count());
+	float cos_v = std::cos(diff.count());
+
+	 m_bunnySceneObject3->transform.position = { -50, 0, -20 };
+	//m_bunnySceneObject3->transform.position = { 0, 5.0f, 0 };
+	//m_bunnySceneObject3->transform.rotation =
+	//    quaternion::look_at(vector3{ 0, 0.0f, 0 },
+	//                        vector3{ 10 * cos_v, 15.0f, 10 * sin_v });
+	// m_bunnySceneObject3->transform.position = { 10 * cos_v, 0.1f, 10 * sin_v
+	// -20 };
+	// m_bunnySceneObject3->transform.scale = { 0.05f, 0.05f, 0.05f };
 
 	struct alignas(16) SceneUboStruct
 	{
@@ -1692,7 +1808,7 @@ void ShaderBall::standaloneDraw()
 
 	SceneUboStruct* sceneUBOPtr =
 	    m_scene.sceneUniformBuffer().map<SceneUboStruct>();
-	sceneUBOPtr->lightPos = { 0, 0, 0 };
+	sceneUBOPtr->lightPos = { 0, 20, 0 };
 	sceneUBOPtr->view = matrix4(cameraTr).get_transposed().get_inversed();
 	sceneUBOPtr->proj = m_config.proj;
 	sceneUBOPtr->viewPos = cameraTr.position;

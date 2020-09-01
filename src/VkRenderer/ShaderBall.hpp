@@ -9,6 +9,7 @@
 #include "DepthTexture.hpp"
 #include "IrradianceMap.hpp"
 #include "Materials/DefaultMaterial.hpp"
+#include "Materials/CustomMaterial.hpp"
 #include "Model.hpp"
 #include "PbrShadingModel.hpp"
 #include "PrefilteredCubemap.hpp"
@@ -95,9 +96,11 @@ class ShaderBall final
 
 	PbrShadingModel m_shadingModel;
 	DefaultMaterial m_defaultMaterial;
+	CustomMaterial m_customMaterial;
 	MaterialInstance* m_materialInstance1;
 	MaterialInstance* m_materialInstance2;
 	StandardMesh m_bunnyMesh;
+	StandardMesh m_cubeMesh;
 	//Model m_bunnyModel;
 	//Pipeline m_bunnyPipeline;
 

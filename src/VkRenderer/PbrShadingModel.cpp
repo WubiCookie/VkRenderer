@@ -199,9 +199,9 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	return writer.implementFunction<Vec4>(
 	    "combinedMaterialShading",
 	    [&writer, &materialFunction, buildData](
-	        const UInt& inMaterialInstanceIndex, const Vec3& wsPosition_arg,
-	        const Vec3& wsNormal_arg, const Vec3& wsTangent_arg,
-	        const Vec3& wsViewPosition_arg) {
+	        const UInt& inMaterialInstanceIndex, const Vec2& UV,
+	        const Vec3& wsPosition_arg, const Vec3& wsNormal_arg,
+	        const Vec3& wsTangent_arg, const Vec3& wsViewPosition_arg) {
 		    Locale(albedo, vec4(0.0_f));
 		    Locale(wsPosition, wsPosition_arg);
 		    Locale(wsNormal, wsNormal_arg);
@@ -213,9 +213,9 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(instanceIndex, inMaterialInstanceIndex);
 
-		    Locale(unused, materialFunction(instanceIndex, albedo, wsPosition,
-		                                    wsNormal, wsTangent, metalness,
-		                                    roughness));
+		    Locale(unused, materialFunction(instanceIndex, UV, albedo,
+		                                    wsPosition, wsNormal, wsTangent,
+		                                    metalness, roughness));
 
 		    Locale(V, normalize(wsViewPosition - wsPosition));
 
@@ -232,28 +232,34 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    // Locale(L, normalize(fragTanLightPos - fragTanFragPos));
 		    // Locale(H, normalize(V + L));
 		    // Locale(distance, length(fragTanLightPos - fragTanFragPos));
-		    // Locale(attenuation, 1.0_f / (distance * distance));
-		    // Locale(radiance, vec4(attenuation));
-		    //
+		    Locale(L, normalize(vec3(0.0_f, 20.0_f, 0.0_f) - wsPosition));
+		    Locale(H, normalize(V + L));
+		    Locale(distance, length(vec3(0.0_f, 20.0_f, 0.0_f) - wsPosition));
+
+		    Locale(attenuation, 1.0_f / (distance * distance));
+		    Locale(radiance, vec4( 1000.0_f * attenuation));
+
 		    // Locale(NDF, DistributionGGX(N, H, roughness));
 		    // Locale(G, GeometrySmith(N, V, L, roughness));
 		    // F = fresnelSchlick(max(dot(H, V), 0.0_f), F0);
-		    //
-		    // Locale(nominator, NDF * G * F);
-		    // Locale(denominator,
-		    //       4.0_f * max(dot(N, V), 0.0_f) * max(dot(N, L), 0.0_f)
-		    //       +
-		    //           0.001_f);
-		    // Locale(specular, nominator / vec4(denominator));
-		    //
-		    // kS = F;
-		    // kD = vec4(1.0_f) - kS;
-		    // kD = kD * vec4(1.0_f - metalness);
-		    //
-		    // Locale(NdotL, max(dot(N, L), 0.0_f));
-		    //
-		    // Lo += (kD * albedo / vec4(PI) + specular) * radiance *
-		    // vec4(NdotL);
+		    Locale(NDF, buildData->DistributionGGX(wsNormal, H, roughness));
+		    Locale(G, buildData->GeometrySmith(wsNormal, V, L, roughness));
+		    F = buildData->fresnelSchlick(max(dot(H, V), 0.0_f), F0);
+
+		    Locale(nominator, NDF * G * F);
+		    Locale(denominator, 4.0_f * max(dot(wsNormal, V), 0.0_f) *
+		                                max(dot(wsNormal, L), 0.0_f) +
+		                            0.001_f);
+		    specular = nominator / vec4(denominator);
+
+		    kS = F;
+		    kD = vec4(1.0_f) - kS;
+		    kD = kD * vec4(1.0_f - metalness);
+
+		    Locale(NdotL, max(dot(wsNormal, L), 0.0_f));
+
+		    Lo += (kD * albedo / vec4(*buildData->PI) + specular) * radiance *
+		          vec4(NdotL);
 		    // ROF
 
 		    F = buildData->fresnelSchlickRoughness(
@@ -282,9 +288,11 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(color, ambient + Lo);
 
+			//color.xyz() = wsNormal;
+
 		    writer.returnStmt(color);
 	    },
-	    InUInt{ writer, "inMaterialInstanceIndex" },
+	    InUInt{ writer, "inMaterialInstanceIndex" }, InVec2{ writer, "UV" },
 	    InVec3{ writer, "wsPosition_arg" }, InVec3{ writer, "wsNormal_arg" },
 	    InVec3{ writer, "wsTangent_arg" },
 	    InVec3{ writer, "wsViewPosition_arg" });

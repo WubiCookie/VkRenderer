@@ -1,4 +1,4 @@
-#include "MandelBulb.hpp"
+#include "VolumeScene.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>
 #include <ShaderWriter/Intrinsics/Intrinsics.hpp>
@@ -8,24 +8,26 @@
 #include "imgui_impl_glfw.h"
 #include "my_imgui_impl_vulkan.h"
 
+#include <nifti1_io.h>
+
 #include <array>
 #include <iostream>
 #include <stdexcept>
 
 constexpr size_t POINT_COUNT = 2000;
 
-#define mandelbulbTexScale 1
+#define volumeSceneTexScale 1
 
-constexpr uint32_t width = 1280 * mandelbulbTexScale;
-constexpr uint32_t height = 720 * mandelbulbTexScale;
-constexpr float widthf = 1280.0f * mandelbulbTexScale;
-constexpr float heightf = 720.0f * mandelbulbTexScale;
+constexpr uint32_t width = 1280 * volumeSceneTexScale;
+constexpr uint32_t height = 720 * volumeSceneTexScale;
+constexpr float widthf = 1280.0f * volumeSceneTexScale;
+constexpr float heightf = 720.0f * volumeSceneTexScale;
 
 namespace cdm
 {
 static constexpr float Pi{ 3.14159265359f };
 
-void Mandelbulb::Config::copyTo(void* ptr)
+void VolumeScene::Config::copyTo(void* ptr)
 {
 	stepSize =
 	    std::min(1.0f / (volumePrecision * density), sceneRadius / 2.0f);
@@ -34,7 +36,7 @@ void Mandelbulb::Config::copyTo(void* ptr)
 }
 
 template <typename T>
-class MandelbulbShaderLib : public T
+class VolumeSceneShaderLib : public T
 {
 public:
 	const sdw::Float Pi;
@@ -57,7 +59,7 @@ public:
 	sdw::Function<sdw::Vec2, sdw::InInt, sdw::InFloat, sdw::InOutFloat>
 	    sampleAperture;
 
-	MandelbulbShaderLib(Mandelbulb::Config const& config)
+	VolumeSceneShaderLib(VolumeScene::Config const& config)
 	    : T(),
 	      Pi(declConstant<sdw::Float>("Pi", sdw::Float{ cdm::Pi })),
 	      Width(declConstant<sdw::Float>("Width", sdw::Float{ float(width) })),
@@ -84,6 +86,8 @@ public:
 		(void)ubo.declMember<Vec3>("camRot");
 		(void)ubo.declMember<Vec3>("lightColor");
 		(void)ubo.declMember<Vec3>("lightDir");
+		(void)ubo.declMember<Vec3>("volumePos");
+		(void)ubo.declMember<Float>("stepSizeScale");
 		(void)ubo.declMember<Float>("bloomAscale1");
 		(void)ubo.declMember<Float>("bloomAscale2");
 		(void)ubo.declMember<Float>("bloomBscale1");
@@ -422,7 +426,7 @@ public:
 	}
 };
 
-Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
+VolumeScene::VolumeScene(RenderWindow& renderWindow)
     : rw(renderWindow),
       gen(rd()),
       dis(0.0f, 0.3f),
@@ -547,7 +551,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma region fragmentShader
 	{
 		using namespace sdw;
-		MandelbulbShaderLib<FragmentWriter> writer{ m_config };
+		VolumeSceneShaderLib<FragmentWriter> writer{ m_config };
 
 		auto in = writer.getIn();
 
@@ -685,7 +689,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	{
 		using namespace sdw;
 
-		MandelbulbShaderLib<ComputeWriter> writer{ m_config };
+		VolumeSceneShaderLib<ComputeWriter> writer{ m_config };
 
 		auto in = writer.getIn();
 
@@ -696,6 +700,254 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 		auto kernelSampledImage =
 		    writer.declSampledImage<FImg2DRgba32>("kernelSampledImage", 2, 0);
+
+		auto kernelVolumeImage =
+		    writer.declSampledImage<FImg3DR32>("kernelVolumeImage", 3, 0);
+
+		auto pathTrace = writer.implementFunction<Vec4>(
+		    "pathTrace2",
+		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg, Float& seed) {
+			    auto rayPos = writer.declLocale("rayPos", rayPos_arg);
+			    auto rayDir = writer.declLocale("rayDir", rayDir_arg);
+
+			    auto MaxSteps = writer.declLocale(
+			        "MaxSteps", writer.ubo.getMember<Int>("maxSteps"));
+			    auto StepsSkipShadow = writer.declLocale(
+			        "StepsSkipShadow",
+			        writer.ubo.getMember<Int>("stepsSkipShadow"));
+			    auto StepSize = writer.declLocale(
+			        "StepSize", writer.ubo.getMember<Float>("stepSize"));
+			    auto StepSizeScale = writer.declLocale(
+			        "StepSizeScale",
+			        writer.ubo.getMember<Float>("stepSizeScale"));
+			    auto SceneRadius = writer.declLocale(
+			        "SceneRadius", writer.ubo.getMember<Float>("sceneRadius"));
+			    auto Density = writer.declLocale(
+			        "Density", writer.ubo.getMember<Float>("density"));
+			    auto MaxAbso = writer.declLocale(
+			        "MaxAbso", writer.ubo.getMember<Float>("maxAbso"));
+
+			    rayPos += rayDir * max(length(rayPos) - SceneRadius, 0.0_f);
+
+			    auto outColor = writer.declLocale("outColor", vec4(0.0_f));
+			    // auto absorption = writer.declLocale("absorption",
+			    // vec3(1.0_f));
+
+			    /*auto volumeColor =
+			        writer.declLocale("volumeColor", vec3(0.0_f));
+			    auto emissionColor =
+			        writer.declLocale("emissionColor", vec3(0.0_f));*/
+
+				auto gradient =
+			        writer.declLocale("gradient", vec3(0.0_f));
+
+			    auto VolumePos = writer.declLocale(
+			        "VolumePos", writer.ubo.getMember<Vec3>("volumePos"));
+			    auto Power = writer.declLocale(
+			        "Power", writer.ubo.getMember<Float>("power"));
+
+				 auto LightDir =
+			        writer.declLocale("LightDir", writer.ubo.getMember<Vec3>("lightDir"));
+				 LightDir = normalize(LightDir);
+
+			    auto shadowRayPos = writer.declLocale("shadowRayPos", vec3(0.0_f));
+			    auto lightObstacle = writer.declLocale("lightObstacle", 0.0_f);
+
+			    // auto dist = writer.declLocale<Float>("dist");
+
+			    FOR(writer, Int, i, 0_i, i < MaxSteps, ++i)
+			    {
+				    // auto dist = declLocale( "dist",
+				    // dist = writer.distanceEstimation(rayPos, volumeColor,
+				    // emissionColor);
+				    // rayPos += rayDir * max(dist, StepSize);
+				    rayPos += rayDir * StepSize * StepSizeScale;
+				    IF(writer, length(rayPos) < SceneRadius)
+				    {
+					    // auto abStep = writer.declLocale(
+					    //    "abStep", StepSize * writer.randomFloat(seed));
+					    // rayPos += rayDir * (abStep - StepSize);
+
+						Vec3 samplePos = rayPos / 2.0_f + VolumePos;
+
+						Float l = textureLod(kernelVolumeImage, samplePos + vec3(-1.0_f, 0.0_f, 0.0_f) / 290.0_f, 0.0_f);
+						Float r = textureLod(kernelVolumeImage, samplePos + vec3( 1.0_f, 0.0_f, 0.0_f) / 290.0_f, 0.0_f);
+						Float t = textureLod(kernelVolumeImage, samplePos + vec3(0.0_f,  1.0_f, 0.0_f) / 337.0_f, 0.0_f);
+						Float b = textureLod(kernelVolumeImage, samplePos + vec3(0.0_f, -1.0_f, 0.0_f) / 337.0_f, 0.0_f);
+						Float f = textureLod(kernelVolumeImage, samplePos + vec3(0.0_f, 0.0_f,  1.0_f) / 334.0_f, 0.0_f);
+						Float w = textureLod(kernelVolumeImage, samplePos + vec3(0.0_f, 0.0_f, -1.0_f) / 334.0_f, 0.0_f);
+						gradient = normalize(vec3(r - l, t - b, f - w));
+
+						IF(writer, rayPos.x() > 1.0_f)
+						{
+							shadowRayPos = rayPos;
+							lightObstacle = 0.0_f;
+							FOR(writer, Int, j, 0_i, j < MaxSteps, ++j)
+							{
+								shadowRayPos += LightDir * StepSize;
+								Vec3 shadowSamplePos = shadowRayPos / 2.0_f + VolumePos;
+
+								Float ss =
+									textureLod(kernelVolumeImage,
+											   shadowSamplePos, 0.0_f);
+
+								lightObstacle += ss;
+
+								IF(writer, lightObstacle >= 1.0_f)
+								{
+									// writer.returnStmt(outColor +
+									//                  writer.backgroundColor(rayDir) *
+									//                      absorption);
+									/*writer.returnStmt(vec4(0.1_f,0.1_f,0.1_f,1.0_f) * (1.0_f - outColor.a()));
+
+									outColor += vec4(0.3_f, 0.4_f, 0.5_f, 1.0_f) * (1.0_f - lightObstacle) * (1.0_f - outColor.a());
+
+									writer.returnStmt(outColor);*/
+
+									lightObstacle = 1.0_f;
+
+									writer.loopBreakStmt();
+								}
+								FI;
+							}
+							ROF;
+
+							outColor += vec4(0.3_f, 0.4_f, 0.5_f, 1.0_f) * (1.0_f - lightObstacle) * (1.0_f - outColor.a());
+
+							writer.returnStmt(outColor);
+						}
+						ELSE
+						{
+
+							Float s =
+								textureLod(kernelVolumeImage,
+										   samplePos, 0.0_f);
+
+							Vec3 viewDir = normalize(rayPos - rayPos_arg);
+
+
+							//Float NdotL = dot(gradient, LightDir);
+							Float NdotL = dot(gradient, viewDir);
+							//Float intensity = sdw::clamp(NdotL, 0.0_f, 1.0_f);
+
+							//Vec3 H = normalize(LightDir + viewDir);
+							Vec3 H = normalize(viewDir + viewDir);
+
+							Float NdotH = dot(gradient, H);
+							//Float intensity = pow(sdw::clamp(NdotH, 0.0_f, 1.0_f), 1.0_f);
+							Float intensity = pow(sdw::clamp(NdotH, 0.0_f, 1.0_f), Power);
+
+							//Float d = max(dot(gradient, rayDir), 0.0_f);
+
+							//gradient = gradient / vec3(2.0_f) + vec3(0.5_f);
+
+							//shadowRayPos = rayPos;
+							//lightObstacle = 0.0_f;
+							//FOR(writer, Int, k, 0_i, k < MaxSteps, ++k)
+							//{
+							//	shadowRayPos += LightDir * StepSize;
+							//	Vec3 shadowSamplePos = shadowRayPos / 2.0_f + VolumePos;
+
+							//	Float ss =
+							//		textureLod(kernelVolumeImage,
+							//				   shadowSamplePos, 0.0_f);
+
+							//	lightObstacle += ss;
+
+							//	IF(writer, lightObstacle >= 1.0_f)
+							//	{
+							//		// writer.returnStmt(outColor +
+							//		//                  writer.backgroundColor(rayDir) *
+							//		//                      absorption);
+							//		/*writer.returnStmt(vec4(0.1_f,0.1_f,0.1_f,1.0_f) * (1.0_f - outColor.a()));
+							//
+							//		outColor += vec4(0.3_f, 0.4_f, 0.5_f, 1.0_f) * (1.0_f - lightObstacle) * (1.0_f - outColor.a());
+							//
+							//		writer.returnStmt(outColor);*/
+							//
+							//		lightObstacle = 1.0_f;
+							//
+							//		writer.loopBreakStmt();
+							//	}
+							//	FI;
+							//}
+							//ROF;
+							//outColor += vec4(s) * intensity * (1.0_f - lightObstacle)* vec4(abs(rayPos), 1.0_f);
+
+							//outColor += vec4(s) * intensity * Power;
+							outColor += vec4(s) * intensity * vec4(abs(rayPos), 1.0_f);
+							//outColor += vec4(s) * vec4(gradient, 1.0_f) * Power;
+							//outColor += vec4(s) * Power;
+							//outColor.rgb() += abs(gradient) * s;
+							//outColor.rgb() += d * s;
+							//writer.loopBreakStmt();
+						}
+						FI;
+
+					    // outColor += rayPos * 0.01_f;
+
+					    // auto absorbance = writer.declLocale(
+					    //    "absorbance", exp(-Density * abStep));
+					    // auto transmittance = writer.declLocale(
+					    //    "transmittance", 1.0_f - absorbance);
+
+					    //// surface glow for a nice additional effect
+					    //// if(dist > -.0001) outColor += absorption *
+					    //// vec3(.2, .2, .2);
+
+					    //// if(randomFloat() < ShadowRaysPerStep)
+					    //// emissionColor
+					    //// += 1.0/ShadowRaysPerStep * volumeColor *
+					    //// directLight(rayPos);
+
+					    // auto i_f = writer.declLocale(
+					    //    "i_f", writer.cast<Float>(i));
+
+					    // IF(writer,
+					    //   mod(i_f, Float(StepsSkipShadow)) == 0.0_f)
+					    //{
+					    // emissionColor +=
+					    //     Float(StepsSkipShadow) * volumeColor *
+					    //     writer.directLight(rayPos, seed);
+					    //}
+					    // FI;
+
+					    // outColor +=
+					    //    absorption * transmittance * emissionColor;
+
+					    // IF(writer,
+					    //   writer.maxV(absorption) < 1.0_f - MaxAbso)
+					    //{
+					    // writer.loopBreakStmt();
+					    //}
+					    // FI;
+
+					    // IF(writer, writer.randomFloat(seed) > absorbance)
+					    //{
+					    // rayDir = writer.randomDir(seed);
+					    // absorption *= volumeColor;
+					    //}
+					    // FI;
+				    }
+				    FI;
+
+				    IF(writer, length(rayPos) > SceneRadius &&
+				                       dot(rayDir, rayPos) > 0.0_f ||
+				                   outColor.a() >= 1.0_f)
+				    {
+					    // writer.returnStmt(outColor +
+					    //                  writer.backgroundColor(rayDir) *
+					    //                      absorption);
+					    writer.returnStmt(outColor);
+				    }
+				    FI;
+			    }
+			    ROF;
+
+			    writer.returnStmt(outColor);
+		    },
+		    InVec3{ writer, "rayPos_arg" }, InVec3{ writer, "rayDir_arg" },
+		    InOutFloat{ writer, "seed" });
 
 		writer.implementMain([&]() {
 			Float x = writer.declLocale(
@@ -767,13 +1019,15 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 				aperture = CamMatrix * aperture;
 
 				// clang-format off
-				Vec3 newColor = writer.declLocale("newColor", writer.pathTrace(CamPos + aperture, rayDir, seed));
+				Vec4 newColor = writer.declLocale("newColor", pathTrace(CamPos + aperture, rayDir, seed));
+				//Vec3 newColor = writer.declLocale("newColor", pathTrace(CamPos + aperture, rayDir, seed));
 				Vec3 mixer = writer.declLocale("mixer", vec3(1.0_f / (samples + 1.0_f)));
-				Vec3 mixedColor = writer.declLocale("mixedColor", mix(previousColor.rgb(), newColor, mixer));
+				Vec3 mixedColor = writer.declLocale("mixedColor", mix(previousColor.rgb(), newColor.rgb(), mixer));
 				Vec4 mixedColor4 = writer.declLocale("mixedColor4", vec4(mixedColor, samples + 1.0_f));
+				imageStore(kernelImage, iuv, mixedColor4);
+				//imageStore(kernelImage, iuv, newColor);
 				// clang-format on
 
-				imageStore(kernelImage, iuv, mixedColor4);
 				// imageStore(kernelImage, iuv, vec4(uv, 0.0_f, 1.0_f));
 				// imageStore(kernelImage, iuv, vec4(0.0_f, fragCoord.y(),
 				// 0.0_f, 1.0_f)); imageStore(kernelImage, iuv,
@@ -805,13 +1059,13 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma region compute descriptor pool
 	std::array poolSizes{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
 	};
 
 	vk::DescriptorPoolCreateInfo poolInfo;
 	poolInfo.maxSets = 1;
-	poolInfo.poolSizeCount = 3;
+	poolInfo.poolSizeCount = uint32_t(poolSizes.size());
 	poolInfo.pPoolSizes = poolSizes.data();
 
 	m_computePool = vk.create(poolInfo);
@@ -846,11 +1100,19 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	layoutBindingImage.stageFlags =
 	    VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
+	VkDescriptorSetLayoutBinding layoutBindingVolume{};
+	layoutBindingVolume.binding = 3;
+	layoutBindingVolume.descriptorCount = 1;
+	layoutBindingVolume.descriptorType =
+	    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingVolume.stageFlags =
+	    VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
 	std::array layoutBindings{ layoutBindingKernelImage, layoutBindingUbo,
-		                       layoutBindingImage };
+		                       layoutBindingImage, layoutBindingVolume };
 
 	vk::DescriptorSetLayoutCreateInfo setLayoutInfo;
-	setLayoutInfo.bindingCount = 3;
+	setLayoutInfo.bindingCount = uint32_t(layoutBindings.size());
 	setLayoutInfo.pBindings = layoutBindings.data();
 
 	m_computeSetLayout = vk.create(setLayoutInfo);
@@ -1183,6 +1445,104 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	vk.updateDescriptorSets(2, writes.data());
 #pragma endregion
 
+#pragma region volumeTexture
+	nifti_image* niftiImage = nifti_image_read(
+	    "D:/Projects/git/VkRenderer-data/Data_Reconstruit_Rat.nii", 1);
+
+	m_volumeTexture = Texture3D(
+	    rw, niftiImage->nx, niftiImage->ny, niftiImage->nz,
+	    VK_FORMAT_R32_SFLOAT, VK_IMAGE_TILING_OPTIMAL,
+	    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	std::vector<vector4> niftiCells(niftiImage->nx * niftiImage->ny *
+	                                niftiImage->nz);
+
+	float* niftiData = reinterpret_cast<float*>(niftiImage->data);
+	for (size_t i = 0; i < niftiCells.size(); i++)
+		niftiCells[i].w = niftiData[i];
+
+	auto isInRange = [](int64_t i, int64_t max) -> bool {
+		return i >= 0 && i < max;
+	};
+
+	auto isInRangeX = [&](int64_t i) { return isInRange(i, niftiImage->nx); };
+	auto isInRangeY = [&](int64_t i) { return isInRange(i, niftiImage->ny); };
+	auto isInRangeZ = [&](int64_t i) { return isInRange(i, niftiImage->nz); };
+
+	auto getValue = [&](int64_t x, int64_t y, int64_t z) -> float {
+		if (isInRangeX(x) && isInRangeY(y) && isInRangeZ(z))
+			return niftiCells[x + niftiImage->nx * y +
+			                  niftiImage->nx * niftiImage->ny * z]
+			    .w;
+		return 0.0f;
+	};
+
+	auto computeGradient = [&](int64_t x, int64_t y, int64_t z) {
+		float t = getValue(x, y + 1, z);
+		float b = getValue(x, y - 1, z);
+		float l = getValue(x - 1, y, z);
+		float r = getValue(x + 1, y, z);
+		float f = getValue(x, y, z + 1);
+		float w = getValue(x, y, z - 1);
+
+		auto& cell = niftiCells[x + niftiImage->nx * y +
+		                        niftiImage->nx * niftiImage->ny * z];
+
+		cell.x = r - l;
+		cell.y = t - b;
+		cell.z = f - w;
+	};
+
+	for (int64_t z = 0; z < niftiImage->nz; z++)
+	{
+		for (int64_t y = 0; y < niftiImage->ny; y++)
+			for (int64_t x = 0; x < niftiImage->nx; x++)
+				computeGradient(x, y, z);
+		std::cout << (z+1) << "/" << niftiImage->nz << "\n";
+	}
+
+		std::cout << "\n";
+		std::cout << niftiImage->nx << "\n";
+		std::cout << niftiImage->ny << "\n";
+		std::cout << niftiImage->nz << "\n";
+
+	VkBufferImageCopy niftiRegion{};
+	niftiRegion.bufferRowLength = niftiImage->nx;
+	niftiRegion.bufferImageHeight = niftiImage->ny;
+	niftiRegion.imageExtent = m_volumeTexture.extent3D();
+	niftiRegion.imageSubresource.aspectMask =
+	    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+	niftiRegion.imageSubresource.baseArrayLayer = 0;
+	niftiRegion.imageSubresource.layerCount = 1;
+	niftiRegion.imageSubresource.mipLevel = 0;
+
+	m_volumeTexture.uploadDataImmediate(
+	    //niftiCells.data(),
+	    //niftiCells.size() * sizeof(*niftiCells.data()),
+	    niftiImage->data,
+	    niftiCells.size() * sizeof(float),
+	    niftiRegion, VK_IMAGE_LAYOUT_UNDEFINED,
+	    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	nifti_image_free(niftiImage);
+
+	VkDescriptorImageInfo volumeImageInfo{};
+	volumeImageInfo.imageView = m_volumeTexture.view();
+	volumeImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	volumeImageInfo.sampler = m_volumeTexture.sampler();
+
+	vk::WriteDescriptorSet volumeWrite;
+	volumeWrite.descriptorCount = 1;
+	volumeWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	volumeWrite.dstArrayElement = 0;
+	volumeWrite.dstBinding = 3;
+	volumeWrite.dstSet = m_computeSet.get();
+	volumeWrite.pImageInfo = &volumeImageInfo;
+
+	vk.updateDescriptorSets(volumeWrite);
+#pragma endregion
+
 #pragma region framebuffer
 	vk::FramebufferCreateInfo framebufferInfo;
 	framebufferInfo.renderPass = m_renderPass.get();
@@ -1206,9 +1566,9 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	vk.setLogInactive();
 }
 
-Mandelbulb::~Mandelbulb() {}
+VolumeScene::~VolumeScene() {}
 
-void Mandelbulb::render(CommandBuffer& cb)
+void VolumeScene::render(CommandBuffer& cb)
 {
 	std::array clearValues = { VkClearValue{}, VkClearValue{} };
 
@@ -1237,7 +1597,7 @@ void Mandelbulb::render(CommandBuffer& cb)
 	cb.endRenderPass2(subpassEndInfo);
 }
 
-void Mandelbulb::compute(CommandBuffer& cb)
+void VolumeScene::compute(CommandBuffer& cb)
 {
 	cb.bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline.get());
 	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -1245,7 +1605,7 @@ void Mandelbulb::compute(CommandBuffer& cb)
 	cb.dispatch(width / 8, height / 8);
 }
 
-void Mandelbulb::imgui(CommandBuffer& cb)
+void VolumeScene::imgui(CommandBuffer& cb)
 {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -1259,20 +1619,24 @@ void Mandelbulb::imgui(CommandBuffer& cb)
 
 		bool changed = false;
 
-		changed |= ImGui::SliderFloat("CamFocalDistance",
-		                              &m_config.camFocalDistance, 0.1f, 30.0f);
+		changed |= ImGui::SliderFloat(
+		    "CamFocalDistance", &m_config.camFocalDistance, 12.0f, 16.0f);
 		changed |= ImGui::SliderFloat("CamFocalLength",
 		                              &m_config.camFocalLength, 0.0f, 20.0f);
 		changed |= ImGui::SliderFloat("CamAperture", &m_config.camAperture,
-		                              0.0f, 5.0f);
+		                              0.0f, 1.5f);
 
 		changed |= ImGui::DragFloat3("rotation", &m_config.camRot.x, 0.01f);
 		changed |= ImGui::DragFloat3("lightDir", &m_config.lightDir.x, 0.01f);
 
 		changed |= ImGui::SliderFloat("scene radius", &m_config.sceneRadius,
 		                              0.0f, 10.0f);
-		changed |= ImGui::SliderFloat("power", &m_config.power,
-		                              0.0f, 50.0f);
+		changed |= ImGui::SliderFloat("power", &m_config.power, 0.0f, 2.0f);
+		changed |= ImGui::SliderFloat("step scale", &m_config.stepSizeScale,
+		                              0.0f, 2.0f);
+
+		changed |=
+		    ImGui::DragFloat3("volumePos", &m_config.volumePos.x, 0.01f);
 
 		ImGui::SliderFloat("BloomAscale1", &m_config.bloomAscale1, 0.0f, 1.0f);
 		ImGui::SliderFloat("BloomAscale2", &m_config.bloomAscale2, 0.0f, 1.0f);
@@ -1313,7 +1677,7 @@ void Mandelbulb::imgui(CommandBuffer& cb)
 	cb.endRenderPass2(subpassEndInfo2);
 }
 
-void Mandelbulb::standaloneDraw()
+void VolumeScene::standaloneDraw()
 {
 	auto& vk = rw.get().device();
 
@@ -1388,7 +1752,7 @@ void Mandelbulb::standaloneDraw()
 	imguiCB.reset();
 	imguiCB.begin();
 	imguiCB.debugMarkerBegin("render", 0.2f, 0.2f, 1.0f);
-	// mandelbulb.compute(imguiCB);
+	// volumeScene.compute(imguiCB);
 	render(imguiCB);
 	imgui(imguiCB);
 	imguiCB.debugMarkerEnd();
@@ -1497,7 +1861,7 @@ void Mandelbulb::standaloneDraw()
 	vk.wait(vk.graphicsQueue());
 }
 
-void Mandelbulb::applyImguiParameters()
+void VolumeScene::applyImguiParameters()
 {
 	auto& vk = rw.get().device();
 
@@ -1505,7 +1869,7 @@ void Mandelbulb::applyImguiParameters()
 	mustClear = true;
 }
 
-void Mandelbulb::randomizePoints()
+void VolumeScene::randomizePoints()
 {
 	auto& vk = rw.get().device();
 
@@ -1527,7 +1891,7 @@ void Mandelbulb::randomizePoints()
 	m_computeUbo.unmap();
 }
 
-void Mandelbulb::setSampleAndRandomize(float s)
+void VolumeScene::setSampleAndRandomize(float s)
 {
 	m_config.samples = s;
 	m_config.seed = udis(gen);

@@ -268,8 +268,8 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	// buildData->uboStruct->declMember<Float>("roughness");
 	// buildData->uboStruct->end();
 
-	buildData->ubo = std::make_unique<sdw::Ubo>(sdw::Ubo(
-	    writer, "DefaultMaterialUBO", 0, 2));
+	buildData->ubo = std::make_unique<sdw::Ubo>(
+	    sdw::Ubo(writer, "DefaultMaterialUBO", 0, 2));
 	// buildData->ubo->declMember<DefaultMaterialUBOStruct>(
 	//    "materials", instancePoolSize() + 1);
 	buildData->ubo->declMember<Vec4>("color0");
@@ -286,9 +286,10 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	MaterialFragmentFunction res = writer.implementFunction<Float>(
 	    "DefaultFragment",
 	    [&writer, buildData](const UInt& inMaterialInstanceIndex,
-	                         Vec4& inOutAlbedo, Vec3& inOutWsPosition,
-	                         Vec3& inOutWsNormal, Vec3& inOutWsTangent,
-	                         Float& inOutMetalness, Float& inOutRoughness) {
+	                         const Vec2& inUV, Vec4& inOutAlbedo,
+	                         Vec3& inOutWsPosition, Vec3& inOutWsNormal,
+	                         Vec3& inOutWsTangent, Float& inOutMetalness,
+	                         Float& inOutRoughness) {
 		    // Locale(material,
 		    //       buildData->ubo->getMemberArray<DefaultMaterialUBOStruct>(
 		    //           "materials")[inMaterialInstanceIndex]);
@@ -327,7 +328,7 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    //        "roughness");
 		    writer.returnStmt(0.0_f);
 	    },
-	    InUInt{ writer, "inMaterialInstanceIndex" },
+	    InUInt{ writer, "inMaterialInstanceIndex" }, InVec2{ writer, "inUV" },
 	    InOutVec4{ writer, "inOutAlbedo" },
 	    InOutVec3{ writer, "inOutWsPosition" },
 	    InOutVec3{ writer, "inOutWsNormal" },

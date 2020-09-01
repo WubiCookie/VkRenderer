@@ -49,6 +49,11 @@ protected:
 	void setVec4Parameter(const std::string& name , uint32_t instanceIndex, const vector4& a) override;
 
 public:
+	using Material::floatParameter;
+	using Material::vec4Parameter;
+	using Material::setFloatParameter;
+	using Material::setVec4Parameter;
+
 	// void vertexFunction(Vec3& inOutPosition, Vec3& inOutNormal);
 	MaterialVertexFunction vertexFunction(
 	    sdw::VertexWriter& writer,

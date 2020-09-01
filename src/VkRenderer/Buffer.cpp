@@ -20,7 +20,8 @@ Buffer::Buffer(RenderWindow& renderWindow, VkDeviceSize bufferSize,
 
 	VmaAllocationCreateInfo allocCreateInfo = {};
 	allocCreateInfo.usage = memoryUsage;
-	// allocCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	allocCreateInfo.flags =
+	    VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;  // VMA_ALLOCATION_CREATE_MAPPED_BIT;
 	allocCreateInfo.requiredFlags = requiredFlags;
 
 	vmaCreateBuffer(vk.allocator(), &info, &allocCreateInfo, &m_buffer.get(),

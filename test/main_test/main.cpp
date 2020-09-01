@@ -2,6 +2,7 @@
 //#include "Framebuffer.hpp"
 #include "Mandelbulb.hpp"
 #include "ShaderBall.hpp"
+#include "VolumeScene.hpp"
 //#include "Material.hpp"
 //#include "RenderPass.hpp"
 #include "RenderWindow.hpp"
@@ -238,7 +239,8 @@ int main()
 		rw.present();
 
 		// Mandelbulb mandelbulb(rw);
-		ShaderBall shaderBall(rw);
+		// ShaderBall shaderBall(rw);
+		VolumeScene volumeScene(rw);
 
 		auto start = std::chrono::steady_clock::now();
 		auto end = std::chrono::steady_clock::now();
@@ -295,14 +297,14 @@ int main()
 				//                               mouseSpeedAttenuation) *
 				//            (1280.0 / 720.0);  // balance aspect ratio
 				//
-				//if (deltaX > 0.0)
+				// if (deltaX > 0.0)
 				//	rotationX += dx;
-				//else
+				// else
 				//	rotationX -= dx;
 				//
-				//if (deltaY > 0.0)
+				// if (deltaY > 0.0)
 				//	rotationY += dy;
-				//else
+				// else
 				//	rotationY -= dy;
 
 				double dx = deltaX * mouseSpeed;
@@ -359,42 +361,43 @@ int main()
 
 			rw.pollEvents();
 
-			shaderBall.cameraTr.rotation =
-			    quaternion(vector3(0, 1, 0), degree(rotationX)) *
-			    quaternion(vector3(1, 0, 0), degree(rotationY));
+			// shaderBall.cameraTr.rotation =
+			//    quaternion(vector3(0, 1, 0), degree(rotationX)) *
+			//    quaternion(vector3(1, 0, 0), degree(rotationY));
 
-			if (rightClicking)
-			{
-				vector3 translation;
+			// if (rightClicking)
+			//{
+			//	vector3 translation;
 
-				if (wPressed)
-					translation.z -= 1.0;
-				if (aPressed)
-					translation.x -= 1.0;
-				if (sPressed)
-					translation.z += 1.0;
-				if (dPressed)
-					translation.x += 1.0;
-				if (qPressed)
-					shaderBall.cameraTr.position.y -= translationSpeed;
-				if (ePressed)
-					shaderBall.cameraTr.position.y += translationSpeed;
+			//	if (wPressed)
+			//		translation.z -= 1.0;
+			//	if (aPressed)
+			//		translation.x -= 1.0;
+			//	if (sPressed)
+			//		translation.z += 1.0;
+			//	if (dPressed)
+			//		translation.x += 1.0;
+			//	if (qPressed)
+			//		shaderBall.cameraTr.position.y -= translationSpeed;
+			//	if (ePressed)
+			//		shaderBall.cameraTr.position.y += translationSpeed;
 
-				if (translation.norm() > 0.01f)
-				{
-					translation.normalize();
-					translation *= translationSpeed;
+			//	if (translation.norm() > 0.01f)
+			//	{
+			//		translation.normalize();
+			//		translation *= translationSpeed;
 
-					shaderBall.cameraTr.position +=
-					    shaderBall.cameraTr.rotation * translation;
-				}
-			}
+			//		shaderBall.cameraTr.position +=
+			//		    shaderBall.cameraTr.rotation * translation;
+			//	}
+			//}
 
 			vk.wait(fence.get());
 			vk.resetFence(fence.get());
 
 			// mandelbulb.standaloneDraw();
-			shaderBall.standaloneDraw();
+			// shaderBall.standaloneDraw();
+			volumeScene.standaloneDraw();
 
 			rw.acquireNextImage(fence.get());
 

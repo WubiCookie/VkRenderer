@@ -613,6 +613,7 @@ struct quaternion
 	static quaternion lerp(const quaternion& begin, const quaternion& end, float percent);
 	static quaternion nlerp(const quaternion& begin, const quaternion& end, float percent);
 	static quaternion slerp(const quaternion& begin, const quaternion& end, float percent);
+	static quaternion look_at(const vector3& begin, const vector3& end);
 	float dot(const quaternion&) const;
 	quaternion cross(const quaternion&) const;
 
@@ -2412,8 +2413,9 @@ inline quaternion::quaternion(const normalized<vector3>& axis, const radian& ang
 	/*vector3 tmpAxis = vector3_get_normalized(axis);
 	tmpAxis = vector3_times_float(&tmpAxis, sinf(angle / 2.0f));*/
 
-	vector3 tmpAxis = axis * sinf(angle / 2.0f);
-	*this = {tmpAxis.x, tmpAxis.y, tmpAxis.z, cosf(angle / 2.0f)};
+	radian halfAngle = angle * 0.5f;
+	vector3 tmpAxis = axis * sinf(halfAngle);
+	*this = {tmpAxis.x, tmpAxis.y, tmpAxis.z, cosf(halfAngle)};
 }
 
 inline quaternion quaternion::zero() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
@@ -2521,6 +2523,26 @@ inline quaternion quaternion::slerp(const quaternion& begin, const quaternion& e
 	res = begin * cosf(theta) + res * sinf(theta);
 
 	return res;
+}
+inline quaternion quaternion::look_at(const vector3& begin, const vector3& end)
+{
+	vector3 forwardVector = (end - begin).normalize();
+
+	float dot = vector3(0.0f, 0.0f, -1.0f).dot(forwardVector);
+
+    if (std::abs(dot - (-1.0f)) < 0.000001f)
+    {
+        return quaternion(vector3(0.0f, 1.0f, 0.0f), radian(3.1415926535897932f));
+    }
+    if (std::abs(dot - (1.0f)) < 0.000001f)
+    {
+        return quaternion::identity();
+    }
+
+    float rotAngle = std::acos(dot);
+    vector3 rotAxis = vector3(0.0f, 0.0f, -1.0f).cross(forwardVector);
+    rotAxis = rotAxis.normalize();
+	return quaternion(rotAxis, radian(rotAngle));
 }
 inline float quaternion::dot(const quaternion& q) const { return x * q.x + y * q.y + z * q.z + w * q.w; }
 inline quaternion quaternion::cross(const quaternion& q) const

@@ -8,48 +8,63 @@
 
 namespace cdm
 {
-class DefaultMaterial : public Material
+class CustomMaterial : public Material
 {
-	Buffer m_uniformBuffer;
+	//Buffer m_uniformBuffer;
 
-	struct alignas(16) UBOStruct
-	{
-		vector4 color;
+	std::vector<const Texture2D*> m_albedoTexture;
+	std::vector<const Texture2D*> m_normalTexture;
+	std::vector<const Texture2D*> m_metalnessTexture;
+	std::vector<const Texture2D*> m_roughnessTexture;
 
-		float metalness;
-		float roughness;
+	//struct alignas(16) UBOStruct
+	//{
+	//	vector4 color;
 
-		// padding
-		float _0{ float(0xcccccccc) };
-		float _1{ float(0xcccccccc) };
-	};
+	//	float metalness;
+	//	float roughness;
 
-	std::vector<UBOStruct> m_uboStructs;
+	//	// padding
+	//	float _0{ float(0xcccccccc) };
+	//	float _1{ float(0xcccccccc) };
+	//};
+
+	//std::vector<UBOStruct> m_uboStructs;
 
 	struct FragmentShaderBuildData : FragmentShaderBuildDataBase
 	{
-		std::unique_ptr<sdw::Ubo> ubo;
+		//std::unique_ptr<sdw::Ubo> ubo;
+		std::unique_ptr<sdw::Array<sdw::SampledImage2DRgba32>> albedos;
+		std::unique_ptr<sdw::Array<sdw::SampledImage2DRgba32>> normals;
+		std::unique_ptr<sdw::Array<sdw::SampledImage2DRgba32>> metalnesses;
+		std::unique_ptr<sdw::Array<sdw::SampledImage2DRgba32>> roughnesses;
+
 	};
 
 public:
-	DefaultMaterial() = default;
-	DefaultMaterial(RenderWindow& rw, PbrShadingModel& shadingModel,
+	CustomMaterial() = default;
+	CustomMaterial(RenderWindow& rw, PbrShadingModel& shadingModel,
 	                uint32_t instancePoolSize = 0);
-	DefaultMaterial(const DefaultMaterial&) = delete;
-	DefaultMaterial(DefaultMaterial&&) = default;
-	~DefaultMaterial() = default;
+	CustomMaterial(const CustomMaterial&) = delete;
+	CustomMaterial(CustomMaterial&&) = default;
+	~CustomMaterial() = default;
 
-	DefaultMaterial& operator=(const DefaultMaterial&) = delete;
-	DefaultMaterial& operator=(DefaultMaterial&&) = default;
+	CustomMaterial& operator=(const CustomMaterial&) = delete;
+	CustomMaterial& operator=(CustomMaterial&&) = default;
 
 protected:
-	float    floatParameter(const std::string& name, uint32_t instanceIndex) override;
-	vector4  vec4Parameter (const std::string& name, uint32_t instanceIndex) override;
+	//float    floatParameter(const std::string& name, uint32_t instanceIndex) override;
+	//vector4  vec4Parameter (const std::string& name, uint32_t instanceIndex) override;
+	const Texture2D* Texture2DParameter(const std::string& name, uint32_t instanceIndex) override;
 
-	void setFloatParameter(const std::string& name, uint32_t instanceIndex, float a)          override;
-	void setVec4Parameter(const std::string& name , uint32_t instanceIndex, const vector4& a) override;
+	//void setFloatParameter(const std::string& name, uint32_t instanceIndex, float a)          override;
+	//void setVec4Parameter(const std::string& name , uint32_t instanceIndex, const vector4& a) override;
+	void setTexture2DParameter(const std::string& name, uint32_t instanceIndex, const Texture2D* a) override;
 
 public:
+	using Material::Texture2DParameter;
+	using Material::setTexture2DParameter;
+
 	// void vertexFunction(Vec3& inOutPosition, Vec3& inOutNormal);
 	MaterialVertexFunction vertexFunction(
 	    sdw::VertexWriter& writer,

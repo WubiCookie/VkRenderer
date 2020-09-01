@@ -25,6 +25,7 @@ using MaterialVertexFunction =
     sdw::Function<sdw::Float, sdw::InOutVec3, sdw::InOutVec3>;
 
 // void fragmentFunction(UInt inMaterialInstanceIndex,
+//                       Vec2 inUV,
 //                       Vec4& inOutAlbedo,
 //                       Vec3& inOutWsPosition,
 //                       Vec3& inOutWsNormal,
@@ -32,16 +33,17 @@ using MaterialVertexFunction =
 //                       Float& inOutMetalness,
 //                       Float& inOutRoughness);
 using MaterialFragmentFunction =
-    sdw::Function<sdw::Float, sdw::InUInt, sdw::InOutVec4, sdw::InOutVec3,
-                  sdw::InOutVec3, sdw::InOutVec3, sdw::InOutFloat,
-                  sdw::InOutFloat>;
+    sdw::Function<sdw::Float, sdw::InUInt, sdw::InVec2, sdw::InOutVec4,
+                  sdw::InOutVec3, sdw::InOutVec3, sdw::InOutVec3,
+                  sdw::InOutFloat, sdw::InOutFloat>;
 
 // Vec4 combinedMaterialShading(UInt inMaterialInstanceIndex,
+//                              Vec2 UV,
 //                              Vec3 wsPosition,
 //                              Vec3 wsNormal,
 //                              Vec3 wsTangent,
 //                              Vec3 wsViewPosition);
 using CombinedMaterialShadingFragmentFunction =
-    sdw::Function<sdw::Vec4, sdw::InUInt, sdw::InVec3, sdw::InVec3,
-                  sdw::InVec3, sdw::InVec3>;
+    sdw::Function<sdw::Vec4, sdw::InUInt, sdw::InVec2, sdw::InVec3,
+                  sdw::InVec3, sdw::InVec3, sdw::InVec3>;
 }  // namespace cdm

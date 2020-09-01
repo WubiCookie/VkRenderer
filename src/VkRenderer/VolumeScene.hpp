@@ -1,0 +1,160 @@
+#pragma once
+
+#include "VulkanDevice.hpp"
+
+#include "Buffer.hpp"
+#include "CommandBuffer.hpp"
+#include "RenderWindow.hpp"
+#include "Texture2D.hpp"
+#include "Texture3D.hpp"
+#include "StandardMesh.hpp"
+
+#include <memory>
+#include <random>
+
+namespace cdm
+{
+class VolumeScene final
+{
+	std::reference_wrapper<RenderWindow> rw;
+
+	UniqueRenderPass m_renderPass;
+
+	UniqueFramebuffer m_framebuffer;
+
+	UniqueShaderModule m_vertexModule;
+	UniqueShaderModule m_fragmentModule;
+	UniqueShaderModule m_computeModule;
+
+	UniquePipeline m_pipeline;
+
+	UniqueDescriptorPool m_computePool;
+	UniqueDescriptorSetLayout m_computeSetLayout;
+	Movable<VkDescriptorSet> m_computeSet;
+	UniquePipelineLayout m_computePipelineLayout;
+	UniquePipeline m_computePipeline;
+
+	Texture3D m_volumeTexture;
+
+	StandardMesh m_volumeMesh;
+
+	Buffer m_vertexBuffer;
+	Buffer m_computeUbo;
+	Texture2D m_outputImage;
+	Texture2D m_outputImageHDR;
+
+	std::random_device rd;
+	std::mt19937 gen;
+	std::normal_distribution<float> dis;
+	std::uniform_real_distribution<float> udis;
+
+public:
+	struct Config
+	{
+		struct vec3
+		{
+			float x;
+			float y;
+			float z;
+		};
+
+		float camAperture{ 0.1f };
+		float camFocalDistance{ 15.28f };
+		float camFocalLength{ 7.0f };
+		float density{ 500.0f };
+		float maxAbso{ 0.7f };
+		float maxShadowAbso{ 0.7f };
+		float power{ 0.7f };
+		float samples{ 0.0f };
+		float sceneRadius{ 1.5f };
+		float seed{ 0.0f };
+
+	private:
+		float stepSize;
+
+	public:
+		float stepsSkipShadow{ 4.0f };
+		float volumePrecision{ 0.35f };
+		int32_t maxSteps{ 9000 };
+
+	private:
+		float _00{0.0f};
+		float _01{0.0f};
+
+	public:
+		vec3 camRot{ 0.0f, 0.0f, 1.57f };
+
+	private:
+		float _0{0.0f};
+
+	public:
+		vec3 lightColor{ 3.0f, 3.0f, 3.0f };
+
+	private:
+		float _1{0.0f};
+
+	public:
+		vec3 lightDir{ -1.0f, 0.0f, 0.0f };
+
+	private:
+		float _2{0.0f};
+
+	public:
+		vec3 volumePos{ 0.5f, 0.5f, 0.5f };
+
+	private:
+		float _3{0.0f};
+
+	public:
+		float stepSizeScale{ 1.0f };
+
+	public:
+		float bloomAscale1{ 0.15f };
+		float bloomAscale2{ 0.3f };
+		float bloomBscale1{ 0.05f };
+		float bloomBscale2{ 0.2f };
+
+		Config()
+		    : stepSize{ std::min(1.0f / (volumePrecision * density),
+			                     sceneRadius / 2.0f) }
+		{
+		}
+
+		void copyTo(void* ptr);
+	};
+
+private:
+	Config m_config;
+
+	float CamFocalDistance;
+	float CamFocalLength;
+	float CamAperture;
+
+	CommandBuffer computeCB;// (vk, rw.oneTimeCommandPool());
+	CommandBuffer imguiCB;// (vk, rw.oneTimeCommandPool());
+	CommandBuffer copyHDRCB;// (vk, rw.oneTimeCommandPool());
+	CommandBuffer cb;// (vk, rw.oneTimeCommandPool());
+
+	void applyImguiParameters();
+
+public:
+	VolumeScene(RenderWindow& renderWindow);
+	~VolumeScene();
+
+	void render(CommandBuffer& cb);
+	void compute(CommandBuffer& cb);
+	void imgui(CommandBuffer& cb);
+
+	void standaloneDraw();
+
+	void randomizePoints();
+	void setSampleAndRandomize(float s);
+
+	VkImage outputImage() const { return m_outputImage.get(); }
+	VkImage outputImageHDR() const { return m_outputImageHDR.get(); }
+	Texture2D& outputTexture() { return m_outputImage; }
+	Texture2D& outputTextureHDR() { return m_outputImageHDR; }
+
+	bool mustClear = false;
+};
+}  // namespace cdm

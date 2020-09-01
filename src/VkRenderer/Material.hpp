@@ -21,29 +21,10 @@ class RenderPass;
 class CommandBuffer;
 class Material;
 class MaterialInstance;
+class Texture2D;
 
 class MaterialInterface
 {
-public:
-	template <typename T>
-	class NumberParameter
-	{
-	public:
-		T value{};
-		size_t offset{ 0 };
-		Movable<UniformBuffer*> uniformBuffer;
-	};
-
-	using FloatParameter = NumberParameter<float>;
-	using Vec2Parameter = NumberParameter<vector2>;
-	using Vec3Parameter = NumberParameter<vector3>;
-	using Vec4Parameter = NumberParameter<vector4>;
-	using Mat2Parameter = NumberParameter<matrix2>;
-	using Mat3Parameter = NumberParameter<matrix3>;
-	using Mat4Parameter = NumberParameter<matrix4>;
-	using UIntParameter = NumberParameter<uint32_t>;
-	using IntParameter = NumberParameter<int32_t>;
-
 protected:
 	virtual float floatParameter(const std::string& name,
 	                             uint32_t instanceIndex)
@@ -99,6 +80,12 @@ protected:
 		assert(false);
 		return {};
 	}
+	virtual const Texture2D* Texture2DParameter(const std::string& name,
+	                                            uint32_t instanceIndex)
+	{
+		assert(false);
+		return nullptr;
+	}
 
 	virtual void setFloatParameter(const std::string& name,
 	                               uint32_t instanceIndex, float a)
@@ -142,6 +129,12 @@ protected:
 	}
 	virtual void setIntParameter(const std::string& name,
 	                             uint32_t instanceIndex, int32_t a)
+	{
+		assert(false);
+	}
+	virtual void setTexture2DParameter(const std::string& name,
+	                                   uint32_t instanceIndex,
+	                                   const Texture2D* a)
 	{
 		assert(false);
 	}
@@ -282,10 +275,12 @@ protected:
 	using MaterialInterface::setMat2Parameter;
 	using MaterialInterface::setMat3Parameter;
 	using MaterialInterface::setMat4Parameter;
+	using MaterialInterface::setTexture2DParameter;
 	using MaterialInterface::setUintParameter;
 	using MaterialInterface::setVec2Parameter;
 	using MaterialInterface::setVec3Parameter;
 	using MaterialInterface::setVec4Parameter;
+	using MaterialInterface::Texture2DParameter;
 	using MaterialInterface::uintParameter;
 	using MaterialInterface::vec2Parameter;
 	using MaterialInterface::vec3Parameter;
@@ -328,42 +323,50 @@ public:
 	{
 		return MaterialInterface::intParameter(name, 0);
 	}
+	const Texture2D* Texture2DParameter(const std::string& name)
+	{
+		return MaterialInterface::Texture2DParameter(name, 0);
+	}
 
 	void setFloatParameter(const std::string& name, float a)
 	{
-		MaterialInterface::setFloatParameter(name, 0, a);
+		setFloatParameter(name, 0, a);
 	}
 	void setVec2Parameter(const std::string& name, const vector2& a)
 	{
-		MaterialInterface::setVec2Parameter(name, 0, a);
+		setVec2Parameter(name, 0, a);
 	}
 	void setVec3Parameter(const std::string& name, const vector3& a)
 	{
-		MaterialInterface::setVec3Parameter(name, 0, a);
+		setVec3Parameter(name, 0, a);
 	}
 	void setVec4Parameter(const std::string& name, const vector4& a)
 	{
-		MaterialInterface::setVec4Parameter(name, 0, a);
+		setVec4Parameter(name, 0, a);
 	}
 	void setMat2Parameter(const std::string& name, const matrix2& a)
 	{
-		MaterialInterface::setMat2Parameter(name, 0, a);
+		setMat2Parameter(name, 0, a);
 	}
 	void setMat3Parameter(const std::string& name, const matrix3& a)
 	{
-		MaterialInterface::setMat3Parameter(name, 0, a);
+		setMat3Parameter(name, 0, a);
 	}
 	void setMat4Parameter(const std::string& name, const matrix4& a)
 	{
-		MaterialInterface::setMat4Parameter(name, 0, a);
+		setMat4Parameter(name, 0, a);
 	}
 	void setUintParameter(const std::string& name, uint32_t a)
 	{
-		MaterialInterface::setUintParameter(name, 0, a);
+		setUintParameter(name, 0, a);
 	}
 	void setIntParameter(const std::string& name, int32_t a)
 	{
-		MaterialInterface::setIntParameter(name, 0, a);
+		setIntParameter(name, 0, a);
+	}
+	void setTexture2DParameter(const std::string& name, const Texture2D* a)
+	{
+		setTexture2DParameter(name, 0, a);
 	}
 
 	void setParameter(const std::string& name, float a)
@@ -401,6 +404,10 @@ public:
 	void setParameter(const std::string& name, int32_t a)
 	{
 		setIntParameter(name, a);
+	}
+	void setParameter(const std::string& name, const Texture2D* a)
+	{
+		setTexture2DParameter(name, a);
 	}
 
 	void bind(CommandBuffer& cb, VkPipelineLayout layout) override;

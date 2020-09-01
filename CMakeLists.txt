@@ -104,13 +104,30 @@ set(SOURCE_FILES
 	src/VkRenderer/StandardMesh.hpp
 	src/VkRenderer/Texture2D.cpp
 	src/VkRenderer/Texture2D.hpp
+	src/VkRenderer/Texture3D.cpp
+	src/VkRenderer/Texture3D.hpp
 	src/VkRenderer/TextureInterface.hpp
 	src/VkRenderer/UniformBuffer.cpp
 	src/VkRenderer/UniformBuffer.hpp
+	src/VkRenderer/VolumeScene.cpp
+	src/VkRenderer/VolumeScene.hpp
 	src/VkRenderer/VulkanDevice.cpp
 	src/VkRenderer/VulkanDevice.hpp
 	src/VkRenderer/VulkanDevice.inl
 	src/VkRenderer/VulkanHelperStructs.hpp
+)
+
+set(NIFTI_FILES
+	third_party/niftilib/nifti1.h
+	third_party/niftilib/nifti1_io.h
+	third_party/niftilib/nifti1_io.c
+	third_party/niftilib/nifti1_io_version.h
+)
+
+set(ZNZLIB_FILES
+	third_party/znzlib/znzlib_version.h
+	third_party/znzlib/znzlib.h
+	third_party/znzlib/znzlib.c
 )
 
 add_library(VkRenderer STATIC
@@ -119,6 +136,8 @@ add_library(VkRenderer STATIC
 	${SOURCE_FILES}
 	${MATERIAL_FILES}
 	${IMGUI_FILES}
+	${NIFTI_FILES}
+	${ZNZLIB_FILES}
 )
 
 set_target_properties(VkRenderer PROPERTIES FOLDER "")
@@ -126,6 +145,8 @@ set_target_properties(VkRenderer PROPERTIES FOLDER "")
 source_group("Sources" FILES ${SOURCE_FILES})
 source_group("Materials" FILES ${MATERIAL_FILES})
 source_group("ImGui" FILES ${IMGUI_FILES})
+source_group("Nifti" FILES ${NIFTI_FILES})
+source_group("znzlib" FILES ${ZNZLIB_FILES})
 
 target_include_directories(VkRenderer
 	PUBLIC
@@ -133,6 +154,8 @@ target_include_directories(VkRenderer
 
 		"${Vulkan_INCLUDE_DIRS}"
 		third_party/include
+		third_party/niftilib
+		third_party/znzlib
 		${GLFW3_INCLUDE_DIR}
 		${SHADERC_INCLUDE_DIR}
 )
