@@ -11,12 +11,47 @@ list(APPEND CMAKE_MODULE_PATH ${GLFW3_PATH})
 list(APPEND CMAKE_MODULE_PATH ${ASSIMP_PATH})
 
 find_package(Vulkan REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(Assimp REQUIRED)
-find_package(ShaderWriter REQUIRED)
+# find_package(glfw3 REQUIRED)
+# find_package(Assimp REQUIRED)
+# find_package(ShaderWriter REQUIRED)
 
-set(SHADERC_LIBRARY_DIR "" CACHE PATH "Path to shaderc library directory (folder containing shaderc_combined.lib)")
-set(SHADERC_INCLUDE_DIR "" CACHE PATH "Path to shaderc include directory (folder containing shaderc/shaderc.h)")
+message("==============================================")
+message("                     GLFW                     ")
+message("==============================================")
+set(GLFW_DIR "external/glfw")
+add_subdirectory(${GLFW_DIR})
+# set(IMGUI_FILES
+#   ${IMGUI_DIR}/imconfig.h
+#   ${IMGUI_DIR}/imgui.h
+#   ${IMGUI_DIR}/examples/imgui_impl_glfw.cpp
+#   src/VkRenderer/my_imgui_impl_vulkan.cpp
+#   src/VkRenderer/my_imgui_impl_vulkan.h
+#   ${IMGUI_DIR}/imgui.cpp
+#   ${IMGUI_DIR}/imgui_draw.cpp
+#   ${IMGUI_DIR}/imgui_demo.cpp
+#   ${IMGUI_DIR}/imgui_widgets.cpp
+# )
+
+# set(SHADERC_LIBRARY_DIR "" CACHE PATH "Path to shaderc library directory (folder containing shaderc_combined.lib)")
+# set(SHADERC_INCLUDE_DIR "" CACHE PATH "Path to shaderc include directory (folder containing shaderc/shaderc.h)")
+
+message("==============================================")
+message("                    Assimp                    ")
+message("==============================================")
+set(ASSIMP_DIR "external/assimp")
+add_subdirectory(${ASSIMP_DIR})
+
+message("==============================================")
+message("                 ShaderWriter                 ")
+message("==============================================")
+set(SHADERWRITER_DIR "external/ShaderWriter")
+add_subdirectory(${SHADERWRITER_DIR})
+
+message("==============================================")
+message("                   ShaderC                    ")
+message("==============================================")
+set(SHADERC_DIR "external/shaderc")
+add_subdirectory(${SHADERC_DIR})
 
 message("==============================================")
 message("                     ImGUI                    ")
@@ -24,101 +59,103 @@ message("==============================================")
 set(IMGUI_DIR "third_party/imgui")
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/examples)
 set(IMGUI_FILES
-	${IMGUI_DIR}/imconfig.h
-	${IMGUI_DIR}/imgui.h
-	${IMGUI_DIR}/examples/imgui_impl_glfw.cpp
-	src/VkRenderer/my_imgui_impl_vulkan.cpp
-	src/VkRenderer/my_imgui_impl_vulkan.h
-	${IMGUI_DIR}/imgui.cpp
-	${IMGUI_DIR}/imgui_draw.cpp
-	${IMGUI_DIR}/imgui_demo.cpp
-	${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imconfig.h
+    ${IMGUI_DIR}/imgui.h
+    ${IMGUI_DIR}/examples/imgui_impl_glfw.cpp
+    src/VkRenderer/my_imgui_impl_vulkan.cpp
+    src/VkRenderer/my_imgui_impl_vulkan.h
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
 )
 
 message("==============================================")
 message("                  VkRenderer                  ")
 message("==============================================")
 set(MATERIAL_FILES
-	src/VkRenderer/Materials/CustomMaterial.cpp
-	src/VkRenderer/Materials/CustomMaterial.hpp
-	src/VkRenderer/Materials/DefaultMaterial.cpp
-	src/VkRenderer/Materials/DefaultMaterial.hpp
+    src/VkRenderer/Materials/CustomMaterial.cpp
+    src/VkRenderer/Materials/CustomMaterial.hpp
+    src/VkRenderer/Materials/DefaultMaterial.cpp
+    src/VkRenderer/Materials/DefaultMaterial.hpp
 )
 
 set(SOURCE_FILES
-	src/VkRenderer/BrdfLut.cpp
-	src/VkRenderer/BrdfLut.hpp
-	src/VkRenderer/BrdfLutGenerator.cpp
-	src/VkRenderer/BrdfLutGenerator.hpp
-	src/VkRenderer/Buffer.cpp
-	src/VkRenderer/Buffer.hpp
-	src/VkRenderer/CommandBuffer.cpp
-	src/VkRenderer/CommandBuffer.hpp
-	src/VkRenderer/CommandBuffer.inl
-	src/VkRenderer/Cubemap.cpp
-	src/VkRenderer/Cubemap.hpp
-	src/VkRenderer/DepthTexture.cpp
-	src/VkRenderer/DepthTexture.hpp
-	src/VkRenderer/EquirectangularToCubemap.cpp
-	src/VkRenderer/EquirectangularToCubemap.hpp
-	src/VkRenderer/EquirectangularToIrradianceMap.cpp
-	src/VkRenderer/EquirectangularToIrradianceMap.hpp
-	src/VkRenderer/Framebuffer.cpp
-	src/VkRenderer/Framebuffer.hpp
-	src/VkRenderer/Image.cpp
-	src/VkRenderer/Image.hpp
-	src/VkRenderer/ImageView.cpp
-	src/VkRenderer/ImageView.hpp
-	src/VkRenderer/IrradianceMap.cpp
-	src/VkRenderer/IrradianceMap.hpp
-	src/VkRenderer/Mandelbulb.cpp
-	src/VkRenderer/Mandelbulb.hpp
-	src/VkRenderer/Material.cpp
-	src/VkRenderer/Material.hpp
-	src/VkRenderer/Model.cpp
-	src/VkRenderer/Model.hpp
-	src/VkRenderer/MyShaderWriter.hpp
-	src/VkRenderer/PbrShadingModel.cpp
-	src/VkRenderer/PbrShadingModel.hpp
-	src/VkRenderer/PrefilterCubemap.cpp
-	src/VkRenderer/PrefilterCubemap.hpp
-	src/VkRenderer/PrefilteredCubemap.cpp
-	src/VkRenderer/PrefilteredCubemap.hpp
-	src/VkRenderer/Renderer.cpp
-	src/VkRenderer/Renderer.hpp
-	src/VkRenderer/RenderPass.cpp
-	src/VkRenderer/RenderPass.hpp
-	src/VkRenderer/RenderWindow.cpp
-	src/VkRenderer/RenderWindow.hpp
-	src/VkRenderer/Scene.cpp
-	src/VkRenderer/Scene.hpp
-	src/VkRenderer/SceneObject.cpp
-	src/VkRenderer/SceneObject.hpp
-	src/VkRenderer/ShaderBall.cpp
-	src/VkRenderer/ShaderBall.hpp
-	src/VkRenderer/Skybox.cpp
-	src/VkRenderer/Skybox.hpp
-	src/VkRenderer/StagingBuffer.cpp
-	src/VkRenderer/StagingBuffer.hpp
-	src/VkRenderer/StandardMesh.cpp
-	src/VkRenderer/StandardMesh.hpp
-	src/VkRenderer/Texture2D.cpp
-	src/VkRenderer/Texture2D.hpp
-	src/VkRenderer/TextureInterface.hpp
-	src/VkRenderer/UniformBuffer.cpp
-	src/VkRenderer/UniformBuffer.hpp
-	src/VkRenderer/VulkanDevice.cpp
-	src/VkRenderer/VulkanDevice.hpp
-	src/VkRenderer/VulkanDevice.inl
-	src/VkRenderer/VulkanHelperStructs.hpp
+    src/VkRenderer/BrdfLut.cpp
+    src/VkRenderer/BrdfLut.hpp
+    src/VkRenderer/BrdfLutGenerator.cpp
+    src/VkRenderer/BrdfLutGenerator.hpp
+    src/VkRenderer/Buffer.cpp
+    src/VkRenderer/Buffer.hpp
+    src/VkRenderer/CommandBuffer.cpp
+    src/VkRenderer/CommandBuffer.hpp
+    src/VkRenderer/CommandBuffer.inl
+    src/VkRenderer/CommandPool.cpp
+    src/VkRenderer/CommandPool.hpp
+    src/VkRenderer/Cubemap.cpp
+    src/VkRenderer/Cubemap.hpp
+    src/VkRenderer/DepthTexture.cpp
+    src/VkRenderer/DepthTexture.hpp
+    src/VkRenderer/EquirectangularToCubemap.cpp
+    src/VkRenderer/EquirectangularToCubemap.hpp
+    src/VkRenderer/EquirectangularToIrradianceMap.cpp
+    src/VkRenderer/EquirectangularToIrradianceMap.hpp
+    src/VkRenderer/Framebuffer.cpp
+    src/VkRenderer/Framebuffer.hpp
+    src/VkRenderer/Image.cpp
+    src/VkRenderer/Image.hpp
+    src/VkRenderer/ImageView.cpp
+    src/VkRenderer/ImageView.hpp
+    src/VkRenderer/IrradianceMap.cpp
+    src/VkRenderer/IrradianceMap.hpp
+    src/VkRenderer/Mandelbulb.cpp
+    src/VkRenderer/Mandelbulb.hpp
+    src/VkRenderer/Material.cpp
+    src/VkRenderer/Material.hpp
+    src/VkRenderer/Model.cpp
+    src/VkRenderer/Model.hpp
+    src/VkRenderer/MyShaderWriter.hpp
+    src/VkRenderer/PbrShadingModel.cpp
+    src/VkRenderer/PbrShadingModel.hpp
+    src/VkRenderer/PrefilterCubemap.cpp
+    src/VkRenderer/PrefilterCubemap.hpp
+    src/VkRenderer/PrefilteredCubemap.cpp
+    src/VkRenderer/PrefilteredCubemap.hpp
+    src/VkRenderer/Renderer.cpp
+    src/VkRenderer/Renderer.hpp
+    src/VkRenderer/RenderPass.cpp
+    src/VkRenderer/RenderPass.hpp
+    src/VkRenderer/RenderWindow.cpp
+    src/VkRenderer/RenderWindow.hpp
+    src/VkRenderer/Scene.cpp
+    src/VkRenderer/Scene.hpp
+    src/VkRenderer/SceneObject.cpp
+    src/VkRenderer/SceneObject.hpp
+    src/VkRenderer/ShaderBall.cpp
+    src/VkRenderer/ShaderBall.hpp
+    src/VkRenderer/Skybox.cpp
+    src/VkRenderer/Skybox.hpp
+    src/VkRenderer/StagingBuffer.cpp
+    src/VkRenderer/StagingBuffer.hpp
+    src/VkRenderer/StandardMesh.cpp
+    src/VkRenderer/StandardMesh.hpp
+    src/VkRenderer/Texture2D.cpp
+    src/VkRenderer/Texture2D.hpp
+    src/VkRenderer/TextureInterface.hpp
+    src/VkRenderer/UniformBuffer.cpp
+    src/VkRenderer/UniformBuffer.hpp
+    src/VkRenderer/VulkanDevice.cpp
+    src/VkRenderer/VulkanDevice.hpp
+    src/VkRenderer/VulkanDevice.inl
+    src/VkRenderer/VulkanHelperStructs.hpp
 )
 
 add_library(VkRenderer STATIC
-	src/third_party/stb_image.cpp
+    src/third_party/stb_image.cpp
 
-	${SOURCE_FILES}
-	${MATERIAL_FILES}
-	${IMGUI_FILES}
+    ${SOURCE_FILES}
+    ${MATERIAL_FILES}
+    ${IMGUI_FILES}
 )
 
 set_target_properties(VkRenderer PROPERTIES FOLDER "")
@@ -128,22 +165,23 @@ source_group("Materials" FILES ${MATERIAL_FILES})
 source_group("ImGui" FILES ${IMGUI_FILES})
 
 target_include_directories(VkRenderer
-	PUBLIC
-		src/VkRenderer
+    PUBLIC
+        src/VkRenderer
 
-		"${Vulkan_INCLUDE_DIRS}"
-		third_party/include
-		${GLFW3_INCLUDE_DIR}
-		${SHADERC_INCLUDE_DIR}
+        "${Vulkan_INCLUDE_DIRS}"
+        third_party/include
+        ${GLFW3_INCLUDE_DIR}
+        ${SHADERC_INCLUDE_DIR}
 )
 
 link_directories(${SHADERC_LIBRARY_DIR})
-target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp shaderc_combined)
+#target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp shaderc_combined)
+target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp )
 
 set_target_properties(VkRenderer PROPERTIES CXX_STANDARD 17)
 
 if(MSVC)
-	target_compile_options(VkRenderer PUBLIC "/MP")
+    target_compile_options(VkRenderer PUBLIC "/MP")
 endif()
 
 message("==============================================")
@@ -151,10 +189,10 @@ message("                   MainTest                   ")
 message("==============================================")
 add_executable(MainTest test/main_test/main.cpp)
 target_include_directories(MainTest
-	PUBLIC
-		include/VkRenderer
-		"${Vulkan_INCLUDE_DIRS}"
-		${GLFW3_INCLUDE_DIR}
+    PUBLIC
+        include/VkRenderer
+        "${Vulkan_INCLUDE_DIRS}"
+        ${GLFW3_INCLUDE_DIR}
 )
 
 target_link_libraries(MainTest PUBLIC VkRenderer glfw sdw::ShaderWriter sdw::CompilerSpirV)
@@ -162,7 +200,7 @@ set_target_properties(MainTest PROPERTIES CXX_STANDARD 17)
 set_target_properties(MainTest PROPERTIES FOLDER "")
 
 if(MSVC)
-	target_compile_options(MainTest PUBLIC "/MP")
+    target_compile_options(MainTest PUBLIC "/MP")
 endif()
 
 unset(PROJECTS_BINARIES_OUTPUT_DIR)

@@ -12,7 +12,7 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
                      uint32_t imageHeight, VkFormat imageFormat,
                      VkImageTiling imageTiling, VkImageUsageFlags usage,
                      VmaMemoryUsage memoryUsage,
-                     VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels)
+                     VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels, VkFilter filter)
     : rw(&renderWindow)
 {
 	auto& vk = rw.get()->device();
@@ -84,8 +84,8 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
 	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = filter;
+	samplerInfo.magFilter = filter;
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.compareOp = VK_COMPARE_OP_NEVER;

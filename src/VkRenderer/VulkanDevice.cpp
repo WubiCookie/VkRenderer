@@ -19,9 +19,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDeviceBase::DebugReportCallback(
     uint64_t object, size_t location, int32_t messageCode,
     const char* pLayerPrefix, const char* pMessage, void* pUserData)
 {
-	if (LogActive)
-		std::cerr << "report: " << pLayerPrefix << ": " << pMessage
-		          << std::endl;
+	// if (LogActive)
+	std::cerr << "report: " << pLayerPrefix << ": " << pMessage << std::endl;
 
 	return false;
 }
@@ -31,10 +30,10 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDeviceBase::DebugUtilsMessengerCallback(
     VkDebugUtilsMessageTypeFlagsEXT messageTypes,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
-	if (LogActive)
+	// if (LogActive)
 	{
 		if (pCallbackData->pMessageIdName && pCallbackData->pMessage)
- 			std::cerr << "messenger: " << pCallbackData->pMessageIdName << ": "
+			std::cerr << "messenger: " << pCallbackData->pMessageIdName << ": "
 			          << pCallbackData->pMessage << std::endl;
 		else if (pCallbackData->pMessage)
 			std::cerr << "messenger: " << pCallbackData->pMessage << std::endl;
@@ -476,7 +475,7 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 		VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
 		VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
 		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-		 VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+		VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
 	};
 
 	std::vector<const char*> optionalDeviceExtensions = {
@@ -510,7 +509,9 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 			{
 				requiredExtensions.erase(extension);
 
-				auto found2 = std::find(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end(), extension);
+				auto found2 =
+				    std::find(requiredDeviceExtensions.begin(),
+				              requiredDeviceExtensions.end(), extension);
 				if (found2 != requiredDeviceExtensions.end())
 					requiredDeviceExtensions.erase(found2);
 			}
@@ -888,7 +889,8 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 #pragma endregion allocator
 }
 
-VkFormatProperties VulkanDevice::getPhysicalDeviceFormatProperties(VkFormat format) const
+VkFormatProperties VulkanDevice::getPhysicalDeviceFormatProperties(
+    VkFormat format) const
 {
 	VkFormatProperties res{};
 	GetPhysicalDeviceFormatProperties(physicalDevice(), format, &res);
@@ -923,7 +925,8 @@ VkResult VulkanDevice::allocate(
 	return allocateDescriptorSets(allocateInfo, pDescriptorSets);
 }
 
-VkDescriptorSet VulkanDevice::allocate(VkDescriptorPool pool, VkDescriptorSetLayout layout) const
+VkDescriptorSet VulkanDevice::allocate(VkDescriptorPool pool,
+                                       VkDescriptorSetLayout layout) const
 {
 	cdm::vk::DescriptorSetAllocateInfo allocateInfo;
 	allocateInfo.descriptorPool = pool;
@@ -1241,6 +1244,14 @@ UniqueSemaphore VulkanDevice::createSemaphore(
 	return UniqueSemaphore(res, *this);
 }
 
+UniqueSemaphore VulkanDevice::createSemaphore(bool signaled) const
+{
+	cdm::vk::SemaphoreCreateInfo createInfo;
+	createInfo.flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
+
+	return createSemaphore(createInfo);
+}
+
 UniqueShaderModule VulkanDevice::createShaderModule(
     const cdm::vk::ShaderModuleCreateInfo& createInfo) const
 {
@@ -1322,6 +1333,16 @@ void VulkanDevice::free(VkDeviceMemory aDeviceMemory) const
 	freeMemory(aDeviceMemory);
 }
 
+VkResult VulkanDevice::getFenceStatus(VkFence fence) const
+{
+	return GetFenceStatus(vkDevice(), fence);
+}
+
+VkResult VulkanDevice::getStatus(VkFence fence) const
+{
+	return getFenceStatus(fence);
+}
+
 VkResult VulkanDevice::queueSubmit(VkQueue queue, uint32_t submitCount,
                                    const VkSubmitInfo* submits,
                                    VkFence fence) const
@@ -1342,6 +1363,55 @@ VkResult VulkanDevice::queueSubmit(VkQueue queue,
 	vk::SubmitInfo submit;
 	submit.commandBufferCount = 1;
 	submit.pCommandBuffers = &commandBuffer;
+
+	return queueSubmit(queue, 1, &submit, fence);
+}
+
+VkResult VulkanDevice::queueSubmit(VkQueue queue,
+                                   VkCommandBuffer commandBuffer,
+                                   VkSemaphore waitSemaphore,
+                                   VkPipelineStageFlags waitDstStageMask,
+                                   VkFence fence) const
+{
+	vk::SubmitInfo submit;
+	submit.commandBufferCount = 1;
+	submit.pCommandBuffers = &commandBuffer;
+	submit.waitSemaphoreCount = 1;
+	submit.pWaitSemaphores = &waitSemaphore;
+	submit.pWaitDstStageMask = &waitDstStageMask;
+
+	return queueSubmit(queue, 1, &submit, fence);
+}
+
+VkResult VulkanDevice::queueSubmit(VkQueue queue,
+                                   VkCommandBuffer commandBuffer,
+                                   VkSemaphore signalSemaphore,
+                                   VkFence fence) const
+{
+	vk::SubmitInfo submit;
+	submit.commandBufferCount = 1;
+	submit.pCommandBuffers = &commandBuffer;
+	submit.signalSemaphoreCount = 1;
+	submit.pSignalSemaphores = &signalSemaphore;
+
+	return queueSubmit(queue, 1, &submit, fence);
+}
+
+VkResult VulkanDevice::queueSubmit(VkQueue queue,
+                                   VkCommandBuffer commandBuffer,
+                                   VkSemaphore waitSemaphore,
+                                   VkPipelineStageFlags waitDstStageMask,
+                                   VkSemaphore signalSemaphore,
+                                   VkFence fence) const
+{
+	vk::SubmitInfo submit;
+	submit.commandBufferCount = 1;
+	submit.pCommandBuffers = &commandBuffer;
+	submit.waitSemaphoreCount = 1;
+	submit.pWaitSemaphores = &waitSemaphore;
+	submit.pWaitDstStageMask = &waitDstStageMask;
+	submit.signalSemaphoreCount = 1;
+	submit.pSignalSemaphores = &signalSemaphore;
 
 	return queueSubmit(queue, 1, &submit, fence);
 }
@@ -1484,6 +1554,33 @@ void VulkanDevice::destroySwapchain(VkSwapchainKHR swapchain) const
 void VulkanDevice::destroy(VkSwapchainKHR swapchain) const
 {
 	destroySwapchain(swapchain);
+}
+
+VkResult VulkanDevice::queuePresent(VkQueue queue, const cdm::vk::PresentInfoKHR& present) const
+{
+	return QueuePresentKHR(queue, &present);
+}
+
+VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain, uint32_t index) const
+{
+	cdm::vk::PresentInfoKHR present;
+	present.swapchainCount = 1;
+	present.pSwapchains = &swapchain;
+	present.pImageIndices = &index;
+	
+	return queuePresent(queue, present);
+}
+
+VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain, uint32_t index, VkSemaphore waitSemaphore) const
+{
+	cdm::vk::PresentInfoKHR present;
+	present.swapchainCount = 1;
+	present.pSwapchains = &swapchain;
+	present.pImageIndices = &index;
+	present.waitSemaphoreCount = 1;
+	present.pWaitSemaphores = &waitSemaphore;
+	
+	return queuePresent(queue, present);
 }
 
 VkResult VulkanDevice::debugMarkerSetObjectName(

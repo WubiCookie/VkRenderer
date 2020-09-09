@@ -14,7 +14,11 @@
 namespace cdm
 {
 class VulkanDevice;
+class CommandBuffer;
 class ImageView;
+class Texture2D;
+
+struct FrameCommandBuffer;
 
 struct RenderWindowPrivate;
 
@@ -199,16 +203,16 @@ public:
 	uint32_t acquireNextImage(VkSemaphore semaphore, VkFence fence);
 	uint32_t acquireNextImage(VkSemaphore semaphore);
 	uint32_t acquireNextImage(VkFence fence);
-	void prerender();
 	void present();
 	void present(bool& outSwapchainRecreated);
-	// void presentImage(VkImage image);
+	void present(const Texture2D& image, VkImageLayout currentLayout, VkImageLayout outputLayout, VkSemaphore additionalSemaphore);
+	void present(const Texture2D& image, VkImageLayout currentLayout, VkImageLayout outputLayout, VkSemaphore additionalSemaphore, bool& outSwapchainRecreated);
 
 	uint32_t imageIndex() const;
 	size_t currentFrame() const;
 
-	VkSemaphore currentImageAvailableSemaphore() const;
-	VkFence currentInFlightFences() const;
+	const VkSemaphore& currentImageAvailableSemaphore() const;
+	const VkFence& currentInFlightFences() const;
 
 	void pushPresentWaitSemaphore(VkSemaphore semaphore);
 
@@ -254,6 +258,8 @@ public:
 
 	VkCommandPool commandPool() const;
 	VkCommandPool oneTimeCommandPool() const;
+
+	FrameCommandBuffer& getAvailableCommandBuffer();
 
 	VkRenderPass imguiRenderPass() const;
 

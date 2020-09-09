@@ -473,6 +473,7 @@ public:                                                                         
 	UniqueSamplerYcbcrConversion   createSamplerYcbcrConversion   (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const;
 	UniqueSamplerYcbcrConversion   create                         (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const { return createSamplerYcbcrConversion(createInfo); }
 	UniqueSemaphore                createSemaphore                (const vk::SemaphoreCreateInfo& createInfo)                const;
+	UniqueSemaphore                createSemaphore                (bool signaled = false)                                    const;
 	UniqueSemaphore                create                         (const vk::SemaphoreCreateInfo& createInfo)                const { return createSemaphore(createInfo); }
 	UniqueShaderModule             createShaderModule             (const vk::ShaderModuleCreateInfo& createInfo)             const;
 	UniqueShaderModule             create                         (const vk::ShaderModuleCreateInfo& createInfo)             const { return createShaderModule(createInfo); }
@@ -520,6 +521,9 @@ public:
 	PFN_vkGetDeviceQueue2 GetDeviceQueue2;
 	PFN_vkGetEventStatus GetEventStatus;
 	PFN_vkGetFenceStatus GetFenceStatus;
+	VkResult getFenceStatus(VkFence fence) const;
+	VkResult getStatus(VkFence fence) const;
+
 	PFN_vkGetImageMemoryRequirements GetImageMemoryRequirements;
 	PFN_vkGetImageMemoryRequirements2 GetImageMemoryRequirements2;
 	PFN_vkGetImageSparseMemoryRequirements GetImageSparseMemoryRequirements;
@@ -537,6 +541,9 @@ public:
 	VkResult queueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* submits, VkFence fence = nullptr) const;
 	VkResult queueSubmit(VkQueue queue, const VkSubmitInfo& submit, VkFence fence = nullptr) const;
 	VkResult queueSubmit(VkQueue queue, VkCommandBuffer commandBuffer, VkFence fence = nullptr) const;
+	VkResult queueSubmit(VkQueue queue, VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitDstStageMask, VkFence fence = nullptr) const;
+	VkResult queueSubmit(VkQueue queue, VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore, VkFence fence = nullptr) const;
+	VkResult queueSubmit(VkQueue queue, VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitDstStageMask, VkSemaphore signalSemaphore, VkFence fence = nullptr) const;
 
 	PFN_vkQueueWaitIdle QueueWaitIdle;
 public:
@@ -613,7 +620,12 @@ public:
 	PFN_vkGetDeviceGroupSurfacePresentModesKHR GetDeviceGroupSurfacePresentModesKHR = nullptr;
 	// PFN_vkGetPhysicalDevicePresentRectanglesKHR GetPhysicalDevicePresentRectanglesKHR = nullptr;
 	PFN_vkGetSwapchainImagesKHR GetSwapchainImagesKHR = nullptr;
+
 	PFN_vkQueuePresentKHR QueuePresentKHR = nullptr;
+	VkResult queuePresent(VkQueue queue, const cdm::vk::PresentInfoKHR& present) const;
+	VkResult queuePresent(VkQueue queue, VkSwapchainKHR swapchain, uint32_t index) const;
+	VkResult queuePresent(VkQueue queue, VkSwapchainKHR swapchain, uint32_t index, VkSemaphore waitSemaphore) const;
+
 
 	// PFN_vkCreateDisplayModeKHR CreateDisplayModeKHR = nullptr;
 	// PFN_vkCreateDisplayPlaneSurfaceKHR CreateDisplayPlaneSurfaceKHR =
@@ -795,16 +807,16 @@ public:
 	PFN_vkCmdBeginConditionalRenderingEXT CmdBeginConditionalRenderingEXT = nullptr;
 	PFN_vkCmdEndConditionalRenderingEXT CmdEndConditionalRenderingEXT = nullptr;
 
-	PFN_vkCmdProcessCommandsNVX CmdProcessCommandsNVX = nullptr;
-	PFN_vkCmdReserveSpaceForCommandsNVX CmdReserveSpaceForCommandsNVX = nullptr;
-	PFN_vkCreateIndirectCommandsLayoutNVX CreateIndirectCommandsLayoutNVX = nullptr;
-	PFN_vkCreateObjectTableNVX CreateObjectTableNVX = nullptr;
-	PFN_vkDestroyIndirectCommandsLayoutNVX DestroyIndirectCommandsLayoutNVX = nullptr;
-	PFN_vkDestroyObjectTableNVX DestroyObjectTableNVX = nullptr;
-	// PFN_vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX
-	// GetPhysicalDeviceGeneratedCommandsPropertiesNVX = nullptr;
-	PFN_vkRegisterObjectsNVX RegisterObjectsNVX = nullptr;
-	PFN_vkUnregisterObjectsNVX UnregisterObjectsNVX = nullptr;
+	//PFN_vkCmdProcessCommandsNVX CmdProcessCommandsNVX = nullptr;
+	//PFN_vkCmdReserveSpaceForCommandsNVX CmdReserveSpaceForCommandsNVX = nullptr;
+	//PFN_vkCreateIndirectCommandsLayoutNVX CreateIndirectCommandsLayoutNVX = nullptr;
+	//PFN_vkCreateObjectTableNVX CreateObjectTableNVX = nullptr;
+	//PFN_vkDestroyIndirectCommandsLayoutNVX DestroyIndirectCommandsLayoutNVX = nullptr;
+	//PFN_vkDestroyObjectTableNVX DestroyObjectTableNVX = nullptr;
+	//// PFN_vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX
+	//// GetPhysicalDeviceGeneratedCommandsPropertiesNVX = nullptr;
+	//PFN_vkRegisterObjectsNVX RegisterObjectsNVX = nullptr;
+	//PFN_vkUnregisterObjectsNVX UnregisterObjectsNVX = nullptr;
 
 	PFN_vkCmdSetViewportWScalingNV CmdSetViewportWScalingNV = nullptr;
 
@@ -963,6 +975,11 @@ protected:
 
 public:
 	VulkanDeviceObject(const VulkanDevice& device) : vkDevice(device) {}
+	VulkanDeviceObject(const VulkanDeviceObject&) = default;
+	VulkanDeviceObject(VulkanDeviceObject&&) = default;
+
+	VulkanDeviceObject& operator=(const VulkanDeviceObject&) = default;
+	VulkanDeviceObject& operator=(VulkanDeviceObject&&) = default;
 
 	const VulkanDevice& device() const { return vkDevice.get(); }
 	double creationTime() const { return m_creationTime; }

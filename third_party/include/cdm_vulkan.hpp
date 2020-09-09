@@ -30,6 +30,7 @@ Written by Charles Seizilles de Mazancourt
 #endif
 #include <vulkan/vulkan.h>
 
+#include <string_view>
 #include <cstring>
 #include <cassert>
 
@@ -132,133 +133,165 @@ using DebugMarkerMarkerInfoEXT             = CreateInfo<VkDebugMarkerMarkerInfoE
 using WriteDescriptorSet                   = CreateInfo<VkWriteDescriptorSet,                   VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET>;
 using CopyDescriptorSet                    = CreateInfo<VkCopyDescriptorSet,                    VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET>;
 
+constexpr std::string_view to_string(VkResult result)
+{
+	switch (result)
+	{
+		case VK_SUCCESS: return "VK_SUCCESS";
+		case VK_NOT_READY: return "VK_NOT_READY";
+		case VK_TIMEOUT: return "VK_TIMEOUT";
+		case VK_EVENT_SET: return "VK_EVENT_SET";
+		case VK_EVENT_RESET: return "VK_EVENT_RESET";
+		case VK_INCOMPLETE: return "VK_INCOMPLETE";
+		case VK_ERROR_OUT_OF_HOST_MEMORY: return "VK_ERROR_OUT_OF_HOST_MEMORY";
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+		case VK_ERROR_INITIALIZATION_FAILED: return "VK_ERROR_INITIALIZATION_FAILED";
+		case VK_ERROR_DEVICE_LOST: return "VK_ERROR_DEVICE_LOST";
+		case VK_ERROR_MEMORY_MAP_FAILED: return "VK_ERROR_MEMORY_MAP_FAILED";
+		case VK_ERROR_LAYER_NOT_PRESENT: return "VK_ERROR_LAYER_NOT_PRESENT";
+		case VK_ERROR_EXTENSION_NOT_PRESENT: return "VK_ERROR_EXTENSION_NOT_PRESENT";
+		case VK_ERROR_FEATURE_NOT_PRESENT: return "VK_ERROR_FEATURE_NOT_PRESENT";
+		case VK_ERROR_INCOMPATIBLE_DRIVER: return "VK_ERROR_INCOMPATIBLE_DRIVER";
+		case VK_ERROR_TOO_MANY_OBJECTS: return "VK_ERROR_TOO_MANY_OBJECTS";
+		case VK_ERROR_FORMAT_NOT_SUPPORTED: return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+		case VK_ERROR_SURFACE_LOST_KHR: return "VK_ERROR_SURFACE_LOST_KHR";
+		case VK_SUBOPTIMAL_KHR: return "VK_SUBOPTIMAL_KHR";
+		case VK_ERROR_OUT_OF_DATE_KHR: return "VK_ERROR_OUT_OF_DATE_KHR";
+		case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR: return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+		case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+		case VK_ERROR_VALIDATION_FAILED_EXT: return "VK_ERROR_VALIDATION_FAILED_EXT";
+	}
+
+	return "UNKNOWN";
+}
+
 } // namespace vk
 
 template<typename T, auto DefaultValue = nullptr>
 class Movable
 {
-    T m_obj = DefaultValue;
+	T m_obj = DefaultValue;
 
 public:
-    Movable() = default;
-    Movable(const Movable&) = default;
-    Movable(Movable&& obj) noexcept : m_obj(std::exchange(obj.m_obj, DefaultValue)) {}
-    Movable(T obj) noexcept : m_obj(obj) {}
+	Movable() = default;
+	Movable(const Movable&) = default;
+	Movable(Movable&& obj) noexcept : m_obj(std::exchange(obj.m_obj, DefaultValue)) {}
+	Movable(T obj) noexcept : m_obj(obj) {}
 
-    Movable& operator=(const Movable&) = default;
-    Movable& operator=(Movable&& ptr) noexcept
-    {
-        std::swap(m_obj, ptr.m_obj);
-        return *this;
-    }
+	Movable& operator=(const Movable&) = default;
+	Movable& operator=(Movable&& ptr) noexcept
+	{
+		std::swap(m_obj, ptr.m_obj);
+		return *this;
+	}
 
-    void reset(T obj = DefaultValue) { m_obj = obj; }
+	void reset(T obj = DefaultValue) { m_obj = obj; }
 
-    T& get() noexcept { return m_obj; }
-    const T& get() const noexcept { return m_obj; }
+	T& get() noexcept { return m_obj; }
+	const T& get() const noexcept { return m_obj; }
 
-    operator T& () noexcept { return get(); }
-    operator const T& () const noexcept { return get(); }
+	operator T& () noexcept { return get(); }
+	operator const T& () const noexcept { return get(); }
 
-    operator bool() const { return !!m_obj; }
+	operator bool() const { return !!m_obj; }
 };
 
 template<typename T, auto DefaultValue = nullptr>
 bool operator==(const Movable<T, DefaultValue>& lhs, bool rhs)
 {
-    return bool(lhs) == rhs;
+	return bool(lhs) == rhs;
 }
 
 template<typename T, auto DefaultValue = nullptr>
 bool operator==(bool lhs, const Movable<T, DefaultValue>& rhs)
 {
-    return lhs == bool(rhs);
+	return lhs == bool(rhs);
 }
 
 template<typename T, auto DefaultValue = nullptr>
 bool operator!=(const Movable<T, DefaultValue>& lhs, bool rhs)
 {
-    return !(lhs == rhs);
+	return !(lhs == rhs);
 }
 
 template<typename T, auto DefaultValue = nullptr>
 bool operator!=(bool lhs, const Movable<T, DefaultValue>& rhs)
 {
-    return !(lhs == rhs);
+	return !(lhs == rhs);
 }
 
 template<typename T, typename Owner, auto Deleter>
 class Unique
 {
-    T m_obj = nullptr;
-    const Owner* m_owner = nullptr;
+	T m_obj = nullptr;
+	const Owner* m_owner = nullptr;
 
 public:
-    Unique() = default;
-    Unique(const Unique&) = delete;
-    Unique(Unique&& obj) noexcept :
-        m_obj(std::exchange(obj.m_obj, nullptr)),
-        m_owner(std::exchange(obj.m_owner, nullptr))
-    {}
-    Unique(T obj, const Owner* owner) noexcept : m_obj(obj), m_owner(owner)
-    {
-        assert(m_obj);
-        assert(m_owner);
-    }
-    Unique(T obj, const Owner& owner) noexcept : m_obj(obj), m_owner(&owner)
-    {
-        assert(m_obj);
-    }
-    ~Unique() { reset(); }
+	Unique() = default;
+	Unique(const Unique&) = delete;
+	Unique(Unique&& obj) noexcept :
+		m_obj(std::exchange(obj.m_obj, nullptr)),
+		m_owner(std::exchange(obj.m_owner, nullptr))
+	{}
+	Unique(T obj, const Owner* owner) noexcept : m_obj(obj), m_owner(owner)
+	{
+		assert(m_obj);
+		assert(m_owner);
+	}
+	Unique(T obj, const Owner& owner) noexcept : m_obj(obj), m_owner(&owner)
+	{
+		assert(m_obj);
+	}
+	~Unique() { reset(); }
 
-    Unique& operator=(const Unique&) = delete;
-    Unique& operator=(Unique&& ptr) noexcept
-    {
-        std::swap(m_obj, ptr.m_obj);
-        std::swap(m_owner, ptr.m_owner);
-        return *this;
-    }
+	Unique& operator=(const Unique&) = delete;
+	Unique& operator=(Unique&& ptr) noexcept
+	{
+		std::swap(m_obj, ptr.m_obj);
+		std::swap(m_owner, ptr.m_owner);
+		return *this;
+	}
 
-    void reset(nullptr_t = nullptr)
-    {
-        reset(nullptr, nullptr);
-    }
+	void reset(nullptr_t = nullptr)
+	{
+		reset(nullptr, nullptr);
+	}
 
-    void reset(T obj, const Owner* owner)
-    {
-        if (m_owner && m_obj)
-            (m_owner->*Deleter)(m_obj);
+	void reset(T obj, const Owner* owner)
+	{
+		if (m_owner && m_obj)
+			(m_owner->*Deleter)(m_obj);
 
-        m_obj = obj;
-        m_owner = owner;
-    }
+		m_obj = obj;
+		m_owner = owner;
+	}
 
-    void reset(T obj, const Owner& owner)
-    {
-        if (m_owner && m_obj)
-            (m_owner->*Deleter)(m_obj);
+	void reset(T obj, const Owner& owner)
+	{
+		if (m_owner && m_obj)
+			(m_owner->*Deleter)(m_obj);
 
-        m_obj = obj;
-        m_owner = &owner;
-    }
+		m_obj = obj;
+		m_owner = &owner;
+	}
 
-    T release()
-    {
-        T res = m_obj;
-        m_obj = nullptr;
-        m_owner = nullptr;
-        return res;
-    }
+	T release()
+	{
+		T res = m_obj;
+		m_obj = nullptr;
+		m_owner = nullptr;
+		return res;
+	}
 
-    T& get() noexcept { return m_obj; }
-    const T& get() const noexcept { return m_obj; }
+	T& get() noexcept { return m_obj; }
+	const T& get() const noexcept { return m_obj; }
 
-    operator T& () noexcept { return get(); }
-    operator const T& () const noexcept { return get(); }
+	operator T& () noexcept { return get(); }
+	operator const T& () const noexcept { return get(); }
 
-    const Owner* owner() const { return m_owner; }
+	const Owner* owner() const { return m_owner; }
 
-    operator bool() const { return !!m_obj; }
+	operator bool() const { return !!m_obj; }
 };
 
 } // namespace cdm

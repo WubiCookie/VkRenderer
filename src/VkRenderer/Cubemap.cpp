@@ -78,7 +78,8 @@ Cubemap::Cubemap(RenderWindow& renderWindow, uint32_t imageWidth,
 	m_imageView = vk.create(viewInfo);
 	if (!m_imageView)
 		throw std::runtime_error("could not create image view");
-
+	
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewInfo.subresourceRange.layerCount = 1;
 	uint32_t baseArrayLayer = 0;
 	for (UniqueImageView& view :

@@ -34,7 +34,7 @@ public:
 	          uint32_t imageHeight, VkFormat imageFormat,
 	          VkImageTiling imageTiling, VkImageUsageFlags usage,
 	          VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags requiredFlags,
-	          uint32_t mipLevels = 1);
+	          uint32_t mipLevels = 1, VkFilter filter = VK_FILTER_LINEAR);
 	Texture2D(const Texture2D&) = delete;
 	Texture2D(Texture2D&& texture) = default;
 	~Texture2D();

@@ -232,10 +232,10 @@ int main()
 	//*/
 
 	{
-		cdm::UniqueFence fence = vk.createFence();
+		//cdm::UniqueFence fence = vk.createFence();
 
-		rw.acquireNextImage(fence.get());
-		rw.present();
+		//rw.acquireNextImage(fence.get());
+		//rw.present();
 
 		// Mandelbulb mandelbulb(rw);
 		ShaderBall shaderBall(rw);
@@ -390,16 +390,18 @@ int main()
 				}
 			}
 
-			vk.wait(fence.get());
-			vk.resetFence(fence.get());
+			//vk.wait(fence.get());
+			//vk.resetFence(fence.get());
 
 			// mandelbulb.standaloneDraw();
 			shaderBall.standaloneDraw();
 
-			rw.acquireNextImage(fence.get());
+			//rw.acquireNextImage(fence.get());
 
-			bool swapchainRecreated = false;
-			rw.present(swapchainRecreated);
+			//bool swapchainRecreated = false;
+			//rw.present(swapchainRecreated);
+
+			//rw.present();
 
 			// if (swapchainRecreated)
 			//{
@@ -407,7 +409,7 @@ int main()
 			//}
 		}
 
-		vk.wait(fence.get());
+		//vk.wait(fence.get());
 		vk.wait(vk.graphicsQueue());
 		vk.wait();
 	}

@@ -2,6 +2,7 @@
 #include "CommandBuffer.hpp"
 #include "Image.hpp"
 #include "ImageView.hpp"
+#include "Texture2D.hpp"
 #include "VulkanDevice.hpp"
 
 #include "imgui.h"
@@ -17,8 +18,11 @@
 #include <GLFW/glfw3native.h>
 
 #include <algorithm>
+#include <forward_list>
+#include <iomanip>
 #include <iostream>
 #include <limits>
+#include <string>
 #include <vector>
 
 namespace cdm
@@ -52,6 +56,8 @@ struct RenderWindowPrivate
 	VkCommandPool commandPool = nullptr;
 	VkCommandPool oneTimeCommandPool = nullptr;
 
+	std::forward_list<FrameCommandBuffer> frameCommandBuffers;
+
 	UniqueDescriptorPool imguiDescriptorPool;
 	UniqueRenderPass imguiRenderPass;
 
@@ -59,6 +65,9 @@ struct RenderWindowPrivate
 	std::vector<std::unique_ptr<ImageView>> swapchainImageViews;
 	VkFormat swapchainImageFormat;
 	VkExtent2D swapchainExtent;
+
+	UniqueSemaphore acquireToCopySemaphore;
+	UniqueSemaphore copyToPresentSemaphore;
 
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	// std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -402,21 +411,27 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 	poolInfo.flags = 0;  // Optional
 
+	poolInfo.flags = VkCommandPoolCreateFlagBits::
+	    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
 	if (vk.create(poolInfo, commandPool) != VK_SUCCESS)
 	{
 		throw std::runtime_error("error: failed to create command pool");
 	}
-
-	poolInfo.flags = VkCommandPoolCreateFlagBits::
-	    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	vk.debugMarkerSetObjectName(commandPool, "RenderWindow::commandPool");
 
 	if (vk.create(poolInfo, oneTimeCommandPool) != VK_SUCCESS)
 	{
 		throw std::runtime_error(
 		    "error: failed to create one time command pool");
 	}
+	vk.debugMarkerSetObjectName(commandPool,
+	                            "RenderWindow::oneTimeCommandPool");
 
 	recreateSwapchain(width, height);
+
+	acquireToCopySemaphore = vk.createSemaphore();
+	copyToPresentSemaphore = vk.createSemaphore();
 #pragma endregion
 
 #pragma region imguirenderPass
@@ -587,6 +602,9 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 RenderWindowPrivate::~RenderWindowPrivate()
 {
 	auto& vk = vulkanDevice;
+
+	vk.wait();
+
 	auto instance = vk.instance();
 
 	ImGui_ImplVulkan_Shutdown();
@@ -608,6 +626,8 @@ RenderWindowPrivate::~RenderWindowPrivate()
 
 	vk.destroy(swapchain);
 	vk.destroy(surface);
+
+	frameCommandBuffers.clear();
 
 	vk.destroy(oneTimeCommandPool);
 	vk.destroy(commandPool);
@@ -696,7 +716,7 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 	swapchainExtent = extent;
 
 	uint32_t imageCount =
-	    swapChainSupport.capabilities.surfaceCapabilities.minImageCount + 1;
+	    swapChainSupport.capabilities.surfaceCapabilities.minImageCount;
 
 	if (swapChainSupport.capabilities.surfaceCapabilities.maxImageCount > 0 &&
 	    imageCount >
@@ -716,14 +736,15 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 	swapchainCreateInfo.imageUsage =
 	    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(),
+	std::array queueFamilyIndices = { indices.graphicsFamily.value(),
 		                              indices.presentFamily.value() };
 
 	if (indices.graphicsFamily != indices.presentFamily)
 	{
 		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-		swapchainCreateInfo.queueFamilyIndexCount = 2;
-		swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+		swapchainCreateInfo.queueFamilyIndexCount =
+		    uint32_t(queueFamilyIndices.size());
+		swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
 	}
 	else
 	{
@@ -974,9 +995,9 @@ void RenderWindow::pollEvents()
 	}
 
 	glfwPollEvents();
-
 }
 
+// `semaphore` will be signaled
 uint32_t RenderWindow::acquireNextImage(VkSemaphore semaphore, VkFence fence)
 {
 	const auto& vk = device();
@@ -991,6 +1012,7 @@ uint32_t RenderWindow::acquireNextImage(VkSemaphore semaphore, VkFence fence)
 	return m_imageIndex;
 }
 
+// `semaphore` will be signaled
 uint32_t RenderWindow::acquireNextImage(VkSemaphore semaphore)
 {
 	return acquireNextImage(semaphore, nullptr);
@@ -999,25 +1021,6 @@ uint32_t RenderWindow::acquireNextImage(VkSemaphore semaphore)
 uint32_t RenderWindow::acquireNextImage(VkFence fence)
 {
 	return acquireNextImage(nullptr, fence);
-}
-
-void RenderWindow::prerender()
-{
-	const auto& vk = device();
-
-	vk.wait(p->inFlightFences[m_currentFrame]);
-
-	acquireNextImage(p->imageAvailableSemaphores[m_currentFrame]);
-	// VkResult result = vk.AcquireNextImageKHR(
-	//    vk.vkDevice(), swapchain(), UINT64_MAX,
-	//    p->imageAvailableSemaphores[m_currentFrame], nullptr, &m_imageIndex);
-
-	if (p->imagesInFlight[m_imageIndex] != nullptr)
-	{
-		vk.wait(p->imagesInFlight[m_imageIndex]);
-	}
-
-	p->imagesInFlight[m_imageIndex] = p->inFlightFences[m_currentFrame];
 }
 
 void RenderWindow::present()
@@ -1031,17 +1034,11 @@ void RenderWindow::present(bool& outSwapchainRecreated)
 	outSwapchainRecreated = false;
 	const auto& vk = device();
 
-	vk::PresentInfoKHR presentInfo;
-	presentInfo.waitSemaphoreCount = uint32_t(p->presentWaitSemaphores.size());
-	presentInfo.pWaitSemaphores = p->presentWaitSemaphores.data();
+	/* m_imageIndex = */ acquireNextImage(p->acquireToCopySemaphore);
+	// p->imageAvailableSemaphores[m_currentFrame]);
 
-	VkSwapchainKHR swapChains[] = { swapchain() };
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChains;
-	presentInfo.pImageIndices = &m_imageIndex;
-	presentInfo.pResults = nullptr;
-
-	VkResult result = vk.QueuePresentKHR(vk.presentQueue(), &presentInfo);
+	VkResult result = vk.queuePresent(vk.presentQueue(), swapchain(),
+	                                  m_imageIndex, p->acquireToCopySemaphore);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
 	{
 		int width, height;
@@ -1060,51 +1057,203 @@ void RenderWindow::present(bool& outSwapchainRecreated)
 	m_currentFrame = (m_currentFrame + 1) % p->swapchainImages.size();
 }
 
-/*
-void RenderWindow::presentImage(VkImage image)
+// `image` will be copied to the swapchain. It must be in
+// VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+void RenderWindow::present(const Texture2D& image, VkImageLayout currentLayout,
+                           VkImageLayout outputLayout,
+                           VkSemaphore additionalSemaphore)
 {
-    const auto& vk = device();
-
-
-
-    vk::PresentInfoKHR presentInfo;
-    presentInfo.waitSemaphoreCount = uint32_t(p->presentWaitSemaphores.size());
-    presentInfo.pWaitSemaphores = p->presentWaitSemaphores.data();
-
-    VkSwapchainKHR swapChains[] = { swapchain() };
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapChains;
-    presentInfo.pImageIndices = &m_imageIndex;
-    presentInfo.pResults = nullptr;
-
-    VkResult result = vk.QueuePresentKHR(vk.presentQueue(), &presentInfo);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-    {
-        int width, height;
-        glfwGetFramebufferSize(p->window, &width, &height);
-
-        p->recreateSwapchain(width, height);
-
-        if (vk.QueuePresentKHR(vk.presentQueue(), &presentInfo) != VK_SUCCESS)
-        {
-            throw std::runtime_error("error: failed to present");
-        }
-    }
-
-    m_currentFrame = (m_currentFrame + 1) % p->swapchainImages.size();
+	bool _;
+	present(image, currentLayout, outputLayout, additionalSemaphore, _);
 }
-//*/
+
+// `image` will be copied to the swapchain. It must be in
+// VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+void RenderWindow::present(const Texture2D& image, VkImageLayout currentLayout,
+                           VkImageLayout outputLayout,
+                           VkSemaphore additionalSemaphore,
+                           bool& outSwapchainRecreated)
+{
+	{
+		int width, height;
+		glfwGetFramebufferSize(p->window, &width, &height);
+		
+		if (width == 0 || height == 0)
+			return;
+	}
+	
+	outSwapchainRecreated = false;
+	const auto& vk = device();
+
+	auto& frame = getAvailableCommandBuffer();
+	frame.reset();
+	//vk.resetFence(frame.fence);
+	//frame.commandBuffer.reset();
+	frame.commandBuffer.begin();
+
+	auto arghFence = vk.createFence();
+
+	acquireNextImage(arghFence);
+
+#pragma region transition and blit
+	if (currentLayout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
+	    outputLayout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+	{
+		vk::ImageMemoryBarrier swapBarrier;
+		swapBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		swapBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		swapBarrier.image = image;
+		swapBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		swapBarrier.subresourceRange.baseMipLevel = 0;
+		swapBarrier.subresourceRange.levelCount = 1;
+		swapBarrier.subresourceRange.baseArrayLayer = 0;
+		swapBarrier.subresourceRange.layerCount = 1;
+		swapBarrier.oldLayout = currentLayout;
+		swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		frame.commandBuffer.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+		                                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+		                                    swapBarrier);
+	}
+
+	vk::ImageMemoryBarrier swapBarrier;
+	swapBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	swapBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	swapBarrier.image = p->swapchainImages[m_imageIndex];
+	swapBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	swapBarrier.subresourceRange.baseMipLevel = 0;
+	swapBarrier.subresourceRange.levelCount = 1;
+	swapBarrier.subresourceRange.baseArrayLayer = 0;
+	swapBarrier.subresourceRange.layerCount = 1;
+	swapBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	frame.commandBuffer.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+	                                    swapBarrier);
+
+	VkImageBlit blit{};
+	blit.srcOffsets[1].x = image.extent3D().width;
+	blit.srcOffsets[1].y = image.extent3D().height;
+	blit.srcOffsets[1].z = image.extent3D().depth;
+	blit.dstOffsets[1].x = swapchainExtent().width;
+	blit.dstOffsets[1].y = swapchainExtent().height;
+	blit.dstOffsets[1].z = 1;
+	blit.srcSubresource.aspectMask =
+	    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.srcSubresource.baseArrayLayer = 0;
+	blit.srcSubresource.layerCount = 1;
+	blit.srcSubresource.mipLevel = 0;
+	blit.dstSubresource.aspectMask =
+	    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.dstSubresource.baseArrayLayer = 0;
+	blit.dstSubresource.layerCount = 1;
+	blit.dstSubresource.mipLevel = 0;
+
+	frame.commandBuffer.blitImage(image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	                              p->swapchainImages[m_imageIndex],
+	                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
+	                              VkFilter::VK_FILTER_LINEAR);
+
+	swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	swapBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+	frame.commandBuffer.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+	                                    swapBarrier);
+
+	if (currentLayout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
+	    outputLayout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+	{
+		vk::ImageMemoryBarrier swapBarrier;
+		swapBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		swapBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		swapBarrier.image = image;
+		swapBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		swapBarrier.subresourceRange.baseMipLevel = 0;
+		swapBarrier.subresourceRange.levelCount = 1;
+		swapBarrier.subresourceRange.baseArrayLayer = 0;
+		swapBarrier.subresourceRange.layerCount = 1;
+		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		swapBarrier.newLayout = outputLayout;
+		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		frame.commandBuffer.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+		                                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+		                                    swapBarrier);
+	}
+#pragma endregion
+
+	frame.commandBuffer.end();
+
+	if (additionalSemaphore != nullptr)
+	{
+		vk::SubmitInfo submit;
+		submit.commandBufferCount = 1;
+		submit.pCommandBuffers = &frame.commandBuffer.get();
+		std::array<VkSemaphore, 1> waitSemaphores{ 
+			                                       additionalSemaphore };
+		std::array<VkPipelineStageFlags, 1> waitStages{
+			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+		};
+		submit.waitSemaphoreCount = uint32_t(waitSemaphores.size());
+		submit.pWaitSemaphores = waitSemaphores.data();
+		submit.pWaitDstStageMask = waitStages.data();
+		submit.signalSemaphoreCount = 1;
+		submit.pSignalSemaphores = &p->copyToPresentSemaphore.get();
+
+		vk.queueSubmit(vk.graphicsQueue(), submit, frame.fence);
+	}
+	else
+	{
+		vk.queueSubmit(vk.graphicsQueue(), frame.commandBuffer,
+		               frame.semaphore, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		               p->copyToPresentSemaphore, frame.fence);
+	}
+	frame.submitted = true;
+
+	VkResult result = vk.queuePresent(vk.presentQueue(), swapchain(),
+	                                  m_imageIndex, p->copyToPresentSemaphore);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+	{
+		int width, height;
+		glfwGetFramebufferSize(p->window, &width, &height);
+
+		p->recreateSwapchain(width, height);
+
+		outSwapchainRecreated = true;
+		return;
+	}
+	else if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("error: failed to present");
+	}
+
+	m_currentFrame = (m_currentFrame + 1) % p->swapchainImages.size();
+	
+	vk.wait(arghFence);
+
+	vk.wait(frame.fence);
+	frame.reset();
+	//vk.resetFence(frame.fence);
+
+	//vk.resetFence(arghFence);
+}
 
 uint32_t RenderWindow::imageIndex() const { return m_imageIndex; }
 
 size_t RenderWindow::currentFrame() const { return m_currentFrame; }
 
-VkSemaphore RenderWindow::currentImageAvailableSemaphore() const
+const VkSemaphore& RenderWindow::currentImageAvailableSemaphore() const
 {
 	return p->imageAvailableSemaphores[m_currentFrame];
 }
 
-VkFence RenderWindow::currentInFlightFences() const
+const VkFence& RenderWindow::currentInFlightFences() const
 {
 	return p->inFlightFences[m_currentFrame];
 }
@@ -1266,6 +1415,71 @@ RenderWindow::swapchainImageViews() const
 }
 
 VkCommandPool RenderWindow::commandPool() const { return p->commandPool; }
+
+FrameCommandBuffer& RenderWindow::getAvailableCommandBuffer()
+{
+	const auto& vk = device();
+
+	//std::cout << "\ngetAvailableCommandBuffer" << std::endl;
+	//for (auto& frame : p->frameCommandBuffers)
+	//{
+	//	VkResult res = vk.getStatus(frame.fence);
+	//	std::cout << "    fence 0x" << std::hex << uint64_t(frame.fence.get())
+	//	          << ": \t" << (res == VK_SUCCESS ? "signaled" : "unsignaled") << " and " << (frame.submitted ? "submitted" : "unsubmitted")
+	//	          << std::endl;
+	//}
+	//std::cout << std::endl;
+
+	int outCommandBufferIndex = 0;
+	for (auto& frame : p->frameCommandBuffers)
+	{
+		//VkResult res = vk.getStatus(frame.fence);
+		//if (res == VK_SUCCESS)
+		if (frame.isAvailable())
+		{
+			// std::cout << "    " << outCommandBufferIndex << "("
+			//          << uint64_t(frame.fence.get()) << "): ok" << std::endl;
+			//vk.resetFence(frame.fence);
+			frame.reset();
+			//std::cout << "    fence 0x" << std::hex
+			//          << uint64_t(frame.fence.get()) << ", is available!"
+			//          << std::endl;
+			return frame;
+		}
+
+		/// AAAAAAAAAAAAH
+		outCommandBufferIndex++;
+		if (outCommandBufferIndex >= 256)
+			abort();
+	}
+
+	p->frameCommandBuffers.emplace_front(FrameCommandBuffer{
+	    CommandBuffer(vk, commandPool()),
+	    vk.createFence(VK_FENCE_CREATE_SIGNALED_BIT), vk.createSemaphore() });
+
+#pragma region marker names
+	vk.debugMarkerSetObjectName(
+	    p->frameCommandBuffers.front().commandBuffer.get(),
+	    "RenderWindow::frameCommandBuffers[" +
+	        std::to_string(outCommandBufferIndex) + "].commandBuffer");
+	vk.debugMarkerSetObjectName(p->frameCommandBuffers.front().fence.get(),
+	                            "RenderWindow::frameCommandBuffers[" +
+	                                std::to_string(outCommandBufferIndex) +
+	                                "].fence");
+	vk.debugMarkerSetObjectName(p->frameCommandBuffers.front().semaphore.get(),
+	                            "RenderWindow::frameCommandBuffers[" +
+	                                std::to_string(outCommandBufferIndex) +
+	                                "].semaphore");
+#pragma endregion
+
+	//std::cout << "    fence 0x" << std::hex
+	//          << uint64_t(p->frameCommandBuffers.front().fence.get())
+	//          << ", has been created..." << std::endl;
+
+	// std::cout << outCommandBufferIndex << std::endl;
+
+	return p->frameCommandBuffers.front();
+}
 
 VkCommandPool RenderWindow::oneTimeCommandPool() const
 {

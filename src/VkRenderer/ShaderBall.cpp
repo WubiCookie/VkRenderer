@@ -503,28 +503,24 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region assimp
-	const aiScene* scene = importer.ReadFile(
-	    "D:/Projects/git/VkRenderer-data/ShaderBall.fbx",
-	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
-	        aiProcess_CalcTangentSpace);
+	// const aiScene* scene = importer.ReadFile(
+	//    "D:/Projects/git/VkRenderer-data/ShaderBall.fbx",
+	//    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
+	//        aiProcess_CalcTangentSpace);
 
-	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
-	    !scene->mRootNode)
-		throw std::runtime_error(std::string("assimp error: ") +
-		                         importer.GetErrorString());
+	// if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
+	//    !scene->mRootNode)
+	//	throw std::runtime_error(std::string("assimp error: ") +
+	//	                         importer.GetErrorString());
 
-	// directory = path.substr(0, path.find_last_of('/'));
+	// processNode(rw, scene->mRootNode, scene, m_meshes);
 
-	processNode(rw, scene->mRootNode, scene, m_meshes);
-
-	for (uint32_t i = 0; i < m_meshes.size(); i++)
-	{
-		auto& mesh = m_meshes[i];
-		mesh.materialData.objectID = i;
-		mesh.materialData.textureIndices = { i, i, i, i, i };
-	}
-	// for (auto& mesh : m_meshes)
-	//	mesh.init();
+	// for (uint32_t i = 0; i < m_meshes.size(); i++)
+	//{
+	//	auto& mesh = m_meshes[i];
+	//	mesh.materialData.objectID = i;
+	//	mesh.materialData.textureIndices = { i, i, i, i, i };
+	//}
 #pragma endregion
 
 #pragma region renderPass
@@ -1094,7 +1090,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	m_defaultTexture = Texture2D(
 	    rw, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 	    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-	    VMA_MEMORY_USAGE_CPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	union U
 	{
@@ -1251,12 +1247,12 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	    "D:/Projects/git/VkRenderer-data/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_CYCLO.png",
 	    m_albedos, 9);
-	m_meshes[9].materialData.uScale = 20.0f;
-	m_meshes[9].materialData.vScale = 20.0f;
-	m_meshes[2].materialData.uScale = 2.0f;
-	m_meshes[2].materialData.vScale = 2.0f;
-	m_meshes[2].materialData.uShift = 0.5f;
-	m_meshes[2].materialData.vShift = 0.5f;
+	// m_meshes[9].materialData.uScale = 20.0f;
+	// m_meshes[9].materialData.vScale = 20.0f;
+	// m_meshes[2].materialData.uScale = 2.0f;
+	// m_meshes[2].materialData.vScale = 2.0f;
+	// m_meshes[2].materialData.uShift = 0.5f;
+	// m_meshes[2].materialData.vShift = 0.5f;
 #pragma endregion
 
 #pragma region bunny
@@ -1672,9 +1668,9 @@ void ShaderBall::standaloneDraw()
 
 	m_bunnySceneObject->transform.position = { 0, 0, -20 };
 	m_bunnySceneObject->transform.scale = { 6, 6, 6 };
-	m_bunnySceneObject2->transform.position = { 10, 0, -20 };
+	m_bunnySceneObject2->transform.position = { 20, 0, -20 };
 	m_bunnySceneObject2->transform.scale = { 6, 6, 6 };
-	m_bunnySceneObject3->transform.position = { -10, 0, -20 };
+	m_bunnySceneObject3->transform.position = { -20, 0, -20 };
 	m_bunnySceneObject3->transform.scale = { 6, 6, 6 };
 
 	struct alignas(16) SceneUboStruct
@@ -1710,14 +1706,30 @@ void ShaderBall::standaloneDraw()
 
 	m_skybox->setMatrices(m_config.proj, m_config.view);
 
-	imguiCB.reset();
-	imguiCB.begin();
-	imguiCB.debugMarkerBegin("render", 0.2f, 0.2f, 1.0f);
-	renderOpaque(imguiCB);
-	imgui(imguiCB);
-	imguiCB.debugMarkerEnd();
-	imguiCB.end();
-	if (vk.queueSubmit(vk.graphicsQueue(), imguiCB) != VK_SUCCESS)
+	auto& frame = rw.get().getAvailableCommandBuffer();
+	frame.reset();
+	vk.resetFence(frame.fence);
+	auto& cb = frame.commandBuffer;
+
+	cb.reset();
+	cb.begin();
+	cb.debugMarkerBegin("render", 0.2f, 0.2f, 1.0f);
+	renderOpaque(cb);
+	imgui(cb);
+	cb.debugMarkerEnd();
+	cb.end();
+
+	// vk::SubmitInfo drawSubmit;
+	// drawSubmit.commandBufferCount = 1;
+	// drawSubmit.pCommandBuffers = &imguiCB.get();
+	// drawSubmit.signalSemaphoreCount = 1;
+	// drawSubmit.pSignalSemaphores =
+	// &rw.get().currentImageAvailableSemaphore();
+
+	////if (vk.queueSubmit(vk.graphicsQueue(), imguiCB) != VK_SUCCESS)
+	// if (vk.queueSubmit(vk.graphicsQueue(), drawSubmit) != VK_SUCCESS)
+
+	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.semaphore) != VK_SUCCESS)
 	{
 		std::cerr << "error: failed to submit imgui command buffer"
 		          << std::endl;
@@ -1725,98 +1737,12 @@ void ShaderBall::standaloneDraw()
 	}
 	vk.wait(vk.graphicsQueue());
 
-	auto swapImages = rw.get().swapchainImages();
+	vk.wait();
 
-	vk.debugMarkerSetObjectName(copyHDRCB.get(),
-	                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
-	                            "copyHDRCB");
-
-	copyHDRCB.reset();
-	copyHDRCB.begin();
-
-	vk::ImageMemoryBarrier barrier;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = m_highlightColorAttachmentTexture;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-	                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
-
-	for (auto swapImage : swapImages)
-	{
-		vk::ImageMemoryBarrier swapBarrier = barrier;
-		swapBarrier.image = swapImage;
-		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-		                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-		                          swapBarrier);
-
-		VkImageBlit blit{};
-		blit.srcOffsets[1].x = rw.get().swapchainExtent().width;
-		blit.srcOffsets[1].y = rw.get().swapchainExtent().height;
-		blit.srcOffsets[1].z = 1;
-		blit.dstOffsets[1].x = rw.get().swapchainExtent().width;
-		blit.dstOffsets[1].y = rw.get().swapchainExtent().height;
-		blit.dstOffsets[1].z = 1;
-		blit.srcSubresource.aspectMask =
-		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.srcSubresource.baseArrayLayer = 0;
-		blit.srcSubresource.layerCount = 1;
-		blit.srcSubresource.mipLevel = 0;
-		blit.dstSubresource.aspectMask =
-		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.dstSubresource.baseArrayLayer = 0;
-		blit.dstSubresource.layerCount = 1;
-		blit.dstSubresource.mipLevel = 0;
-
-		copyHDRCB.blitImage(m_highlightColorAttachmentTexture,
-		                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapImage,
-		                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
-		                    VkFilter::VK_FILTER_LINEAR);
-
-		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		swapBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-		copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-		                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-		                          swapBarrier);
-	}
-
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-	                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
-
-	if (copyHDRCB.end() != VK_SUCCESS)
-	{
-		std::cerr << "error: failed to record command buffer" << std::endl;
-		abort();
-	}
-
-	vk.wait(vk.graphicsQueue());
-
-	if (vk.queueSubmit(vk.graphicsQueue(), copyHDRCB) != VK_SUCCESS)
-	{
-		std::cerr << "error: failed to submit draw command buffer"
-		          << std::endl;
-		abort();
-	}
-	vk.wait(vk.graphicsQueue());
+	rw.get().present(m_highlightColorAttachmentTexture,
+	                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                 frame.semaphore);
 }
 
 bool ShaderBall::mustRebuild() const
@@ -1882,7 +1808,8 @@ void ShaderBall::rebuild()
 	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
 	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
+	    VK_FILTER_NEAREST);
 
 	m_objectIDAttachmentTexture.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
