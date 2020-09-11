@@ -251,7 +251,7 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 	/// TODO get from render pass
 	vk::PipelineMultisampleStateCreateInfo multisampling;
 	multisampling.sampleShadingEnable = false;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
 	multisampling.minSampleShading = 1.0f;
 	multisampling.pSampleMask = nullptr;
 	multisampling.alphaToCoverageEnable = false;

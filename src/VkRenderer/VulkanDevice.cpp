@@ -33,10 +33,13 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDeviceBase::DebugUtilsMessengerCallback(
 	// if (LogActive)
 	{
 		if (pCallbackData->pMessageIdName && pCallbackData->pMessage)
-			std::cerr << "messenger: " << pCallbackData->pMessageIdName << ": "
-			          << pCallbackData->pMessage << std::endl;
+			std::cerr << "messenger: " << pCallbackData->pMessageIdName
+			          << ":\n"
+			          << pCallbackData->pMessage << "\n"
+			          << std::endl;
 		else if (pCallbackData->pMessage)
-			std::cerr << "messenger: " << pCallbackData->pMessage << std::endl;
+			std::cerr << "messenger: " << pCallbackData->pMessage << "\n"
+			          << std::endl;
 	}
 
 	return false;
@@ -1556,22 +1559,26 @@ void VulkanDevice::destroy(VkSwapchainKHR swapchain) const
 	destroySwapchain(swapchain);
 }
 
-VkResult VulkanDevice::queuePresent(VkQueue queue, const cdm::vk::PresentInfoKHR& present) const
+VkResult VulkanDevice::queuePresent(
+    VkQueue queue, const cdm::vk::PresentInfoKHR& present) const
 {
 	return QueuePresentKHR(queue, &present);
 }
 
-VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain, uint32_t index) const
+VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain,
+                                    uint32_t index) const
 {
 	cdm::vk::PresentInfoKHR present;
 	present.swapchainCount = 1;
 	present.pSwapchains = &swapchain;
 	present.pImageIndices = &index;
-	
+
 	return queuePresent(queue, present);
 }
 
-VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain, uint32_t index, VkSemaphore waitSemaphore) const
+VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain,
+                                    uint32_t index,
+                                    VkSemaphore waitSemaphore) const
 {
 	cdm::vk::PresentInfoKHR present;
 	present.swapchainCount = 1;
@@ -1579,7 +1586,7 @@ VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain, uin
 	present.pImageIndices = &index;
 	present.waitSemaphoreCount = 1;
 	present.pWaitSemaphores = &waitSemaphore;
-	
+
 	return queuePresent(queue, present);
 }
 

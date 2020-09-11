@@ -18,6 +18,7 @@ public:
 	virtual VkDeviceSize offset() const = 0;
 	virtual VkFormat format() const = 0;
 	virtual uint32_t mipLevels() const = 0;
+	virtual VkSampleCountFlagBits samples() const = 0;
 	virtual VkDeviceMemory deviceMemory() const = 0;
 	virtual VkImage& get() = 0;
 	virtual const VkImage& get() const = 0;

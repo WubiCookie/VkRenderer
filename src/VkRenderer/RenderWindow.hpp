@@ -187,7 +187,7 @@ class RenderWindow
 {
 	std::unique_ptr<RenderWindowPrivate> p;
 
-	uint32_t m_imageIndex = -1;
+	uint32_t m_imageIndex = 0;
 	size_t m_currentFrame = 0;
 
 public:
@@ -205,8 +205,11 @@ public:
 	uint32_t acquireNextImage(VkFence fence);
 	void present();
 	void present(bool& outSwapchainRecreated);
-	void present(const Texture2D& image, VkImageLayout currentLayout, VkImageLayout outputLayout, VkSemaphore additionalSemaphore);
-	void present(const Texture2D& image, VkImageLayout currentLayout, VkImageLayout outputLayout, VkSemaphore additionalSemaphore, bool& outSwapchainRecreated);
+	void present(const Texture2D& image, VkImageLayout currentLayout,
+	             VkImageLayout outputLayout, VkSemaphore additionalSemaphore);
+	void present(const Texture2D& image, VkImageLayout currentLayout,
+	             VkImageLayout outputLayout, VkSemaphore additionalSemaphore,
+	             bool& outSwapchainRecreated);
 
 	uint32_t imageIndex() const;
 	size_t currentFrame() const;
@@ -260,6 +263,7 @@ public:
 	VkCommandPool oneTimeCommandPool() const;
 
 	FrameCommandBuffer& getAvailableCommandBuffer();
+	void waitForAllCommandBuffers();
 
 	VkRenderPass imguiRenderPass() const;
 

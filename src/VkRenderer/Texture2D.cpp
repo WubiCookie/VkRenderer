@@ -12,7 +12,8 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
                      uint32_t imageHeight, VkFormat imageFormat,
                      VkImageTiling imageTiling, VkImageUsageFlags usage,
                      VmaMemoryUsage memoryUsage,
-                     VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels, VkFilter filter)
+                     VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels,
+                     VkFilter filter, VkSampleCountFlagBits samples)
     : rw(&renderWindow)
 {
 	auto& vk = rw.get()->device();
@@ -34,7 +35,7 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
 	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	info.usage = usage;
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	info.samples = VK_SAMPLE_COUNT_1_BIT;
+	info.samples = samples;
 	info.flags = 0;
 
 	VmaAllocationCreateInfo imageAllocCreateInfo = {};
@@ -57,6 +58,7 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
 	m_offset = allocInfo.offset;
 	m_size = allocInfo.size;
 	m_mipLevels = mipLevels;
+	m_samples = samples;
 	m_format = imageFormat;
 
 #pragma region view
@@ -278,8 +280,8 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
 	barrier.subresourceRange.layerCount = 1;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	cb.copyBufferToImage(stagingBuffer, image(),
 	                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
@@ -288,8 +290,8 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
 	barrier.newLayout = finalLayout;
 	barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
 	barrier.dstAccessMask = 0;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
@@ -343,8 +345,8 @@ Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
 	barrier.subresourceRange.layerCount = 1;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	cb.copyImageToBuffer(image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 	                     tmpBuffer, copy);
@@ -353,8 +355,8 @@ Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
 	barrier.newLayout = finalLayout;
 	barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 	barrier.dstAccessMask = 0;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");

@@ -10,12 +10,12 @@ namespace cdm
 DepthTexture::DepthTexture(RenderWindow& renderWindow, VkImageUsageFlags usage,
                            VmaMemoryUsage memoryUsage,
                            VkMemoryPropertyFlags requiredFlags,
-                           uint32_t mipLevels)
+                           uint32_t mipLevels, VkSampleCountFlagBits samples)
     : DepthTexture(renderWindow, renderWindow.swapchainExtent().width,
                    renderWindow.swapchainExtent().height,
                    renderWindow.depthImageFormat(), VK_IMAGE_TILING_OPTIMAL,
                    usage | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                   memoryUsage, requiredFlags, mipLevels)
+                   memoryUsage, requiredFlags, mipLevels, samples)
 {
 }
 
@@ -24,7 +24,7 @@ DepthTexture::DepthTexture(RenderWindow& renderWindow, uint32_t imageWidth,
                            VkImageTiling imageTiling, VkImageUsageFlags usage,
                            VmaMemoryUsage memoryUsage,
                            VkMemoryPropertyFlags requiredFlags,
-                           uint32_t mipLevels)
+                           uint32_t mipLevels, VkSampleCountFlagBits samples)
     : rw(&renderWindow)
 {
 	auto& vk = rw.get()->device();
@@ -45,7 +45,7 @@ DepthTexture::DepthTexture(RenderWindow& renderWindow, uint32_t imageWidth,
 	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	info.usage = usage;
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	info.samples = VK_SAMPLE_COUNT_1_BIT;
+	info.samples = samples;
 	info.flags = 0;
 
 	VmaAllocationCreateInfo imageAllocCreateInfo = {};
@@ -66,6 +66,7 @@ DepthTexture::DepthTexture(RenderWindow& renderWindow, uint32_t imageWidth,
 	m_offset = allocInfo.offset;
 	m_size = allocInfo.size;
 	m_mipLevels = mipLevels;
+	m_samples = samples;
 	m_format = imageFormat;
 
 	vk::ImageViewCreateInfo viewInfo;

@@ -13,7 +13,8 @@ Cubemap::Cubemap(RenderWindow& renderWindow, uint32_t imageWidth,
                  uint32_t imageHeight, VkFormat imageFormat,
                  VkImageTiling imageTiling, VkImageUsageFlags usage,
                  VmaMemoryUsage memoryUsage,
-                 VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels)
+                 VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels,
+                 VkSampleCountFlagBits samples)
     : rw(&renderWindow)
 {
 	auto& vk = rw.get()->device();
@@ -78,7 +79,7 @@ Cubemap::Cubemap(RenderWindow& renderWindow, uint32_t imageWidth,
 	m_imageView = vk.create(viewInfo);
 	if (!m_imageView)
 		throw std::runtime_error("could not create image view");
-	
+
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewInfo.subresourceRange.layerCount = 1;
 	uint32_t baseArrayLayer = 0;
@@ -320,8 +321,8 @@ void Cubemap::uploadDataImmediate(const void* texels, size_t size,
 	barrier.subresourceRange.layerCount = 1;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	cb.copyBufferToImage(stagingBuffer, image(),
 	                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
@@ -330,8 +331,8 @@ void Cubemap::uploadDataImmediate(const void* texels, size_t size,
 	barrier.newLayout = finalLayout;
 	barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
 	barrier.dstAccessMask = 0;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
@@ -394,8 +395,8 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 	barrier.subresourceRange.layerCount = 1;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	cb.copyImageToBuffer(image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 	                     tmpBuffer, copy);
@@ -404,8 +405,8 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 	barrier.newLayout = finalLayout;
 	barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 	barrier.dstAccessMask = 0;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");

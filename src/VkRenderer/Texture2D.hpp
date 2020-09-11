@@ -27,6 +27,7 @@ class Texture2D final : public TextureInterface
 	uint32_t m_height = 0;
 	VkFormat m_format = VK_FORMAT_UNDEFINED;
 	uint32_t m_mipLevels = 0;
+	VkSampleCountFlagBits m_samples = VK_SAMPLE_COUNT_1_BIT;
 
 public:
 	Texture2D() = default;
@@ -34,7 +35,9 @@ public:
 	          uint32_t imageHeight, VkFormat imageFormat,
 	          VkImageTiling imageTiling, VkImageUsageFlags usage,
 	          VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags requiredFlags,
-	          uint32_t mipLevels = 1, VkFilter filter = VK_FILTER_LINEAR);
+	          uint32_t mipLevels = 1, VkFilter filter = VK_FILTER_LINEAR,
+	          VkSampleCountFlagBits samples =
+	              VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT);
 	Texture2D(const Texture2D&) = delete;
 	Texture2D(Texture2D&& texture) = default;
 	~Texture2D();
@@ -57,6 +60,7 @@ public:
 	VkDeviceSize offset() const override { return m_offset; }
 	VkFormat format() const override { return m_format; }
 	uint32_t mipLevels() const override { return m_mipLevels; }
+	VkSampleCountFlagBits samples() const override { return m_samples; }
 	VkDeviceMemory deviceMemory() const override
 	{
 		return m_deviceMemory.get();

@@ -11,6 +11,7 @@
 
 #define VK_NO_PROTOTYPES
 #define VK_USE_PLATFORM_WIN32_KHR
+#include "cdm_stack_vector.hpp"
 #include "cdm_vulkan.hpp"
 
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -73,6 +74,9 @@ struct RenderWindowPrivate
 	// std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
 	std::vector<VkFence> imagesInFlight;
+
+	std::vector<UniqueFence> imageAcquisitionFences;
+	std::vector<UniqueSemaphore> imageAcquisitionSemaphores;
 
 	std::vector<VkSemaphore> presentWaitSemaphores;
 
@@ -432,6 +436,14 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 
 	acquireToCopySemaphore = vk.createSemaphore();
 	copyToPresentSemaphore = vk.createSemaphore();
+
+	for (size_t i = 0; i < swapchainImages.size(); i++)
+	{
+		imageAcquisitionFences.emplace_back(
+		    vk.createFence(VK_FENCE_CREATE_SIGNALED_BIT));
+		imageAcquisitionSemaphores.emplace_back(vk.createSemaphore());
+	}
+
 #pragma endregion
 
 #pragma region imguirenderPass
@@ -442,8 +454,8 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	// VkAttachmentDescription colorHDRAttachment = {};
 	// colorHDRAttachment.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -546,7 +558,7 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 	init_info.PipelineCache = nullptr;
 	init_info.DescriptorPool = imguiDescriptorPool.get();
 	init_info.Allocator = nullptr;
-	init_info.MinImageCount = 2;
+	init_info.MinImageCount = 3;
 	init_info.ImageCount = uint32_t(swapchainImages.size());
 	init_info.CheckVkResultFn = check_vk_result;
 	init_info.vk = &vulkanDevice;
@@ -603,6 +615,8 @@ RenderWindowPrivate::~RenderWindowPrivate()
 {
 	auto& vk = vulkanDevice;
 
+	for (auto& imageAcquisitionFence : imageAcquisitionFences)
+		vk.wait(imageAcquisitionFence);
 	vk.wait();
 
 	auto instance = vk.instance();
@@ -716,7 +730,7 @@ void RenderWindowPrivate::recreateSwapchain(int width, int height)
 	swapchainExtent = extent;
 
 	uint32_t imageCount =
-	    swapChainSupport.capabilities.surfaceCapabilities.minImageCount;
+	    swapChainSupport.capabilities.surfaceCapabilities.minImageCount + 1;
 
 	if (swapChainSupport.capabilities.surfaceCapabilities.maxImageCount > 0 &&
 	    imageCount >
@@ -1077,23 +1091,29 @@ void RenderWindow::present(const Texture2D& image, VkImageLayout currentLayout,
 	{
 		int width, height;
 		glfwGetFramebufferSize(p->window, &width, &height);
-		
+
 		if (width == 0 || height == 0)
 			return;
 	}
-	
+
 	outSwapchainRecreated = false;
 	const auto& vk = device();
 
 	auto& frame = getAvailableCommandBuffer();
 	frame.reset();
-	//vk.resetFence(frame.fence);
-	//frame.commandBuffer.reset();
+
+	// vk.resetFence(frame.fence);
+	// frame.commandBuffer.reset();
 	frame.commandBuffer.begin();
 
-	auto arghFence = vk.createFence();
+	// vk.wait(p->imageAcquisitionFences[m_imageIndex]);
+	// vk.resetFence(p->imageAcquisitionFences[m_imageIndex]);
 
-	acquireNextImage(arghFence);
+	// waitForAllCommandBuffers();
+
+	// acquireNextImage(p->imageAcquisitionFences[m_imageIndex]);
+	size_t semaphoreIndex = m_imageIndex;
+	acquireNextImage(p->imageAcquisitionSemaphores[semaphoreIndex]);
 
 #pragma region transition and blit
 	if (currentLayout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
@@ -1110,8 +1130,8 @@ void RenderWindow::present(const Texture2D& image, VkImageLayout currentLayout,
 		swapBarrier.subresourceRange.layerCount = 1;
 		swapBarrier.oldLayout = currentLayout;
 		swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 		frame.commandBuffer.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
 		                                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
 		                                    swapBarrier);
@@ -1190,30 +1210,28 @@ void RenderWindow::present(const Texture2D& image, VkImageLayout currentLayout,
 
 	frame.commandBuffer.end();
 
+	vk::SubmitInfo submit;
+	submit.commandBufferCount = 1;
+	submit.pCommandBuffers = &frame.commandBuffer.get();
+	stack_vector<VkSemaphore, 3> waitSemaphores;
+	stack_vector<VkPipelineStageFlags, 3> waitStages;
+	waitSemaphores.push_back(p->imageAcquisitionSemaphores[semaphoreIndex]);
+	waitStages.push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
+	submit.signalSemaphoreCount = 1;
+	submit.pSignalSemaphores = &p->copyToPresentSemaphore.get();
+
 	if (additionalSemaphore != nullptr)
 	{
-		vk::SubmitInfo submit;
-		submit.commandBufferCount = 1;
-		submit.pCommandBuffers = &frame.commandBuffer.get();
-		std::array<VkSemaphore, 1> waitSemaphores{ 
-			                                       additionalSemaphore };
-		std::array<VkPipelineStageFlags, 1> waitStages{
-			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
-		};
-		submit.waitSemaphoreCount = uint32_t(waitSemaphores.size());
-		submit.pWaitSemaphores = waitSemaphores.data();
-		submit.pWaitDstStageMask = waitStages.data();
-		submit.signalSemaphoreCount = 1;
-		submit.pSignalSemaphores = &p->copyToPresentSemaphore.get();
+		waitSemaphores.push_back(additionalSemaphore);
+		waitStages.push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+	}
 
-		vk.queueSubmit(vk.graphicsQueue(), submit, frame.fence);
-	}
-	else
-	{
-		vk.queueSubmit(vk.graphicsQueue(), frame.commandBuffer,
-		               frame.semaphore, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-		               p->copyToPresentSemaphore, frame.fence);
-	}
+	submit.waitSemaphoreCount = uint32_t(waitSemaphores.size());
+	submit.pWaitSemaphores = waitSemaphores.data();
+	submit.pWaitDstStageMask = waitStages.data();
+	vk.queueSubmit(vk.graphicsQueue(), submit, frame.fence);
+
 	frame.submitted = true;
 
 	VkResult result = vk.queuePresent(vk.presentQueue(), swapchain(),
@@ -1234,14 +1252,11 @@ void RenderWindow::present(const Texture2D& image, VkImageLayout currentLayout,
 	}
 
 	m_currentFrame = (m_currentFrame + 1) % p->swapchainImages.size();
-	
-	vk.wait(arghFence);
 
-	vk.wait(frame.fence);
-	frame.reset();
-	//vk.resetFence(frame.fence);
-
-	//vk.resetFence(arghFence);
+	// vk.wait(frame.fence);
+	// std::cout << "present: after wait " << uint32_t(frame.fence.get()) <<
+	// "\t" << vk::to_string(vk.getStatus(frame.fence)) << std::endl;
+	// frame.reset();
 }
 
 uint32_t RenderWindow::imageIndex() const { return m_imageIndex; }
@@ -1420,29 +1435,26 @@ FrameCommandBuffer& RenderWindow::getAvailableCommandBuffer()
 {
 	const auto& vk = device();
 
-	//std::cout << "\ngetAvailableCommandBuffer" << std::endl;
-	//for (auto& frame : p->frameCommandBuffers)
+	// std::cout << "\ngetAvailableCommandBuffer" << std::endl;
+	// for (auto& frame : p->frameCommandBuffers)
 	//{
 	//	VkResult res = vk.getStatus(frame.fence);
-	//	std::cout << "    fence 0x" << std::hex << uint64_t(frame.fence.get())
-	//	          << ": \t" << (res == VK_SUCCESS ? "signaled" : "unsignaled") << " and " << (frame.submitted ? "submitted" : "unsubmitted")
+	//	std::cout << "    fence " << uint32_t(frame.fence.get())
+	//	          << ": \t" << (res == VK_SUCCESS ? "signaled" : "unsignaled")
+	//<< " and " << (frame.submitted ? "submitted" : "unsubmitted")
 	//	          << std::endl;
 	//}
-	//std::cout << std::endl;
+	// std::cout << std::endl;
 
 	int outCommandBufferIndex = 0;
 	for (auto& frame : p->frameCommandBuffers)
 	{
-		//VkResult res = vk.getStatus(frame.fence);
-		//if (res == VK_SUCCESS)
+		// VkResult res = vk.getStatus(frame.fence);
+		// if (res == VK_SUCCESS)
 		if (frame.isAvailable())
 		{
-			// std::cout << "    " << outCommandBufferIndex << "("
-			//          << uint64_t(frame.fence.get()) << "): ok" << std::endl;
-			//vk.resetFence(frame.fence);
-			frame.reset();
-			//std::cout << "    fence 0x" << std::hex
-			//          << uint64_t(frame.fence.get()) << ", is available!"
+			// std::cout << "    fence "
+			//          << uint32_t(frame.fence.get()) << " is available!"
 			//          << std::endl;
 			return frame;
 		}
@@ -1472,13 +1484,27 @@ FrameCommandBuffer& RenderWindow::getAvailableCommandBuffer()
 	                                "].semaphore");
 #pragma endregion
 
-	//std::cout << "    fence 0x" << std::hex
-	//          << uint64_t(p->frameCommandBuffers.front().fence.get())
-	//          << ", has been created..." << std::endl;
+	// std::cout << "    fence "
+	//          << uint32_t(p->frameCommandBuffers.front().fence.get())
+	//          << " has been created..." << std::endl;
 
 	// std::cout << outCommandBufferIndex << std::endl;
 
 	return p->frameCommandBuffers.front();
+}
+
+void RenderWindow::waitForAllCommandBuffers()
+{
+	const auto& vk = device();
+
+	for (auto& frame : p->frameCommandBuffers)
+	{
+		if (frame.submitted)
+		{
+			vk.wait(frame.fence);
+			frame.reset();
+		}
+	}
 }
 
 VkCommandPool RenderWindow::oneTimeCommandPool() const

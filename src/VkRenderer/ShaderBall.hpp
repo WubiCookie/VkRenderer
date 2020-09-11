@@ -134,6 +134,8 @@ class ShaderBall final
 	Texture2D m_colorAttachmentTexture;
 	Texture2D m_objectIDAttachmentTexture;
 	DepthTexture m_depthTexture;
+	Texture2D m_colorResolveTexture;
+	Texture2D m_objectIDResolveTexture;
 
 	Texture2D m_highlightColorAttachmentTexture;
 

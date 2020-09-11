@@ -526,8 +526,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
+	//colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -536,7 +537,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 	VkAttachmentDescription objectIDAttachment = {};
 	objectIDAttachment.format = VK_FORMAT_R32_UINT;
-	objectIDAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	objectIDAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
 	objectIDAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	objectIDAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	objectIDAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -547,7 +548,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 	VkAttachmentDescription depthAttachment = {};
 	depthAttachment.format = rw.get().depthImageFormat();
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -557,8 +558,35 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	depthAttachment.finalLayout =
 	    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentDescription colorResolveAttachment = {};
+	colorResolveAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
+	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	//colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorResolveAttachment.initialLayout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorResolveAttachment.finalLayout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentDescription objectIDResolveAttachment = {};
+	objectIDResolveAttachment.format = VK_FORMAT_R32_UINT;
+	objectIDResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	objectIDResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	objectIDResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	objectIDResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	objectIDResolveAttachment.stencilStoreOp =
+	    VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	objectIDResolveAttachment.initialLayout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	objectIDResolveAttachment.finalLayout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	std::array colorAttachments{ colorAttachment, objectIDAttachment,
-		                         depthAttachment };
+		                         depthAttachment, colorResolveAttachment,
+		                         objectIDResolveAttachment };
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment = 0;
@@ -573,12 +601,22 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	depthAttachmentRef.layout =
 	    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	std::array colorAttachmentRefs{
+	VkAttachmentReference colorResolveAttachmentRef = {};
+	colorResolveAttachmentRef.attachment = 3;
+	colorResolveAttachmentRef.layout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-		colorAttachmentRef  //, depthAttachmentRef
-		,
-		objectIDAttachmentRef
-	};
+	VkAttachmentReference objectIDResolveAttachmentRef = {};
+	objectIDResolveAttachmentRef.attachment = 4;
+	objectIDResolveAttachmentRef.layout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	std::array colorAttachmentRefs{ colorAttachmentRef  //, depthAttachmentRef
+		                            ,
+		                            objectIDAttachmentRef };
+
+	std::array resolveAttachmentRefs{ colorResolveAttachmentRef,
+		                              objectIDResolveAttachmentRef };
 
 	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -586,7 +624,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	subpass.pColorAttachments = colorAttachmentRefs.data();
 	subpass.inputAttachmentCount = 0;
 	subpass.pInputAttachments = nullptr;
-	subpass.pResolveAttachments = nullptr;
+	subpass.pResolveAttachments = resolveAttachmentRefs.data();
 	subpass.pDepthStencilAttachment = &depthAttachmentRef;
 	subpass.preserveAttachmentCount = 0;
 	subpass.pPreserveAttachments = nullptr;
@@ -1350,7 +1388,7 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		VkClearValue clearDepth{};
 		clearDepth.depthStencil.depth = 1.0f;
 
-		std::array clearValues = { clearColor, clearID, clearDepth };
+		std::array clearValues = { clearColor, clearID, clearDepth, clearColor, clearID };
 
 		vk::RenderPassBeginInfo rpInfo;
 		rpInfo.framebuffer = m_framebuffer;
@@ -1409,7 +1447,7 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 	}
 	{
 		vk::ImageMemoryBarrier barrier;
-		barrier.image = m_colorAttachmentTexture;
+		barrier.image = m_colorResolveTexture;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1424,7 +1462,7 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 		                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, barrier);
 
-		barrier.image = m_objectIDAttachmentTexture;
+		barrier.image = m_objectIDResolveTexture;
 		cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 		                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, barrier);
 		// VkClearValue clearColor{};
@@ -1470,7 +1508,7 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 
 		cb.endRenderPass2(subpassEndInfo);
 
-		barrier.image = m_colorAttachmentTexture;
+		barrier.image = m_colorResolveTexture;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -1478,7 +1516,7 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		cb.pipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		                   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, barrier);
 
-		barrier.image = m_objectIDAttachmentTexture;
+		barrier.image = m_objectIDResolveTexture;
 		cb.pipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		                   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, barrier);
 	}
@@ -1571,22 +1609,22 @@ void ShaderBall::imgui(CommandBuffer& cb)
 
 	ImGui::Render();
 
-	vk::ImageMemoryBarrier barrier;
-	barrier.image = m_highlightColorAttachmentTexture;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
-	                   barrier);
+	// vk::ImageMemoryBarrier barrier;
+	// barrier.image = m_highlightColorAttachmentTexture;
+	// barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	// barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	// barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	// barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	// barrier.subresourceRange.baseMipLevel = 0;
+	// barrier.subresourceRange.levelCount = 1;
+	// barrier.subresourceRange.baseArrayLayer = 0;
+	// barrier.subresourceRange.layerCount = 1;
+	// barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	// barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	// cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	//                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+	//                   barrier);
 
 	{
 		std::array clearValues = { VkClearValue{}, VkClearValue{} };
@@ -1610,18 +1648,18 @@ void ShaderBall::imgui(CommandBuffer& cb)
 	vk::SubpassEndInfo subpassEndInfo2;
 	cb.endRenderPass2(subpassEndInfo2);
 
-	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
-	                   barrier);
+	// barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	// barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	//                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+	//                   barrier);
 }
 
 void ShaderBall::standaloneDraw()
 {
 	auto& vk = rw.get().device();
 
-	vk.wait(vk.graphicsQueue());
+	// vk.wait(vk.graphicsQueue());
 
 	if (rw.get().swapchainExtent().width == 0 ||
 	    rw.get().swapchainExtent().height == 0)
@@ -1630,7 +1668,7 @@ void ShaderBall::standaloneDraw()
 	if (!ImGui::IsAnyWindowHovered() &&
 	    rw.get().mouseState(MouseButton::Left, ButtonState::Pressed))
 	{
-		auto ids = m_objectIDAttachmentTexture.downloadDataImmediate<uint32_t>(
+		auto ids = m_objectIDResolveTexture.downloadDataImmediate<uint32_t>(
 		    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 		auto [x, y] = rw.get().mousePos();
@@ -1638,7 +1676,7 @@ void ShaderBall::standaloneDraw()
 		size_t mouseX = size_t(x);
 		size_t mouseY = size_t(y);
 
-		size_t i = mouseX + mouseY * m_objectIDAttachmentTexture.width();
+		size_t i = mouseX + mouseY * m_objectIDResolveTexture.width();
 
 		if (i < ids.size())
 			m_highlightID = ids[i];
@@ -1708,10 +1746,10 @@ void ShaderBall::standaloneDraw()
 
 	auto& frame = rw.get().getAvailableCommandBuffer();
 	frame.reset();
-	vk.resetFence(frame.fence);
+	// vk.resetFence(frame.fence);
 	auto& cb = frame.commandBuffer;
 
-	cb.reset();
+	// cb.reset();
 	cb.begin();
 	cb.debugMarkerBegin("render", 0.2f, 0.2f, 1.0f);
 	renderOpaque(cb);
@@ -1729,15 +1767,18 @@ void ShaderBall::standaloneDraw()
 	////if (vk.queueSubmit(vk.graphicsQueue(), imguiCB) != VK_SUCCESS)
 	// if (vk.queueSubmit(vk.graphicsQueue(), drawSubmit) != VK_SUCCESS)
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.semaphore) != VK_SUCCESS)
+	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.semaphore, frame.fence) !=
+	    VK_SUCCESS)
 	{
-		std::cerr << "error: failed to submit imgui command buffer"
+		std::cerr << "error: failed to submit ShaderBall command buffer"
 		          << std::endl;
 		abort();
 	}
-	vk.wait(vk.graphicsQueue());
+	frame.submitted = true;
 
-	vk.wait();
+	// vk.wait(vk.graphicsQueue());
+
+	// vk.wait();
 
 	rw.get().present(m_highlightColorAttachmentTexture,
 	                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -1762,27 +1803,31 @@ void ShaderBall::rebuild()
 	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
 	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
+	    VK_FILTER_LINEAR, VK_SAMPLE_COUNT_4_BIT);
+
+	vk.debugMarkerSetObjectName(m_colorAttachmentTexture.image(),
+	                            "colorAttachmentTexture");
 
 	m_colorAttachmentTexture.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 	{
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = m_colorAttachmentTexture.view();
-		imageInfo.sampler = m_colorAttachmentTexture.sampler();
-
-		vk::WriteDescriptorSet textureWrite;
-		textureWrite.descriptorCount = 1;
-		textureWrite.descriptorType =
-		    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		textureWrite.dstArrayElement = 0;
-		textureWrite.dstBinding = 0;
-		textureWrite.dstSet = m_highlightDescriptorSet;
-		textureWrite.pImageInfo = &imageInfo;
-
-		vk.updateDescriptorSets(textureWrite);
+		// VkDescriptorImageInfo imageInfo{};
+		// imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		// imageInfo.imageView = m_colorAttachmentTexture.view();
+		// imageInfo.sampler = m_colorAttachmentTexture.sampler();
+		//
+		// vk::WriteDescriptorSet textureWrite;
+		// textureWrite.descriptorCount = 1;
+		// textureWrite.descriptorType =
+		//    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		// textureWrite.dstArrayElement = 0;
+		// textureWrite.dstBinding = 0;
+		// textureWrite.dstSet = m_highlightDescriptorSet;
+		// textureWrite.pImageInfo = &imageInfo;
+		//
+		// vk.updateDescriptorSets(textureWrite);
 	}
 #pragma endregion
 
@@ -1795,6 +1840,9 @@ void ShaderBall::rebuild()
 	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	vk.debugMarkerSetObjectName(m_highlightColorAttachmentTexture.image(),
+	                            "highlightColorAttachmentTexture");
 
 	m_highlightColorAttachmentTexture.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -1809,16 +1857,55 @@ void ShaderBall::rebuild()
 	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
-	    VK_FILTER_NEAREST);
+	    VK_FILTER_NEAREST, VK_SAMPLE_COUNT_4_BIT);
+
+	vk.debugMarkerSetObjectName(m_objectIDAttachmentTexture.image(),
+	                            "objectIDAttachmentTexture");
 
 	m_objectIDAttachmentTexture.transitionLayoutImmediate(
+	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+	//{
+	//	VkDescriptorImageInfo imageInfo{};
+	//	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//	imageInfo.imageView = m_objectIDAttachmentTexture.view();
+	//	imageInfo.sampler = m_objectIDAttachmentTexture.sampler();
+
+	//	vk::WriteDescriptorSet textureWrite;
+	//	textureWrite.descriptorCount = 1;
+	//	textureWrite.descriptorType =
+	//	    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	//	textureWrite.dstArrayElement = 0;
+	//	textureWrite.dstBinding = 1;
+	//	textureWrite.dstSet = m_highlightDescriptorSet;
+	//	textureWrite.pImageInfo = &imageInfo;
+
+	//	vk.updateDescriptorSets(textureWrite);
+	//}
+#pragma endregion
+
+#pragma region object ID resolve texture
+	m_objectIDResolveTexture = Texture2D(
+	    rw, rw.get().swapchainExtent().width,
+	    rw.get().swapchainExtent().height, VK_FORMAT_R32_UINT,
+	    VK_IMAGE_TILING_OPTIMAL,
+	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
+	    VK_FILTER_NEAREST, VK_SAMPLE_COUNT_1_BIT);
+
+	vk.debugMarkerSetObjectName(m_objectIDResolveTexture.image(),
+	                            "objectIDResolveTexture");
+
+	m_objectIDResolveTexture.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 	{
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = m_objectIDAttachmentTexture.view();
-		imageInfo.sampler = m_objectIDAttachmentTexture.sampler();
+		imageInfo.imageView = m_objectIDResolveTexture.view();
+		imageInfo.sampler = m_objectIDResolveTexture.sampler();
 
 		vk::WriteDescriptorSet textureWrite;
 		textureWrite.descriptorCount = 1;
@@ -1834,20 +1921,67 @@ void ShaderBall::rebuild()
 #pragma endregion
 
 #pragma region depth texture
-	m_depthTexture = DepthTexture(rw);
+	m_depthTexture = DepthTexture(
+	    rw, rw.get().swapchainExtent().width,
+	    rw.get().swapchainExtent().height, rw.get().depthImageFormat(),
+	    VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
+	    VK_SAMPLE_COUNT_4_BIT);
+
+	vk.debugMarkerSetObjectName(m_depthTexture.image(), "depthTexture");
 
 	m_depthTexture.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_UNDEFINED,
 	    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 #pragma endregion
 
+#pragma region color resolve texture
+	m_colorResolveTexture = Texture2D(
+	    rw, rw.get().swapchainExtent().width,
+	    rw.get().swapchainExtent().height, VK_FORMAT_B8G8R8A8_UNORM,
+	    VK_IMAGE_TILING_OPTIMAL,
+	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
+	    VK_FILTER_LINEAR, VK_SAMPLE_COUNT_1_BIT);
+
+	vk.debugMarkerSetObjectName(m_colorResolveTexture.image(),
+	                            "colorResolveTexture");
+
+	m_colorResolveTexture.transitionLayoutImmediate(
+	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+	{
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = m_colorResolveTexture.view();
+		imageInfo.sampler = m_colorResolveTexture.sampler();
+
+		vk::WriteDescriptorSet textureWrite;
+		textureWrite.descriptorCount = 1;
+		textureWrite.descriptorType =
+		    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		textureWrite.dstArrayElement = 0;
+		textureWrite.dstBinding = 0;
+		textureWrite.dstSet = m_highlightDescriptorSet;
+		textureWrite.pImageInfo = &imageInfo;
+
+		vk.updateDescriptorSets(textureWrite);
+	}
+#pragma endregion
+
 #pragma region framebuffer
 	{
 		vk::FramebufferCreateInfo framebufferInfo;
 		framebufferInfo.renderPass = m_renderPass;
-		std::array attachments = { m_colorAttachmentTexture.view(),
-			                       m_objectIDAttachmentTexture.view(),
-			                       m_depthTexture.view() };
+		std::array attachments = {
+			m_colorAttachmentTexture.view(),
+			m_objectIDAttachmentTexture.view(),
+			m_depthTexture.view(),
+			m_colorResolveTexture.view(),
+			m_objectIDResolveTexture.view(),
+		};
 		framebufferInfo.attachmentCount = uint32_t(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = m_colorAttachmentTexture.width();
@@ -2180,7 +2314,7 @@ void ShaderBall::rebuild()
 
 	vk::PipelineMultisampleStateCreateInfo multisampling;
 	multisampling.sampleShadingEnable = false;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
 	multisampling.minSampleShading = 1.0f;
 	multisampling.pSampleMask = nullptr;
 	multisampling.alphaToCoverageEnable = false;
