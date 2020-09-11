@@ -88,6 +88,7 @@ public:
 		(void)ubo.declMember<Float>("bloomAscale2");
 		(void)ubo.declMember<Float>("bloomBscale1");
 		(void)ubo.declMember<Float>("bloomBscale2");
+		(void)ubo.declMember<Int>("iterations");
 		ubo.end();
 
 		randomFloat = implementFunction<Float>(
@@ -187,20 +188,46 @@ public:
 			    auto Power =
 			        declLocale("Power", ubo.getMember<Float>("power"));
 
-			    FOR(*this, Int, i, 0_i, i < 8_i, ++i)
+				auto Iterations = 
+			        declLocale("Iteration", ubo.getMember<Int>("iterations"));
+
+			    //FOR(*this, Int, i, 0_i, i < 8_i, ++i)
+			    //{
+				   // r = length(z);
+				   // IF(*this, r > SceneRadius) { loopBreakStmt(); }
+				   // FI;
+				   // orbitTrap = min(abs(z) * 1.2_f, orbitTrap);
+				   // theta = acos(z.y() / r);
+				   // // phi = atan(z.z(), z.x());
+				   // phi = atan2(z.z(), z.x());
+				   // dr = pow(r, Power - 1.0_f) * Power * dr + 1.0_f;
+				   // theta *= Power;
+				   // phi *= Power;
+				   // z = pow(r, Power) * vec3(sin(theta) * cos(phi), cos(theta),
+				   //                          sin(phi) * sin(theta)) +
+				   //     c;
+			    //}
+			    //ROF;
+
+				//[{r = Sqrt[x^2 + y^2 + z^2], theta = n ArcTan[x, y], phi}, phi = n ArcSin[z/r]; r^n{Cos[theta]Cos[phi], Sin[theta]Cos[phi], Sin[phi]}];
+
+			    FOR(*this, Int, i, 0_i, i < Iterations, ++i)
 			    {
 				    r = length(z);
 				    IF(*this, r > SceneRadius) { loopBreakStmt(); }
 				    FI;
 				    orbitTrap = min(abs(z) * 1.2_f, orbitTrap);
-				    theta = acos(z.y() / r);
-				    // phi = atan(z.z(), z.x());
-				    phi = atan2(z.z(), z.x());
+				    
+				    theta = atan2(z.x(), z.z());
+				    phi = asin(z.z() / r);
+
 				    dr = pow(r, Power - 1.0_f) * Power * dr + 1.0_f;
 				    theta *= Power;
 				    phi *= Power;
-				    z = pow(r, Power) * vec3(sin(theta) * cos(phi), cos(theta),
-				                             sin(phi) * sin(theta)) +
+
+				    z = pow(r, Power) * vec3(cos(theta) * cos(phi),
+				                             sin(theta) * cos(phi),
+				                             sin(phi)) +
 				        c;
 			    }
 			    ROF;
@@ -445,8 +472,8 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	// VkAttachmentDescription colorHDRAttachment = {};
 	// colorHDRAttachment.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -1144,7 +1171,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma region outputImageHDR
 	m_outputImageHDR = Texture2D(
 	    rw, width, height, VK_FORMAT_R32G32B32A32_SFLOAT,
-	    VK_IMAGE_TILING_LINEAR,
+	    VK_IMAGE_TILING_OPTIMAL,
 	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
 	        VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -1277,6 +1304,9 @@ void Mandelbulb::imgui(CommandBuffer& cb)
 		ImGui::SliderFloat("BloomBscale1", &m_config.bloomBscale1, 0.0f, 1.0f);
 		ImGui::SliderFloat("BloomBscale2", &m_config.bloomBscale2, 0.0f, 1.0f);
 
+		changed |= ImGui::SliderFloat("Power", &m_config.power, 0.0f, 50.0f);
+		changed |= ImGui::DragInt("Iterations", &m_config.iterations, 0.1f, 1, 16);
+
 		if (changed)
 			applyImguiParameters();
 
@@ -1287,6 +1317,22 @@ void Mandelbulb::imgui(CommandBuffer& cb)
 	}
 
 	ImGui::Render();
+
+	// vk::ImageMemoryBarrier barrier;
+	// barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	// barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	// barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	// barrier.image = outputImage();
+	// barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	// barrier.subresourceRange.baseMipLevel = 0;
+	// barrier.subresourceRange.levelCount = 1;
+	// barrier.subresourceRange.baseArrayLayer = 0;
+	// barrier.subresourceRange.layerCount = 1;
+	// barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	// barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	// cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	//                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	{
 		std::array clearValues = { VkClearValue{}, VkClearValue{} };
@@ -1309,6 +1355,14 @@ void Mandelbulb::imgui(CommandBuffer& cb)
 
 	vk::SubpassEndInfo subpassEndInfo2;
 	cb.endRenderPass2(subpassEndInfo2);
+
+	// barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	// barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	// barrier.dstAccessMask =
+	//    VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+	// cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	//                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 }
 
 void Mandelbulb::standaloneDraw()
@@ -1407,6 +1461,10 @@ void Mandelbulb::standaloneDraw()
 	                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
 	                            "copyHDRCB");
 
+	rw.get().present(m_outputImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, nullptr);
+
+	/*
 	copyHDRCB.reset();
 	copyHDRCB.begin();
 
@@ -1428,47 +1486,47 @@ void Mandelbulb::standaloneDraw()
 
 	for (auto swapImage : swapImages)
 	{
-		vk::ImageMemoryBarrier swapBarrier = barrier;
-		swapBarrier.image = swapImage;
-		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-		                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-		                          swapBarrier);
+	    vk::ImageMemoryBarrier swapBarrier = barrier;
+	    swapBarrier.image = swapImage;
+	    swapBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	    swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	    swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	    swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	    copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                              VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+	                              swapBarrier);
 
-		VkImageBlit blit{};
-		blit.srcOffsets[1].x = 1280;
-		blit.srcOffsets[1].y = 720;
-		blit.srcOffsets[1].z = 1;
-		blit.dstOffsets[1].x = 1280;
-		blit.dstOffsets[1].y = 720;
-		blit.dstOffsets[1].z = 1;
-		blit.srcSubresource.aspectMask =
-		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.srcSubresource.baseArrayLayer = 0;
-		blit.srcSubresource.layerCount = 1;
-		blit.srcSubresource.mipLevel = 0;
-		blit.dstSubresource.aspectMask =
-		    VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.dstSubresource.baseArrayLayer = 0;
-		blit.dstSubresource.layerCount = 1;
-		blit.dstSubresource.mipLevel = 0;
+	    VkImageBlit blit{};
+	    blit.srcOffsets[1].x = 1280;
+	    blit.srcOffsets[1].y = 720;
+	    blit.srcOffsets[1].z = 1;
+	    blit.dstOffsets[1].x = 1280;
+	    blit.dstOffsets[1].y = 720;
+	    blit.dstOffsets[1].z = 1;
+	    blit.srcSubresource.aspectMask =
+	        VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+	    blit.srcSubresource.baseArrayLayer = 0;
+	    blit.srcSubresource.layerCount = 1;
+	    blit.srcSubresource.mipLevel = 0;
+	    blit.dstSubresource.aspectMask =
+	        VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+	    blit.dstSubresource.baseArrayLayer = 0;
+	    blit.dstSubresource.layerCount = 1;
+	    blit.dstSubresource.mipLevel = 0;
 
-		copyHDRCB.blitImage(outputImage(),
-		                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapImage,
-		                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
-		                    VkFilter::VK_FILTER_LINEAR);
+	    copyHDRCB.blitImage(outputImage(),
+	                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapImage,
+	                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, blit,
+	                        VkFilter::VK_FILTER_LINEAR);
 
-		swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		swapBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	    swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	    swapBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	    swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	    swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
-		copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-		                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-		                          swapBarrier);
+	    copyHDRCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                              VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+	                              swapBarrier);
 	}
 
 	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -1480,19 +1538,20 @@ void Mandelbulb::standaloneDraw()
 
 	if (copyHDRCB.end() != VK_SUCCESS)
 	{
-		std::cerr << "error: failed to record command buffer" << std::endl;
-		abort();
+	    std::cerr << "error: failed to record command buffer" << std::endl;
+	    abort();
 	}
 
 	vk.wait(vk.graphicsQueue());
 
 	if (vk.queueSubmit(vk.graphicsQueue(), copyHDRCB.get()) != VK_SUCCESS)
 	{
-		std::cerr << "error: failed to submit draw command buffer"
-		          << std::endl;
-		abort();
+	    std::cerr << "error: failed to submit draw command buffer"
+	              << std::endl;
+	    abort();
 	}
 	vk.wait(vk.graphicsQueue());
+	//*/
 }
 
 void Mandelbulb::applyImguiParameters()

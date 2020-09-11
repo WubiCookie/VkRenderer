@@ -98,6 +98,8 @@ public:
 		float bloomAscale2{ 0.3f };
 		float bloomBscale1{ 0.05f };
 		float bloomBscale2{ 0.2f };
+		
+		int iterations{ 8 };
 
 		Config()
 		    : stepSize{ std::min(1.0f / (volumePrecision * density),
