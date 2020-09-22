@@ -10,7 +10,8 @@
 #include <memory>
 #include <random>
 
-constexpr size_t RAYS_COUNT = 9;
+constexpr size_t RAYS_COUNT = 1024;
+constexpr size_t THREAD_COUNT = 16;
 
 namespace cdm
 {

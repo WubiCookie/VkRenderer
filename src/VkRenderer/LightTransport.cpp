@@ -44,8 +44,7 @@ struct Ray : public sdw::StructInstance
 
 	static ast::type::StructPtr makeType(ast::type::TypesCache& cache)
 	{
-		auto result = std::make_unique<ast::type::Struct>(
-		    cache, ast::type::MemoryLayout::eStd140, "Ray");
+		auto result = cache.getStruct(ast::type::MemoryLayout::eStd140, "Ray");
 
 		if (result->empty())
 		{
@@ -161,6 +160,8 @@ struct TypeTraits<shader::SceneStruct>
 	    ast::type::Kind(shader::TypeName::eSceneStruct);
 };
 }  // namespace sdw
+
+bool reset = false;
 
 namespace cdm
 {
@@ -297,10 +298,11 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 
 	vk.setLogActive();
 
-	m_config.spherePos.x = widthf / 2.0f;
-	m_config.spherePos.y = heightf / 2.0f + 10.0f;
-	m_config.sphereRadius = 50.0f;
+	m_config.spherePos.x = widthf / 5.0f;
+	m_config.spherePos.y = heightf / 2.0f + 40.0f;
+	m_config.sphereRadius = 40.0f;
 	m_config.deltaT = 0.5f;
+	m_config.sphereRefraction = 1.1f;
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
@@ -552,14 +554,13 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 
 		auto in = writer.getIn();
 
-		writer.inputLayout(1);
+		writer.inputLayout(THREAD_COUNT);
 
 		writer.declType<shader::Ray>();
 		writer.declType<shader::SceneStruct>();
 
 		ast::type::StructPtr rayType =
 		    shader::Ray::makeType(writer.getTypesCache());
-		// rayType->end();
 		Struct type{ writer, rayType };
 
 		ArraySsboT<shader::Ray> raysSsbo{ writer, "raysSsbo", rayType, 0, 0 };
@@ -581,7 +582,7 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 		//    0);
 
 		writer.implementMain([&]() {
-			UInt index = in.globalInvocationID.x();
+			UInt index = writer.declLocale("index", in.globalInvocationID.x());
 
 			auto sceneData = writer.declLocale<shader::SceneStruct>(
 			    "sceneData", sceneUbo.getMember<shader::SceneStruct>("data"));
@@ -589,7 +590,9 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 			// auto rays = raysSsbo.getMemberArray<shader::Ray>("rays");
 			// auto ray = rays[index];
 
-			auto ray = writer.declLocale<shader::Ray>("ray", raysSsbo[index]);
+			// auto ray = writer.declLocale<shader::Ray>("ray",
+			// raysSsbo[index]);
+			auto ray = raysSsbo[index];
 			// auto ray = raysSsbo.getMember<shader::Ray>("rays");
 
 			ray.position += ray.direction * sceneData.airRefraction *
@@ -613,7 +616,9 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 			{
 				sphereNormal = normalize(sphereNormal);
 
-				angle = acos(dot(sphereNormal, ray.direction));
+				// angle = acos(dot(sphereNormal, ray.direction));
+				angle = atan2(ray.direction.y(), ray.direction.x()) -
+				        atan2(sphereNormal.y(), sphereNormal.x());
 				// sin(theta) = n1/n2 sin(i)
 
 				newAngle = asin((ray.currentRefraction / refractionAtPos) *
@@ -660,11 +665,11 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 		writer.declType<shader::Ray>();
 		writer.declType<shader::SceneStruct>();
 
-		sdw::Ssbo raysSsbo{ writer, "raysSsbo", 0, 0,
-			                ast::type::MemoryLayout::eStd140 };
-		// raysSsbo.declStructMember<shader::Ray>("rays", RAYS_COUNT);
-		raysSsbo.declStructMember<shader::Ray>("rays");
-		raysSsbo.end();
+		ast::type::StructPtr rayType =
+		    shader::Ray::makeType(writer.getTypesCache());
+		Struct type{ writer, rayType };
+
+		ArraySsboT<shader::Ray> raysSsbo{ writer, "raysSsbo", rayType, 0, 0 };
 
 		sdw::Ubo sceneUbo{ writer, "sceneUbo", 1, 0,
 			               ast::type::MemoryLayout::eStd140 };
@@ -767,26 +772,35 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 			auto sceneData = sceneUbo.getMember<shader::SceneStruct>("data");
 
 			// auto rays = raysSsbo.getMemberArray<shader::Ray>("rays");
-			auto ray = raysSsbo.getMember<shader::Ray>("rays");
+			// auto ray = raysSsbo.getMember<shader::Ray>("rays");
 
 			Vec2 rayPos = writer.declLocale<Vec2>("rayPos", vec2(0.0_f));
 			Float dist = writer.declLocale<Float>("dist", 0.0_f);
 
-			// FOR(writer, UInt, i, 0_u, i < sceneData.raysCount, i++)
+			FOR(writer, UInt, i, 0_u, i < sceneData.raysCount, i++)
 			{
-				// rayPos = rays[i].position;
-				rayPos = ray.position;
+				rayPos = raysSsbo[i].position;
+				// rayPos = ray.position;
 				dist = length(rayPos - xy);
-				IF(writer, dist < 2.0_f) { resColor = vec3(1.0_f); }
+				IF(writer, dist < 1.5_f)
+				{
+					// resColor = spectral_color(raysSsbo[i].waveLength);
+					resColor = normalize(vec3(1.5_f - dist));
+				}
 				FI;
 			}
-			// ROF;
+			ROF;
 
 			auto spherespace = xy - sceneData.spherePos;
 
-			IF(writer, length(spherespace) <= sceneData.sphereRadius)
+			Float sphereDist =
+			    writer.declLocale<Float>("sphereDist", length(spherespace));
+			IF(writer, sphereDist <= sceneData.sphereRadius)
 			{
-				resColor = resColor + vec3(0.0_f, 0.0_f, 0.01_f);
+				resColor =
+				    resColor +
+				    vec3(0.0_f, 0.0_f,
+				         0.01_f * (sceneData.sphereRadius - sphereDist));
 			}
 			FI;
 
@@ -807,7 +821,8 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 			//"samples", previousColor.a());
 
 			imageStore(kernelImage, iuv,
-			           vec4(previousColor.rgb() + resColor, 1.0_f));
+			           vec4(previousColor.rgb() * 0.9985_f + resColor, 1.0_f));
+			// vec4(resColor, 1.0_f));
 			// vec4(seed));
 			// vec4(writer.randomFloat(seed), writer.randomFloat(seed),
 			// writer.randomFloat(seed), 1.0_f));
@@ -1241,15 +1256,20 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 		                      VMA_MEMORY_USAGE_CPU_TO_GPU,
 		                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
+		const float waveStep = (700.0f - 400.0f) / float(RAYS_COUNT);
+		float wave = 400.0f;
 		std::vector<RayIteration> raysVector(RAYS_COUNT);
 		for (size_t i = 0; i < RAYS_COUNT; i++)
 		{
-			raysVector[i].position = { 10.0f, heightf / 2.0f - 4 + i };
+			raysVector[i].position = {
+				10.0f, heightf / 2.0f + (i / float(RAYS_COUNT - 1)) * 80.0f
+			};
 			raysVector[i].direction = { 1.0f, 0.0f };
+			raysVector[i].waveLength = wave;
+			wave += waveStep;
 		}
 
 		RayIteration* rayPtr = m_raysBuffer.map<RayIteration>();
-		//*rayPtr = raysVector[0];
 		std::memcpy(rayPtr, raysVector.data(),
 		            sizeof(*raysVector.data()) * RAYS_COUNT);
 		m_raysBuffer.unmap();
@@ -1413,7 +1433,7 @@ void LightTransport::compute(CommandBuffer& cb)
 	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE,
 	                     m_colorComputePipelineLayout, 1, m_colorComputeSet);
 	cb.bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, m_rayComputePipeline);
-	cb.dispatch(RAYS_COUNT);
+	cb.dispatch(RAYS_COUNT / THREAD_COUNT);
 
 	vk::BufferMemoryBarrier barrier;
 	barrier.buffer = m_raysBuffer;
@@ -1440,6 +1460,22 @@ void LightTransport::imgui(CommandBuffer& cb)
 		ImGui::Begin("Controls");
 
 		bool changed = false;
+
+		changed |= ImGui::SliderFloat("airRefraction", &m_config.airRefraction,
+		                              0.001f, 2.0f, "%.3f", 1.2f);
+		changed |=
+		    ImGui::SliderFloat("sphereRefraction", &m_config.sphereRefraction,
+		                       0.001f, 2.0f, "%.3f", 1.2f);
+
+		changed |= ImGui::DragFloat2("spherePos", &m_config.spherePos.x, 1.0f);
+		changed |= ImGui::SliderFloat("sphereRadius", &m_config.sphereRadius,
+		                              0.0f, 200.0f);
+
+		changed |= ImGui::SliderFloat("deltaT", &m_config.deltaT, 0.001f, 2.0f,
+		                              "%.3f", 1.2f);
+
+		reset |= ImGui::Button("reset");
+		changed |= reset;
 
 		// changed |= ImGui::SliderFloat("CamFocalDistance",
 		//                              &m_config.camFocalDistance,
@@ -1534,6 +1570,91 @@ void LightTransport::standaloneDraw()
 
 	auto& cb = frame.commandBuffer;
 
+	if (reset == true)
+	{
+		reset = false;
+
+		const float waveStep = (700.0f - 400.0f) / float(RAYS_COUNT);
+		float wave = 400.0f;
+		std::vector<RayIteration> raysVector(RAYS_COUNT);
+		for (size_t i = 0; i < RAYS_COUNT; i++)
+		{
+			raysVector[i].position = {
+				10.0f, heightf / 2.0f + (i / float(RAYS_COUNT - 1)) * 80.0f
+			};
+			raysVector[i].direction = { 1.0f, 0.0f };
+			raysVector[i].waveLength = wave;
+			wave += waveStep;
+		}
+
+		RayIteration* rayPtr = m_raysBuffer.map<RayIteration>();
+		std::memcpy(rayPtr, raysVector.data(),
+		            sizeof(*raysVector.data()) * RAYS_COUNT);
+		m_raysBuffer.unmap();
+
+		cb.reset();
+		cb.begin();
+		cb.debugMarkerBegin("reset", 1.0f, 0.7f, 0.6f);
+
+		Texture2D blackImage(
+		    rw.get(), 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT,
+		    VK_IMAGE_TILING_OPTIMAL,
+		    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+		    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+		std::array<float, 4> pixel{ 0.0f };
+
+		VkBufferImageCopy region{};
+		region.bufferImageHeight = 1;
+		region.imageExtent.width = 1;
+		region.imageExtent.height = 1;
+		region.imageExtent.depth = 1;
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+		region.imageSubresource.mipLevel = 0;
+
+		blackImage.uploadDataImmediate(pixel.data(), sizeof(float) * 4, region,
+		                               VK_IMAGE_LAYOUT_UNDEFINED,
+		                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+		m_outputImageHDR.transitionLayoutImmediate(
+		    VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+		VkImageBlit blit{};
+		blit.srcOffsets[1].x = 1;
+		blit.srcOffsets[1].y = 1;
+		blit.srcOffsets[1].z = 1;
+		blit.dstOffsets[1].x = m_outputImageHDR.width();
+		blit.dstOffsets[1].y = m_outputImageHDR.height();
+		blit.dstOffsets[1].z = m_outputImageHDR.depth();
+		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.baseArrayLayer = 0;
+		blit.srcSubresource.layerCount = 1;
+		blit.srcSubresource.mipLevel = 0;
+		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.dstSubresource.baseArrayLayer = 0;
+		blit.dstSubresource.layerCount = 1;
+		blit.dstSubresource.mipLevel = 0;
+
+		cb.blitImage(blackImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		             m_outputImageHDR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		             blit, VK_FILTER_LINEAR);
+
+		cb.debugMarkerEnd();
+		cb.end();
+		if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
+		{
+			std::cerr << "error: failed to submit reset command buffer"
+			          << std::endl;
+			abort();
+		}
+		vk.wait(vk.graphicsQueue());
+
+		m_outputImageHDR.transitionLayoutImmediate(
+		    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	}
+
 	cb.reset();
 	cb.begin();
 	cb.debugMarkerBegin("compute", 1.0f, 0.2f, 0.2f);
@@ -1552,44 +1673,9 @@ void LightTransport::standaloneDraw()
 
 	cb.reset();
 	cb.begin();
-
 	cb.debugMarkerBegin("render", 0.2f, 0.2f, 1.0f);
-
 	render(cb);
-
-	// vk::ImageMemoryBarrier barrier;
-	// barrier.image = outputTexture();
-	// barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-	// barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	// barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	// barrier.subresourceRange.baseMipLevel = 0;
-	// barrier.subresourceRange.levelCount = 1;
-	// barrier.subresourceRange.baseArrayLayer = 0;
-	// barrier.subresourceRange.layerCount = 1;
-	// barrier.srcAccessMask = 0;
-	// barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	// cb.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-	// VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, barrier);
-
-	// barrier.image = outputTexture();
-	// barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	// barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	// barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	// barrier.subresourceRange.baseMipLevel = 0;
-	// barrier.subresourceRange.levelCount = 1;
-	// barrier.subresourceRange.baseArrayLayer = 0;
-	// barrier.subresourceRange.layerCount = 1;
-	// barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	// barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	// cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	// VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, barrier);
-
-	// imgui(cb);
-
+	imgui(cb);
 	cb.debugMarkerEnd();
 	cb.end();
 	if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
