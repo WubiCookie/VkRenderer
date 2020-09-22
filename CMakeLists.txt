@@ -108,6 +108,8 @@ set(SOURCE_FILES
     src/VkRenderer/ImageView.hpp
     src/VkRenderer/IrradianceMap.cpp
     src/VkRenderer/IrradianceMap.hpp
+    src/VkRenderer/LightTransport.cpp
+    src/VkRenderer/LightTransport.hpp
     src/VkRenderer/Mandelbulb.cpp
     src/VkRenderer/Mandelbulb.hpp
     src/VkRenderer/Material.cpp

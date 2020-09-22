@@ -74,6 +74,7 @@ constexpr bool operator==(const T& t, const CreateInfo<T, StructureType>& i) noe
 
 using ApplicationInfo                      = CreateInfo<VkApplicationInfo,                      VK_STRUCTURE_TYPE_APPLICATION_INFO>;
 using BufferCreateInfo                     = CreateInfo<VkBufferCreateInfo,                     VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO>;
+using BufferMemoryBarrier                  = CreateInfo<VkBufferMemoryBarrier,                  VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER>;
 using BufferViewCreateInfo                 = CreateInfo<VkBufferViewCreateInfo,                 VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO>;
 using CommandBufferAllocateInfo            = CreateInfo<VkCommandBufferAllocateInfo,            VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO>;
 using CommandBufferBeginInfo               = CreateInfo<VkCommandBufferBeginInfo,               VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO>;

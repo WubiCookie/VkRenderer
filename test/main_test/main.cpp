@@ -1,5 +1,6 @@
 #include "CommandBuffer.hpp"
 //#include "Framebuffer.hpp"
+#include "LightTransport.hpp"
 #include "Mandelbulb.hpp"
 #include "ShaderBall.hpp"
 //#include "Material.hpp"
@@ -232,13 +233,14 @@ int main()
 	//*/
 
 	{
-		//cdm::UniqueFence fence = vk.createFence();
+		// cdm::UniqueFence fence = vk.createFence();
 
-		//rw.acquireNextImage(fence.get());
-		//rw.present();
+		// rw.acquireNextImage(fence.get());
+		// rw.present();
 
-		 Mandelbulb mandelbulb(rw);
+		Mandelbulb mandelbulb(rw);
 		ShaderBall shaderBall(rw);
+		LightTransport lightTransport(rw);
 
 		auto start = std::chrono::steady_clock::now();
 		auto end = std::chrono::steady_clock::now();
@@ -295,14 +297,14 @@ int main()
 				//                               mouseSpeedAttenuation) *
 				//            (1280.0 / 720.0);  // balance aspect ratio
 				//
-				//if (deltaX > 0.0)
+				// if (deltaX > 0.0)
 				//	rotationX += dx;
-				//else
+				// else
 				//	rotationX -= dx;
 				//
-				//if (deltaY > 0.0)
+				// if (deltaY > 0.0)
 				//	rotationY += dy;
-				//else
+				// else
 				//	rotationY -= dy;
 
 				double dx = deltaX * mouseSpeed;
@@ -390,18 +392,19 @@ int main()
 				}
 			}
 
-			//vk.wait(fence.get());
-			//vk.resetFence(fence.get());
+			// vk.wait(fence.get());
+			// vk.resetFence(fence.get());
 
-			 mandelbulb.standaloneDraw();
-			//shaderBall.standaloneDraw();
+			// mandelbulb.standaloneDraw();
+			// shaderBall.standaloneDraw();
+			lightTransport.standaloneDraw();
 
-			//rw.acquireNextImage(fence.get());
+			// rw.acquireNextImage(fence.get());
 
-			//bool swapchainRecreated = false;
-			//rw.present(swapchainRecreated);
+			// bool swapchainRecreated = false;
+			// rw.present(swapchainRecreated);
 
-			//rw.present();
+			// rw.present();
 
 			// if (swapchainRecreated)
 			//{
@@ -409,7 +412,7 @@ int main()
 			//}
 		}
 
-		//vk.wait(fence.get());
+		// vk.wait(fence.get());
 		vk.wait(vk.graphicsQueue());
 		vk.wait();
 	}

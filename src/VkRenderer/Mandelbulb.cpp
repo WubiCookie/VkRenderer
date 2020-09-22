@@ -211,6 +211,14 @@ public:
 
 				//[{r = Sqrt[x^2 + y^2 + z^2], theta = n ArcTan[x, y], phi}, phi = n ArcSin[z/r]; r^n{Cos[theta]Cos[phi], Sin[theta]Cos[phi], Sin[phi]}];
 
+				//TriplexPow[{x_, y_, z_}, n_] :=
+				//Module[{
+				//         r = Sqrt[x^2 + y^2 + z^2],
+				//         theta = n ArcTan[x, y],
+				//         phi},
+				// phi = n ArcSin[z/r];
+				// r^n { Cos[theta] Cos[phi] , Sin[theta] Cos[phi], Sin[phi] } ];
+
 			    FOR(*this, Int, i, 0_i, i < Iterations, ++i)
 			    {
 				    r = length(z);
