@@ -178,6 +178,16 @@ CommandBuffer& CommandBuffer::bindPipeline(
 	return *this;
 }
 
+CommandBuffer& CommandBuffer::bindPipeline(const UniqueComputePipeline& pipeline)
+{
+	return bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+}
+
+CommandBuffer& CommandBuffer::bindPipeline(const UniqueGraphicsPipeline& pipeline)
+{
+	return bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+}
+
 CommandBuffer& CommandBuffer::bindVertexBuffers(uint32_t firstBinding,
                                                 uint32_t bindingCount,
                                                 const VkBuffer* pBuffers,

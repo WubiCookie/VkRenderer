@@ -152,8 +152,9 @@ private:
 	    void* pUserData);
 };
 
-class VulkanDevice final : public VulkanDeviceBase
+class VulkanDeviceDestroyer : public VulkanDeviceBase
 {
+protected:
 	VkPhysicalDevice m_physicalDevice = nullptr;
 	VkDevice m_device = nullptr;
 	VkQueue m_graphicsQueue = nullptr;
@@ -163,8 +164,8 @@ class VulkanDevice final : public VulkanDeviceBase
 	Movable<VmaAllocator> m_allocator = nullptr;
 
 public:
-	VulkanDevice(bool layers = false) noexcept;
-	~VulkanDevice() override;
+	VulkanDeviceDestroyer(bool layers = false) noexcept;
+	~VulkanDeviceDestroyer() override;
 
 	void createDevice(VkSurfaceKHR surface,
 	                  QueueFamilyIndices queueFamilyIndices);
@@ -341,28 +342,29 @@ public:                                                          \
 
 
 
-	using UniqueBuffer =                   Unique<VkBuffer,                   VulkanDevice, &VulkanDevice::destroyBuffer                  >;
-	using UniqueBufferView =               Unique<VkBufferView,               VulkanDevice, &VulkanDevice::destroyBufferView              >;
-	using UniqueCommandPool =              Unique<VkCommandPool,              VulkanDevice, &VulkanDevice::destroyCommandPool             >;
-	using UniqueDescriptorPool =           Unique<VkDescriptorPool,           VulkanDevice, &VulkanDevice::destroyDescriptorPool          >;
-	using UniqueDescriptorSetLayout =      Unique<VkDescriptorSetLayout,      VulkanDevice, &VulkanDevice::destroyDescriptorSetLayout     >;
-	using UniqueDescriptorUpdateTemplate = Unique<VkDescriptorUpdateTemplate, VulkanDevice, &VulkanDevice::destroyDescriptorUpdateTemplate>;
-	using UniqueEvent =                    Unique<VkEvent,                    VulkanDevice, &VulkanDevice::destroyEvent                   >;
-	using UniqueFence =                    Unique<VkFence,                    VulkanDevice, &VulkanDevice::destroyFence                   >;
-	using UniqueFramebuffer =              Unique<VkFramebuffer,              VulkanDevice, &VulkanDevice::destroyFramebuffer             >;
-	using UniqueImage =                    Unique<VkImage,                    VulkanDevice, &VulkanDevice::destroyImage                   >;
-	using UniqueImageView =                Unique<VkImageView,                VulkanDevice, &VulkanDevice::destroyImageView               >;
-	using UniquePipeline =                 Unique<VkPipeline,                 VulkanDevice, &VulkanDevice::destroyPipeline                >;
-	using UniquePipelineCache =            Unique<VkPipelineCache,            VulkanDevice, &VulkanDevice::destroyPipelineCache           >;
-	using UniquePipelineLayout =           Unique<VkPipelineLayout,           VulkanDevice, &VulkanDevice::destroyPipelineLayout          >;
-	using UniqueQueryPool =                Unique<VkQueryPool,                VulkanDevice, &VulkanDevice::destroyQueryPool               >;
-	using UniqueRenderPass =               Unique<VkRenderPass,               VulkanDevice, &VulkanDevice::destroyRenderPass              >;
-	using UniqueSampler =                  Unique<VkSampler,                  VulkanDevice, &VulkanDevice::destroySampler                 >;
-	using UniqueSamplerYcbcrConversion =   Unique<VkSamplerYcbcrConversion,   VulkanDevice, &VulkanDevice::destroySamplerYcbcrConversion  >;
-	using UniqueSemaphore =                Unique<VkSemaphore,                VulkanDevice, &VulkanDevice::destroySemaphore               >;
-	using UniqueShaderModule =             Unique<VkShaderModule,             VulkanDevice, &VulkanDevice::destroyShaderModule            >;
-
-
+	//using UniqueBuffer =                   Unique<VkBuffer,                   VulkanDevice, &VulkanDevice::destroyBuffer                  >;
+	//using UniqueBufferView =               Unique<VkBufferView,               VulkanDevice, &VulkanDevice::destroyBufferView              >;
+	//using UniqueCommandPool =              Unique<VkCommandPool,              VulkanDevice, &VulkanDevice::destroyCommandPool             >;
+	//using UniqueDescriptorPool =           Unique<VkDescriptorPool,           VulkanDevice, &VulkanDevice::destroyDescriptorPool          >;
+	//using UniqueDescriptorSetLayout =      Unique<VkDescriptorSetLayout,      VulkanDevice, &VulkanDevice::destroyDescriptorSetLayout     >;
+	//using UniqueDescriptorUpdateTemplate = Unique<VkDescriptorUpdateTemplate, VulkanDevice, &VulkanDevice::destroyDescriptorUpdateTemplate>;
+	//using UniqueEvent =                    Unique<VkEvent,                    VulkanDevice, &VulkanDevice::destroyEvent                   >;
+	//using UniqueFence =                    Unique<VkFence,                    VulkanDevice, &VulkanDevice::destroyFence                   >;
+	//using UniqueFramebuffer =              Unique<VkFramebuffer,              VulkanDevice, &VulkanDevice::destroyFramebuffer             >;
+	//using UniqueImage =                    Unique<VkImage,                    VulkanDevice, &VulkanDevice::destroyImage                   >;
+	//using UniqueImageView =                Unique<VkImageView,                VulkanDevice, &VulkanDevice::destroyImageView               >;
+	//using UniquePipeline =                 Unique<VkPipeline,                 VulkanDevice, &VulkanDevice::destroyPipeline                >;
+	//using UniquePipelineCache =            Unique<VkPipelineCache,            VulkanDevice, &VulkanDevice::destroyPipelineCache           >;
+	//using UniquePipelineLayout =           Unique<VkPipelineLayout,           VulkanDevice, &VulkanDevice::destroyPipelineLayout          >;
+	//using UniqueQueryPool =                Unique<VkQueryPool,                VulkanDevice, &VulkanDevice::destroyQueryPool               >;
+	//using UniqueRenderPass =               Unique<VkRenderPass,               VulkanDevice, &VulkanDevice::destroyRenderPass              >;
+	//using UniqueSampler =                  Unique<VkSampler,                  VulkanDevice, &VulkanDevice::destroySampler                 >;
+	//using UniqueSamplerYcbcrConversion =   Unique<VkSamplerYcbcrConversion,   VulkanDevice, &VulkanDevice::destroySamplerYcbcrConversion  >;
+	//using UniqueSemaphore =                Unique<VkSemaphore,                VulkanDevice, &VulkanDevice::destroySemaphore               >;
+	//using UniqueShaderModule =             Unique<VkShaderModule,             VulkanDevice, &VulkanDevice::destroyShaderModule            >;
+	//
+	//class UniqueGraphicsPipeline : public UniquePipeline {};
+	//class UniqueComputePipeline : public UniquePipeline {};
 
 	PFN_vkCreateComputePipelines CreateComputePipelines;
 public:
@@ -372,11 +374,11 @@ public:
 	VkResult create(uint32_t createInfoCount, const vk::ComputePipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
 	VkResult createComputePipeline(const vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
 	VkResult create(const vk::ComputePipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
-	UniquePipeline createComputePipeline(const vk::ComputePipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const;
-	UniquePipeline create(const vk::ComputePipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const
-	{
-		return createComputePipeline(createInfo, pipelineCache);
-	}
+	//UniqueComputePipeline createComputePipeline(const vk::ComputePipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const;
+	//UniqueComputePipeline create(const vk::ComputePipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const
+	//{
+	//	return createComputePipeline(createInfo, pipelineCache);
+	//}
 
 
 	PFN_vkCreateGraphicsPipelines CreateGraphicsPipelines;
@@ -387,22 +389,22 @@ public:
 	VkResult create(uint32_t createInfoCount, const vk::GraphicsPipelineCreateInfo* pCreateInfos, VkPipeline* pPipelines, VkPipelineCache pipelineCache = nullptr) const;
 	VkResult createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
 	VkResult create(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipeline& outPipeline, VkPipelineCache pipelineCache = nullptr) const;
-	Unique<VkPipeline, VulkanDevice, &VulkanDevice::destroyPipeline> createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const;
-	Unique<VkPipeline, VulkanDevice, &VulkanDevice::destroyPipeline> create(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const
-	{
-		return createGraphicsPipeline(createInfo, pipelineCache);
-	}
+	//UniqueGraphicsPipeline createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const;
+	//UniqueGraphicsPipeline create(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const
+	//{
+	//	return createGraphicsPipeline(createInfo, pipelineCache);
+	//}
 
 
 	PFN_vkCreateRenderPass2 CreateRenderPass2;
 public:
 	VkResult createRenderPass2(const vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
 	VkResult create(const vk::RenderPassCreateInfo2& createInfo, VkRenderPass& outRenderPass) const;
-	UniqueRenderPass createRenderPass2(const vk::RenderPassCreateInfo2& createInfo) const;
-	UniqueRenderPass create(const vk::RenderPassCreateInfo2& createInfo) const
-	{
-		return createRenderPass2(createInfo);
-	}
+	//UniqueRenderPass createRenderPass2(const vk::RenderPassCreateInfo2& createInfo) const;
+	//UniqueRenderPass create(const vk::RenderPassCreateInfo2& createInfo) const
+	//{
+	//	return createRenderPass2(createInfo);
+	//}
 
 #define DEFINE_DEVICE_CREATE(ObjectName)                                                                                    \
                                                                                                                             \
@@ -437,46 +439,46 @@ public:                                                                         
 	DEFINE_DEVICE_CREATE(Semaphore);
 	DEFINE_DEVICE_CREATE(ShaderModule);
 
-	UniqueBuffer                   createBuffer                   (const vk::BufferCreateInfo& createInfo)                   const;
-	UniqueBuffer                   create                         (const vk::BufferCreateInfo& createInfo)                   const { return createBuffer(createInfo); }
-	UniqueBufferView               createBufferView               (const vk::BufferViewCreateInfo& createInfo)               const;
-	UniqueBufferView               create                         (const vk::BufferViewCreateInfo& createInfo)               const { return createBufferView(createInfo); }
-	UniqueCommandPool              createCommandPool              (const vk::CommandPoolCreateInfo& createInfo)              const;
-	UniqueCommandPool              create                         (const vk::CommandPoolCreateInfo& createInfo)              const { return createCommandPool(createInfo); }
-	UniqueDescriptorPool           createDescriptorPool           (const vk::DescriptorPoolCreateInfo& createInfo)           const;
-	UniqueDescriptorPool           create                         (const vk::DescriptorPoolCreateInfo& createInfo)           const { return createDescriptorPool(createInfo); }
-	UniqueDescriptorSetLayout      createDescriptorSetLayout      (const vk::DescriptorSetLayoutCreateInfo& createInfo)      const;
-	UniqueDescriptorSetLayout      create                         (const vk::DescriptorSetLayoutCreateInfo& createInfo)      const { return createDescriptorSetLayout(createInfo); }
-	UniqueDescriptorUpdateTemplate createDescriptorUpdateTemplate (const vk::DescriptorUpdateTemplateCreateInfo& createInfo) const;
-	UniqueDescriptorUpdateTemplate create                         (const vk::DescriptorUpdateTemplateCreateInfo& createInfo) const { return createDescriptorUpdateTemplate(createInfo); }
-	UniqueEvent                    createEvent                    (const vk::EventCreateInfo& createInfo)                    const;
-	UniqueEvent                    create                         (const vk::EventCreateInfo& createInfo)                    const { return createEvent(createInfo); }
-	UniqueFence                    createFence                    (const vk::FenceCreateInfo& createInfo)                    const;
-	UniqueFence                    createFence                    (VkFenceCreateFlags flags = VkFenceCreateFlags{})          const;
-	UniqueFence                    create                         (const vk::FenceCreateInfo& createInfo)                    const { return createFence(createInfo); }
-	UniqueFramebuffer              createFramebuffer              (const vk::FramebufferCreateInfo& createInfo)              const;
-	UniqueFramebuffer              create                         (const vk::FramebufferCreateInfo& createInfo)              const { return createFramebuffer(createInfo); }
-	UniqueImage                    createImage                    (const vk::ImageCreateInfo& createInfo)                    const;
-	UniqueImage                    create                         (const vk::ImageCreateInfo& createInfo)                    const { return createImage(createInfo); }
-	UniqueImageView                createImageView                (const vk::ImageViewCreateInfo& createInfo)                const;
-	UniqueImageView                create                         (const vk::ImageViewCreateInfo& createInfo)                const { return createImageView(createInfo); }
-	UniquePipelineCache            createPipelineCache            (const vk::PipelineCacheCreateInfo& createInfo)            const;
-	UniquePipelineCache            create                         (const vk::PipelineCacheCreateInfo& createInfo)            const { return createPipelineCache(createInfo); }
-	UniquePipelineLayout           createPipelineLayout           (const vk::PipelineLayoutCreateInfo& createInfo)           const;
-	UniquePipelineLayout           create                         (const vk::PipelineLayoutCreateInfo& createInfo)           const { return createPipelineLayout(createInfo); }
-	UniqueQueryPool                createQueryPool                (const vk::QueryPoolCreateInfo& createInfo)                const;
-	UniqueQueryPool                create                         (const vk::QueryPoolCreateInfo& createInfo)                const { return createQueryPool(createInfo); }
-	UniqueRenderPass               createRenderPass               (const vk::RenderPassCreateInfo& createInfo)               const;
-	UniqueRenderPass               create                         (const vk::RenderPassCreateInfo& createInfo)               const { return createRenderPass(createInfo); }
-	UniqueSampler                  createSampler                  (const vk::SamplerCreateInfo& createInfo)                  const;
-	UniqueSampler                  create                         (const vk::SamplerCreateInfo& createInfo)                  const { return createSampler(createInfo); }
-	UniqueSamplerYcbcrConversion   createSamplerYcbcrConversion   (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const;
-	UniqueSamplerYcbcrConversion   create                         (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const { return createSamplerYcbcrConversion(createInfo); }
-	UniqueSemaphore                createSemaphore                (const vk::SemaphoreCreateInfo& createInfo)                const;
-	UniqueSemaphore                createSemaphore                (bool signaled = false)                                    const;
-	UniqueSemaphore                create                         (const vk::SemaphoreCreateInfo& createInfo)                const { return createSemaphore(createInfo); }
-	UniqueShaderModule             createShaderModule             (const vk::ShaderModuleCreateInfo& createInfo)             const;
-	UniqueShaderModule             create                         (const vk::ShaderModuleCreateInfo& createInfo)             const { return createShaderModule(createInfo); }
+	//UniqueBuffer                   createBuffer                   (const vk::BufferCreateInfo& createInfo)                   const;
+	//UniqueBuffer                   create                         (const vk::BufferCreateInfo& createInfo)                   const { return createBuffer(createInfo); }
+	//UniqueBufferView               createBufferView               (const vk::BufferViewCreateInfo& createInfo)               const;
+	//UniqueBufferView               create                         (const vk::BufferViewCreateInfo& createInfo)               const { return createBufferView(createInfo); }
+	//UniqueCommandPool              createCommandPool              (const vk::CommandPoolCreateInfo& createInfo)              const;
+	//UniqueCommandPool              create                         (const vk::CommandPoolCreateInfo& createInfo)              const { return createCommandPool(createInfo); }
+	//UniqueDescriptorPool           createDescriptorPool           (const vk::DescriptorPoolCreateInfo& createInfo)           const;
+	//UniqueDescriptorPool           create                         (const vk::DescriptorPoolCreateInfo& createInfo)           const { return createDescriptorPool(createInfo); }
+	//UniqueDescriptorSetLayout      createDescriptorSetLayout      (const vk::DescriptorSetLayoutCreateInfo& createInfo)      const;
+	//UniqueDescriptorSetLayout      create                         (const vk::DescriptorSetLayoutCreateInfo& createInfo)      const { return createDescriptorSetLayout(createInfo); }
+	//UniqueDescriptorUpdateTemplate createDescriptorUpdateTemplate (const vk::DescriptorUpdateTemplateCreateInfo& createInfo) const;
+	//UniqueDescriptorUpdateTemplate create                         (const vk::DescriptorUpdateTemplateCreateInfo& createInfo) const { return createDescriptorUpdateTemplate(createInfo); }
+	//UniqueEvent                    createEvent                    (const vk::EventCreateInfo& createInfo)                    const;
+	//UniqueEvent                    create                         (const vk::EventCreateInfo& createInfo)                    const { return createEvent(createInfo); }
+	//UniqueFence                    createFence                    (const vk::FenceCreateInfo& createInfo)                    const;
+	//UniqueFence                    createFence                    (VkFenceCreateFlags flags = VkFenceCreateFlags{})          const;
+	//UniqueFence                    create                         (const vk::FenceCreateInfo& createInfo)                    const { return createFence(createInfo); }
+	//UniqueFramebuffer              createFramebuffer              (const vk::FramebufferCreateInfo& createInfo)              const;
+	//UniqueFramebuffer              create                         (const vk::FramebufferCreateInfo& createInfo)              const { return createFramebuffer(createInfo); }
+	//UniqueImage                    createImage                    (const vk::ImageCreateInfo& createInfo)                    const;
+	//UniqueImage                    create                         (const vk::ImageCreateInfo& createInfo)                    const { return createImage(createInfo); }
+	//UniqueImageView                createImageView                (const vk::ImageViewCreateInfo& createInfo)                const;
+	//UniqueImageView                create                         (const vk::ImageViewCreateInfo& createInfo)                const { return createImageView(createInfo); }
+	//UniquePipelineCache            createPipelineCache            (const vk::PipelineCacheCreateInfo& createInfo)            const;
+	//UniquePipelineCache            create                         (const vk::PipelineCacheCreateInfo& createInfo)            const { return createPipelineCache(createInfo); }
+	//UniquePipelineLayout           createPipelineLayout           (const vk::PipelineLayoutCreateInfo& createInfo)           const;
+	//UniquePipelineLayout           create                         (const vk::PipelineLayoutCreateInfo& createInfo)           const { return createPipelineLayout(createInfo); }
+	//UniqueQueryPool                createQueryPool                (const vk::QueryPoolCreateInfo& createInfo)                const;
+	//UniqueQueryPool                create                         (const vk::QueryPoolCreateInfo& createInfo)                const { return createQueryPool(createInfo); }
+	//UniqueRenderPass               createRenderPass               (const vk::RenderPassCreateInfo& createInfo)               const;
+	//UniqueRenderPass               create                         (const vk::RenderPassCreateInfo& createInfo)               const { return createRenderPass(createInfo); }
+	//UniqueSampler                  createSampler                  (const vk::SamplerCreateInfo& createInfo)                  const;
+	//UniqueSampler                  create                         (const vk::SamplerCreateInfo& createInfo)                  const { return createSampler(createInfo); }
+	//UniqueSamplerYcbcrConversion   createSamplerYcbcrConversion   (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const;
+	//UniqueSamplerYcbcrConversion   create                         (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const { return createSamplerYcbcrConversion(createInfo); }
+	//UniqueSemaphore                createSemaphore                (const vk::SemaphoreCreateInfo& createInfo)                const;
+	//UniqueSemaphore                createSemaphore                (bool signaled = false)                                    const;
+	//UniqueSemaphore                create                         (const vk::SemaphoreCreateInfo& createInfo)                const { return createSemaphore(createInfo); }
+	//UniqueShaderModule             createShaderModule             (const vk::ShaderModuleCreateInfo& createInfo)             const;
+	//UniqueShaderModule             create                         (const vk::ShaderModuleCreateInfo& createInfo)             const { return createShaderModule(createInfo); }
 
 
 	PFN_vkDeviceWaitIdle DeviceWaitIdle;
@@ -942,27 +944,120 @@ public:
 };
 
 // clang-format off
-using UniqueBuffer =                   Unique<VkBuffer,                   VulkanDevice, &VulkanDevice::destroyBuffer                  >;
-using UniqueBufferView =               Unique<VkBufferView,               VulkanDevice, &VulkanDevice::destroyBufferView              >;
-using UniqueCommandPool =              Unique<VkCommandPool,              VulkanDevice, &VulkanDevice::destroyCommandPool             >;
-using UniqueDescriptorPool =           Unique<VkDescriptorPool,           VulkanDevice, &VulkanDevice::destroyDescriptorPool          >;
-using UniqueDescriptorSetLayout =      Unique<VkDescriptorSetLayout,      VulkanDevice, &VulkanDevice::destroyDescriptorSetLayout     >;
-using UniqueDescriptorUpdateTemplate = Unique<VkDescriptorUpdateTemplate, VulkanDevice, &VulkanDevice::destroyDescriptorUpdateTemplate>;
-using UniqueEvent =                    Unique<VkEvent,                    VulkanDevice, &VulkanDevice::destroyEvent                   >;
-using UniqueFence =                    Unique<VkFence,                    VulkanDevice, &VulkanDevice::destroyFence                   >;
-using UniqueFramebuffer =              Unique<VkFramebuffer,              VulkanDevice, &VulkanDevice::destroyFramebuffer             >;
-using UniqueImage =                    Unique<VkImage,                    VulkanDevice, &VulkanDevice::destroyImage                   >;
-using UniqueImageView =                Unique<VkImageView,                VulkanDevice, &VulkanDevice::destroyImageView               >;
-using UniquePipeline =                 Unique<VkPipeline,                 VulkanDevice, &VulkanDevice::destroyPipeline                >;
-using UniquePipelineCache =            Unique<VkPipelineCache,            VulkanDevice, &VulkanDevice::destroyPipelineCache           >;
-using UniquePipelineLayout =           Unique<VkPipelineLayout,           VulkanDevice, &VulkanDevice::destroyPipelineLayout          >;
-using UniqueQueryPool =                Unique<VkQueryPool,                VulkanDevice, &VulkanDevice::destroyQueryPool               >;
-using UniqueRenderPass =               Unique<VkRenderPass,               VulkanDevice, &VulkanDevice::destroyRenderPass              >;
-using UniqueSampler =                  Unique<VkSampler,                  VulkanDevice, &VulkanDevice::destroySampler                 >;
-using UniqueSamplerYcbcrConversion =   Unique<VkSamplerYcbcrConversion,   VulkanDevice, &VulkanDevice::destroySamplerYcbcrConversion  >;
-using UniqueSemaphore =                Unique<VkSemaphore,                VulkanDevice, &VulkanDevice::destroySemaphore               >;
-using UniqueShaderModule =             Unique<VkShaderModule,             VulkanDevice, &VulkanDevice::destroyShaderModule            >;
+using UniqueBuffer =                   Unique<VkBuffer,                   VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyBuffer                  >;
+using UniqueBufferView =               Unique<VkBufferView,               VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyBufferView              >;
+using UniqueCommandPool =              Unique<VkCommandPool,              VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyCommandPool             >;
+using UniqueDescriptorPool =           Unique<VkDescriptorPool,           VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyDescriptorPool          >;
+using UniqueDescriptorSetLayout =      Unique<VkDescriptorSetLayout,      VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyDescriptorSetLayout     >;
+using UniqueDescriptorUpdateTemplate = Unique<VkDescriptorUpdateTemplate, VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyDescriptorUpdateTemplate>;
+using UniqueEvent =                    Unique<VkEvent,                    VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyEvent                   >;
+using UniqueFence =                    Unique<VkFence,                    VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyFence                   >;
+using UniqueFramebuffer =              Unique<VkFramebuffer,              VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyFramebuffer             >;
+using UniqueImage =                    Unique<VkImage,                    VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyImage                   >;
+using UniqueImageView =                Unique<VkImageView,                VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyImageView               >;
+using UniquePipeline =                 Unique<VkPipeline,                 VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyPipeline                >;
+using UniquePipelineCache =            Unique<VkPipelineCache,            VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyPipelineCache           >;
+using UniquePipelineLayout =           Unique<VkPipelineLayout,           VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyPipelineLayout          >;
+using UniqueQueryPool =                Unique<VkQueryPool,                VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyQueryPool               >;
+using UniqueRenderPass =               Unique<VkRenderPass,               VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyRenderPass              >;
+using UniqueSampler =                  Unique<VkSampler,                  VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroySampler                 >;
+using UniqueSamplerYcbcrConversion =   Unique<VkSamplerYcbcrConversion,   VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroySamplerYcbcrConversion  >;
+using UniqueSemaphore =                Unique<VkSemaphore,                VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroySemaphore               >;
+using UniqueShaderModule =             Unique<VkShaderModule,             VulkanDeviceDestroyer, &VulkanDeviceDestroyer::destroyShaderModule            >;
+
+class UniqueGraphicsPipeline : public UniquePipeline { public: using UniquePipeline::UniquePipeline; };
+class UniqueComputePipeline : public UniquePipeline  { public: using UniquePipeline::UniquePipeline; };
 // clang-format on
+
+class VulkanDevice final : public VulkanDeviceDestroyer
+{
+public:
+	using VulkanDeviceDestroyer::VulkanDeviceDestroyer;
+	using VulkanDeviceDestroyer::createBuffer                   ;
+	using VulkanDeviceDestroyer::create                         ;
+	using VulkanDeviceDestroyer::createBufferView               ;
+	using VulkanDeviceDestroyer::createCommandPool              ;
+	using VulkanDeviceDestroyer::createDescriptorPool           ;
+	using VulkanDeviceDestroyer::createDescriptorSetLayout      ;
+	using VulkanDeviceDestroyer::createDescriptorUpdateTemplate ;
+	using VulkanDeviceDestroyer::createEvent                    ;
+	using VulkanDeviceDestroyer::createFence                    ;
+	using VulkanDeviceDestroyer::createFramebuffer              ;
+	using VulkanDeviceDestroyer::createImage                    ;
+	using VulkanDeviceDestroyer::createImageView                ;
+	using VulkanDeviceDestroyer::createPipelineCache            ;
+	using VulkanDeviceDestroyer::createPipelineLayout           ;
+	using VulkanDeviceDestroyer::createQueryPool                ;
+	using VulkanDeviceDestroyer::createRenderPass               ;
+	using VulkanDeviceDestroyer::createRenderPass2              ;
+	using VulkanDeviceDestroyer::createSampler                  ;
+	using VulkanDeviceDestroyer::createSamplerYcbcrConversion   ;
+	using VulkanDeviceDestroyer::createSemaphore                ;
+	using VulkanDeviceDestroyer::createShaderModule             ;
+	using VulkanDeviceDestroyer::createComputePipelines         ;
+	using VulkanDeviceDestroyer::createComputePipeline          ;
+	using VulkanDeviceDestroyer::createGraphicsPipelines        ;
+	using VulkanDeviceDestroyer::createGraphicsPipeline         ;
+
+	UniqueComputePipeline createComputePipeline(const vk::ComputePipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const;
+	UniqueComputePipeline create(const vk::ComputePipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const
+	{
+		return createComputePipeline(createInfo, pipelineCache);
+	}
+
+	UniqueGraphicsPipeline createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const;
+	UniqueGraphicsPipeline create(const vk::GraphicsPipelineCreateInfo& createInfo, VkPipelineCache pipelineCache = nullptr) const
+	{
+		return createGraphicsPipeline(createInfo, pipelineCache);
+	}
+
+	UniqueRenderPass createRenderPass2(const vk::RenderPassCreateInfo2& createInfo) const;
+	UniqueRenderPass create(const vk::RenderPassCreateInfo2& createInfo) const
+	{
+		return createRenderPass2(createInfo);
+	}
+
+	UniqueBuffer                   createBuffer                   (const vk::BufferCreateInfo& createInfo)                   const;
+	UniqueBuffer                   create                         (const vk::BufferCreateInfo& createInfo)                   const { return createBuffer(createInfo); }
+	UniqueBufferView               createBufferView               (const vk::BufferViewCreateInfo& createInfo)               const;
+	UniqueBufferView               create                         (const vk::BufferViewCreateInfo& createInfo)               const { return createBufferView(createInfo); }
+	UniqueCommandPool              createCommandPool              (const vk::CommandPoolCreateInfo& createInfo)              const;
+	UniqueCommandPool              create                         (const vk::CommandPoolCreateInfo& createInfo)              const { return createCommandPool(createInfo); }
+	UniqueDescriptorPool           createDescriptorPool           (const vk::DescriptorPoolCreateInfo& createInfo)           const;
+	UniqueDescriptorPool           create                         (const vk::DescriptorPoolCreateInfo& createInfo)           const { return createDescriptorPool(createInfo); }
+	UniqueDescriptorSetLayout      createDescriptorSetLayout      (const vk::DescriptorSetLayoutCreateInfo& createInfo)      const;
+	UniqueDescriptorSetLayout      create                         (const vk::DescriptorSetLayoutCreateInfo& createInfo)      const { return createDescriptorSetLayout(createInfo); }
+	UniqueDescriptorUpdateTemplate createDescriptorUpdateTemplate (const vk::DescriptorUpdateTemplateCreateInfo& createInfo) const;
+	UniqueDescriptorUpdateTemplate create                         (const vk::DescriptorUpdateTemplateCreateInfo& createInfo) const { return createDescriptorUpdateTemplate(createInfo); }
+	UniqueEvent                    createEvent                    (const vk::EventCreateInfo& createInfo)                    const;
+	UniqueEvent                    create                         (const vk::EventCreateInfo& createInfo)                    const { return createEvent(createInfo); }
+	UniqueFence                    createFence                    (const vk::FenceCreateInfo& createInfo)                    const;
+	UniqueFence                    createFence                    (VkFenceCreateFlags flags = VkFenceCreateFlags{})          const;
+	UniqueFence                    create                         (const vk::FenceCreateInfo& createInfo)                    const { return createFence(createInfo); }
+	UniqueFramebuffer              createFramebuffer              (const vk::FramebufferCreateInfo& createInfo)              const;
+	UniqueFramebuffer              create                         (const vk::FramebufferCreateInfo& createInfo)              const { return createFramebuffer(createInfo); }
+	UniqueImage                    createImage                    (const vk::ImageCreateInfo& createInfo)                    const;
+	UniqueImage                    create                         (const vk::ImageCreateInfo& createInfo)                    const { return createImage(createInfo); }
+	UniqueImageView                createImageView                (const vk::ImageViewCreateInfo& createInfo)                const;
+	UniqueImageView                create                         (const vk::ImageViewCreateInfo& createInfo)                const { return createImageView(createInfo); }
+	UniquePipelineCache            createPipelineCache            (const vk::PipelineCacheCreateInfo& createInfo)            const;
+	UniquePipelineCache            create                         (const vk::PipelineCacheCreateInfo& createInfo)            const { return createPipelineCache(createInfo); }
+	UniquePipelineLayout           createPipelineLayout           (const vk::PipelineLayoutCreateInfo& createInfo)           const;
+	UniquePipelineLayout           create                         (const vk::PipelineLayoutCreateInfo& createInfo)           const { return createPipelineLayout(createInfo); }
+	UniqueQueryPool                createQueryPool                (const vk::QueryPoolCreateInfo& createInfo)                const;
+	UniqueQueryPool                create                         (const vk::QueryPoolCreateInfo& createInfo)                const { return createQueryPool(createInfo); }
+	UniqueRenderPass               createRenderPass               (const vk::RenderPassCreateInfo& createInfo)               const;
+	UniqueRenderPass               create                         (const vk::RenderPassCreateInfo& createInfo)               const { return createRenderPass(createInfo); }
+	UniqueSampler                  createSampler                  (const vk::SamplerCreateInfo& createInfo)                  const;
+	UniqueSampler                  create                         (const vk::SamplerCreateInfo& createInfo)                  const { return createSampler(createInfo); }
+	UniqueSamplerYcbcrConversion   createSamplerYcbcrConversion   (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const;
+	UniqueSamplerYcbcrConversion   create                         (const vk::SamplerYcbcrConversionCreateInfo& createInfo)   const { return createSamplerYcbcrConversion(createInfo); }
+	UniqueSemaphore                createSemaphore                (const vk::SemaphoreCreateInfo& createInfo)                const;
+	UniqueSemaphore                createSemaphore                (bool signaled = false)                                    const;
+	UniqueSemaphore                create                         (const vk::SemaphoreCreateInfo& createInfo)                const { return createSemaphore(createInfo); }
+	UniqueShaderModule             createShaderModule             (const vk::ShaderModuleCreateInfo& createInfo)             const;
+	UniqueShaderModule             create                         (const vk::ShaderModuleCreateInfo& createInfo)             const { return createShaderModule(createInfo); }
+};
 
 class VulkanDeviceObject
 {

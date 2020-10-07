@@ -9,6 +9,8 @@
 namespace cdm
 {
 class CommandPool;
+class UniqueComputePipeline;
+class UniqueGraphicsPipeline;
 
 class CommandBuffer final : public VulkanDeviceObject
 {
@@ -48,6 +50,8 @@ public:
 	CommandBuffer& bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, VkDescriptorSet descriptorSet, uint32_t dynamicOffset);
 	CommandBuffer& bindIndexBuffer(VkBuffer buffer, VkDeviceSize offset = 0, VkIndexType indexType = VK_INDEX_TYPE_UINT32);
 	CommandBuffer& bindPipeline(VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline);
+	CommandBuffer& bindPipeline(const UniqueComputePipeline& pipeline);
+	CommandBuffer& bindPipeline(const UniqueGraphicsPipeline& pipeline);
 	CommandBuffer& bindVertexBuffers(uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* pBuffers, const VkDeviceSize* pOffsets);
 	CommandBuffer& bindVertexBuffer(uint32_t firstBinding, VkBuffer buffer, VkDeviceSize offset = 0);
 	CommandBuffer& bindVertexBuffer(VkBuffer buffer);

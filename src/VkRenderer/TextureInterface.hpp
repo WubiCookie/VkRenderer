@@ -31,5 +31,14 @@ public:
 
 	virtual void transitionLayoutImmediate(VkImageLayout initialLayout,
 	                                       VkImageLayout finalLayout) = 0;
+
+	VkDescriptorImageInfo makeDescriptorInfo(VkImageLayout currentLayout) const
+	{
+		VkDescriptorImageInfo res{};
+		res.imageLayout = currentLayout;
+		res.imageView = view();
+		res.sampler = sampler();
+		return res;
+	}
 };
 }  // namespace cdm

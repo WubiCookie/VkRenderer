@@ -365,7 +365,7 @@ VkResult VulkanDeviceBase::create(
 // ================================================================
 
 static int rateDeviceSuitability(VkPhysicalDevice physicalDevice,
-                                 const VulkanDevice& vk)
+                                 const VulkanDeviceDestroyer& vk)
 {
 	VkPhysicalDeviceProperties deviceProperties;
 	vk.GetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
@@ -395,7 +395,7 @@ static int rateDeviceSuitability(VkPhysicalDevice physicalDevice,
 
 static void pickPhysicalDevice(
     const std::vector<VkPhysicalDevice>& physicalDevices,
-    VkPhysicalDevice& physicalDevice, const VulkanDevice& vk)
+    VkPhysicalDevice& physicalDevice, const VulkanDeviceDestroyer& vk)
 {
 	// Use an ordered map to automatically sort candidates by increasing score
 	std::multimap<int, VkPhysicalDevice> candidates;
@@ -418,7 +418,7 @@ static void pickPhysicalDevice(
 	}
 }
 
-VulkanDevice::VulkanDevice(bool layers) noexcept : VulkanDeviceBase(layers)
+VulkanDeviceDestroyer::VulkanDeviceDestroyer(bool layers) noexcept : VulkanDeviceBase(layers)
 {
 	uint32_t deviceCount = 0;
 	EnumeratePhysicalDevices(instance(), &deviceCount, nullptr);
@@ -442,7 +442,7 @@ VulkanDevice::VulkanDevice(bool layers) noexcept : VulkanDeviceBase(layers)
 	}
 }
 
-VulkanDevice::~VulkanDevice()
+VulkanDeviceDestroyer::~VulkanDeviceDestroyer()
 {
 	vmaDestroyAllocator(m_allocator.get());
 
@@ -452,7 +452,7 @@ VulkanDevice::~VulkanDevice()
 	}
 }
 
-void VulkanDevice::createDevice(VkSurfaceKHR surface,
+void VulkanDeviceDestroyer::createDevice(VkSurfaceKHR surface,
                                 QueueFamilyIndices queueFamilyIndices)
 {
 	m_queueFamilyIndices = queueFamilyIndices;
@@ -892,7 +892,7 @@ void VulkanDevice::createDevice(VkSurfaceKHR surface,
 #pragma endregion allocator
 }
 
-VkFormatProperties VulkanDevice::getPhysicalDeviceFormatProperties(
+VkFormatProperties VulkanDeviceDestroyer::getPhysicalDeviceFormatProperties(
     VkFormat format) const
 {
 	VkFormatProperties res{};
@@ -900,35 +900,35 @@ VkFormatProperties VulkanDevice::getPhysicalDeviceFormatProperties(
 	return res;
 }
 
-VkResult VulkanDevice::allocateCommandBuffers(
+VkResult VulkanDeviceDestroyer::allocateCommandBuffers(
     const cdm::vk::CommandBufferAllocateInfo& allocateInfo,
     VkCommandBuffer* pCommandBuffers) const
 {
 	return AllocateCommandBuffers(vkDevice(), &allocateInfo, pCommandBuffers);
 }
 
-VkResult VulkanDevice::allocate(
+VkResult VulkanDeviceDestroyer::allocate(
     const cdm::vk::CommandBufferAllocateInfo& allocateInfo,
     VkCommandBuffer* pCommandBuffers) const
 {
 	return allocateCommandBuffers(allocateInfo, pCommandBuffers);
 }
 
-VkResult VulkanDevice::allocateDescriptorSets(
+VkResult VulkanDeviceDestroyer::allocateDescriptorSets(
     const cdm::vk::DescriptorSetAllocateInfo& allocateInfo,
     VkDescriptorSet* pDescriptorSets) const
 {
 	return AllocateDescriptorSets(vkDevice(), &allocateInfo, pDescriptorSets);
 }
 
-VkResult VulkanDevice::allocate(
+VkResult VulkanDeviceDestroyer::allocate(
     const cdm::vk::DescriptorSetAllocateInfo& allocateInfo,
     VkDescriptorSet* pDescriptorSets) const
 {
 	return allocateDescriptorSets(allocateInfo, pDescriptorSets);
 }
 
-VkDescriptorSet VulkanDevice::allocate(VkDescriptorPool pool,
+VkDescriptorSet VulkanDeviceDestroyer::allocate(VkDescriptorPool pool,
                                        VkDescriptorSetLayout layout) const
 {
 	cdm::vk::DescriptorSetAllocateInfo allocateInfo;
@@ -941,7 +941,7 @@ VkDescriptorSet VulkanDevice::allocate(VkDescriptorPool pool,
 	return res;
 }
 
-VkResult VulkanDevice::allocateMemory(
+VkResult VulkanDeviceDestroyer::allocateMemory(
     const cdm::vk::MemoryAllocateInfo& allocateInfo,
     VkDeviceMemory& outDeviceMemory) const
 {
@@ -949,14 +949,14 @@ VkResult VulkanDevice::allocateMemory(
 	                      &outDeviceMemory);
 }
 
-VkResult VulkanDevice::allocate(
+VkResult VulkanDeviceDestroyer::allocate(
     const cdm::vk::MemoryAllocateInfo& allocateInfo,
     VkDeviceMemory& outDeviceMemory) const
 {
 	return allocateMemory(allocateInfo, outDeviceMemory);
 }
 
-VkResult VulkanDevice::createComputePipelines(
+VkResult VulkanDeviceDestroyer::createComputePipelines(
     uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos,
     VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
 {
@@ -964,7 +964,7 @@ VkResult VulkanDevice::createComputePipelines(
 	                              pCreateInfos, nullptr, pPipelines);
 }
 
-VkResult VulkanDevice::create(uint32_t createInfoCount,
+VkResult VulkanDeviceDestroyer::create(uint32_t createInfoCount,
                               const VkComputePipelineCreateInfo* pCreateInfos,
                               VkPipeline* pPipelines,
                               VkPipelineCache pipelineCache) const
@@ -973,7 +973,7 @@ VkResult VulkanDevice::create(uint32_t createInfoCount,
 	                              pipelineCache);
 }
 
-VkResult VulkanDevice::createComputePipelines(
+VkResult VulkanDeviceDestroyer::createComputePipelines(
     uint32_t createInfoCount,
     const cdm::vk::ComputePipelineCreateInfo* pCreateInfos,
     VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
@@ -982,7 +982,7 @@ VkResult VulkanDevice::createComputePipelines(
 	                              pCreateInfos, nullptr, pPipelines);
 }
 
-VkResult VulkanDevice::create(
+VkResult VulkanDeviceDestroyer::create(
     uint32_t createInfoCount,
     const cdm::vk::ComputePipelineCreateInfo* pCreateInfos,
     VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
@@ -991,7 +991,7 @@ VkResult VulkanDevice::create(
 	                              pipelineCache);
 }
 
-VkResult VulkanDevice::createComputePipeline(
+VkResult VulkanDeviceDestroyer::createComputePipeline(
     const cdm::vk::ComputePipelineCreateInfo& createInfo,
     VkPipeline& outPipeline, VkPipelineCache pipelineCache) const
 {
@@ -999,23 +999,23 @@ VkResult VulkanDevice::createComputePipeline(
 	                              nullptr, &outPipeline);
 }
 
-VkResult VulkanDevice::create(
+VkResult VulkanDeviceDestroyer::create(
     const cdm::vk::ComputePipelineCreateInfo& createInfo,
     VkPipeline& outPipeline, VkPipelineCache pipelineCache) const
 {
 	return createComputePipeline(createInfo, outPipeline, pipelineCache);
 }
 
-UniquePipeline VulkanDevice::createComputePipeline(
+UniqueComputePipeline VulkanDevice::createComputePipeline(
     const cdm::vk::ComputePipelineCreateInfo& createInfo,
     VkPipelineCache pipelineCache) const
 {
 	VkPipeline res = nullptr;
 	createComputePipeline(createInfo, res, pipelineCache);
-	return UniquePipeline(res, *this);
+	return UniqueComputePipeline(res, *this);
 }
 
-VkResult VulkanDevice::createGraphicsPipelines(
+VkResult VulkanDeviceDestroyer::createGraphicsPipelines(
     uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo* pCreateInfos,
     VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
 {
@@ -1023,7 +1023,7 @@ VkResult VulkanDevice::createGraphicsPipelines(
 	                               pCreateInfos, nullptr, pPipelines);
 }
 
-VkResult VulkanDevice::create(uint32_t createInfoCount,
+VkResult VulkanDeviceDestroyer::create(uint32_t createInfoCount,
                               const VkGraphicsPipelineCreateInfo* pCreateInfos,
                               VkPipeline* pPipelines,
                               VkPipelineCache pipelineCache) const
@@ -1032,7 +1032,7 @@ VkResult VulkanDevice::create(uint32_t createInfoCount,
 	                               pipelineCache);
 }
 
-VkResult VulkanDevice::createGraphicsPipelines(
+VkResult VulkanDeviceDestroyer::createGraphicsPipelines(
     uint32_t createInfoCount,
     const cdm::vk::GraphicsPipelineCreateInfo* pCreateInfos,
     VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
@@ -1041,7 +1041,7 @@ VkResult VulkanDevice::createGraphicsPipelines(
 	                               pCreateInfos, nullptr, pPipelines);
 }
 
-VkResult VulkanDevice::create(
+VkResult VulkanDeviceDestroyer::create(
     uint32_t createInfoCount,
     const cdm::vk::GraphicsPipelineCreateInfo* pCreateInfos,
     VkPipeline* pPipelines, VkPipelineCache pipelineCache) const
@@ -1050,7 +1050,7 @@ VkResult VulkanDevice::create(
 	                               pipelineCache);
 }
 
-VkResult VulkanDevice::createGraphicsPipeline(
+VkResult VulkanDeviceDestroyer::createGraphicsPipeline(
     const cdm::vk::GraphicsPipelineCreateInfo& createInfo,
     VkPipeline& outPipeline, VkPipelineCache pipelineCache) const
 {
@@ -1058,23 +1058,23 @@ VkResult VulkanDevice::createGraphicsPipeline(
 	                               nullptr, &outPipeline);
 }
 
-VkResult VulkanDevice::create(
+VkResult VulkanDeviceDestroyer::create(
     const cdm::vk::GraphicsPipelineCreateInfo& createInfo,
     VkPipeline& outPipeline, VkPipelineCache pipelineCache) const
 {
 	return createGraphicsPipeline(createInfo, outPipeline, pipelineCache);
 }
 
-UniquePipeline VulkanDevice::createGraphicsPipeline(
+UniqueGraphicsPipeline VulkanDevice::createGraphicsPipeline(
     const cdm::vk::GraphicsPipelineCreateInfo& createInfo,
     VkPipelineCache pipelineCache) const
 {
 	VkPipeline res = nullptr;
 	createGraphicsPipeline(createInfo, res, pipelineCache);
-	return UniquePipeline(res, *this);
+	return UniqueGraphicsPipeline(res, *this);
 }
 
-VkResult VulkanDevice::createRenderPass2(
+VkResult VulkanDeviceDestroyer::createRenderPass2(
     const cdm::vk::RenderPassCreateInfo2& createInfo,
     VkRenderPass& outRenderPass) const
 {
@@ -1082,7 +1082,7 @@ VkResult VulkanDevice::createRenderPass2(
 	                            &outRenderPass);
 }
 
-VkResult VulkanDevice::create(const cdm::vk::RenderPassCreateInfo2& createInfo,
+VkResult VulkanDeviceDestroyer::create(const cdm::vk::RenderPassCreateInfo2& createInfo,
                               VkRenderPass& outRenderPass) const
 {
 	return createRenderPass2(createInfo, outRenderPass);
@@ -1263,17 +1263,17 @@ UniqueShaderModule VulkanDevice::createShaderModule(
 	return UniqueShaderModule(res, *this);
 }
 
-void VulkanDevice::destroyDevice() const
+void VulkanDeviceDestroyer::destroyDevice() const
 {
 	DestroyDevice(vkDevice(), nullptr);
 }
 
-void VulkanDevice::destroy() const { destroyDevice(); }
+void VulkanDeviceDestroyer::destroy() const { destroyDevice(); }
 
-VkResult VulkanDevice::waitIdle() const { return DeviceWaitIdle(vkDevice()); }
-VkResult VulkanDevice::wait() const { return waitIdle(); }
+VkResult VulkanDeviceDestroyer::waitIdle() const { return DeviceWaitIdle(vkDevice()); }
+VkResult VulkanDeviceDestroyer::wait() const { return waitIdle(); }
 
-void VulkanDevice::freeCommandBuffers(
+void VulkanDeviceDestroyer::freeCommandBuffers(
     VkCommandPool commandPool, uint32_t commandBufferCount,
     const VkCommandBuffer* pCommandBuffers) const
 {
@@ -1281,25 +1281,25 @@ void VulkanDevice::freeCommandBuffers(
 	                   pCommandBuffers);
 }
 
-void VulkanDevice::free(VkCommandPool commandPool, uint32_t commandBufferCount,
+void VulkanDeviceDestroyer::free(VkCommandPool commandPool, uint32_t commandBufferCount,
                         const VkCommandBuffer* pCommandBuffers) const
 {
 	freeCommandBuffers(commandPool, commandBufferCount, pCommandBuffers);
 }
 
-void VulkanDevice::freeCommandBuffer(VkCommandPool commandPool,
+void VulkanDeviceDestroyer::freeCommandBuffer(VkCommandPool commandPool,
                                      VkCommandBuffer CommandBuffer) const
 {
 	FreeCommandBuffers(vkDevice(), commandPool, 1, &CommandBuffer);
 }
 
-void VulkanDevice::free(VkCommandPool commandPool,
+void VulkanDeviceDestroyer::free(VkCommandPool commandPool,
                         VkCommandBuffer CommandBuffer) const
 {
 	freeCommandBuffers(commandPool, 1, &CommandBuffer);
 }
 
-VkResult VulkanDevice::freeDescriptorSets(
+VkResult VulkanDeviceDestroyer::freeDescriptorSets(
     VkDescriptorPool descriptorPool, uint32_t descriptorSetCount,
     const VkDescriptorSet* pDescriptorSets) const
 {
@@ -1307,59 +1307,59 @@ VkResult VulkanDevice::freeDescriptorSets(
 	                          pDescriptorSets);
 }
 
-VkResult VulkanDevice::free(VkDescriptorPool descriptorPool,
+VkResult VulkanDeviceDestroyer::free(VkDescriptorPool descriptorPool,
                             uint32_t descriptorSetCount,
                             const VkDescriptorSet* pDescriptorSets) const
 {
 	return freeDescriptorSets(descriptorPool, descriptorSetCount,
 	                          pDescriptorSets);
 }
-VkResult VulkanDevice::freeDescriptorSets(VkDescriptorPool descriptorPool,
+VkResult VulkanDeviceDestroyer::freeDescriptorSets(VkDescriptorPool descriptorPool,
                                           VkDescriptorSet DescriptorSet) const
 {
 	return FreeDescriptorSets(vkDevice(), descriptorPool, 1, &DescriptorSet);
 }
 
-VkResult VulkanDevice::free(VkDescriptorPool descriptorPool,
+VkResult VulkanDeviceDestroyer::free(VkDescriptorPool descriptorPool,
                             VkDescriptorSet DescriptorSet) const
 {
 	return freeDescriptorSets(descriptorPool, 1, &DescriptorSet);
 }
 
-void VulkanDevice::freeMemory(VkDeviceMemory aDeviceMemory) const
+void VulkanDeviceDestroyer::freeMemory(VkDeviceMemory aDeviceMemory) const
 {
 	FreeMemory(vkDevice(), aDeviceMemory, nullptr);
 }
 
-void VulkanDevice::free(VkDeviceMemory aDeviceMemory) const
+void VulkanDeviceDestroyer::free(VkDeviceMemory aDeviceMemory) const
 {
 	freeMemory(aDeviceMemory);
 }
 
-VkResult VulkanDevice::getFenceStatus(VkFence fence) const
+VkResult VulkanDeviceDestroyer::getFenceStatus(VkFence fence) const
 {
 	return GetFenceStatus(vkDevice(), fence);
 }
 
-VkResult VulkanDevice::getStatus(VkFence fence) const
+VkResult VulkanDeviceDestroyer::getStatus(VkFence fence) const
 {
 	return getFenceStatus(fence);
 }
 
-VkResult VulkanDevice::queueSubmit(VkQueue queue, uint32_t submitCount,
+VkResult VulkanDeviceDestroyer::queueSubmit(VkQueue queue, uint32_t submitCount,
                                    const VkSubmitInfo* submits,
                                    VkFence fence) const
 {
 	return QueueSubmit(queue, submitCount, submits, fence);
 }
 
-VkResult VulkanDevice::queueSubmit(VkQueue queue, const VkSubmitInfo& submit,
+VkResult VulkanDeviceDestroyer::queueSubmit(VkQueue queue, const VkSubmitInfo& submit,
                                    VkFence fence) const
 {
 	return queueSubmit(queue, 1, &submit, fence);
 }
 
-VkResult VulkanDevice::queueSubmit(VkQueue queue,
+VkResult VulkanDeviceDestroyer::queueSubmit(VkQueue queue,
                                    VkCommandBuffer commandBuffer,
                                    VkFence fence) const
 {
@@ -1370,7 +1370,7 @@ VkResult VulkanDevice::queueSubmit(VkQueue queue,
 	return queueSubmit(queue, 1, &submit, fence);
 }
 
-VkResult VulkanDevice::queueSubmit(VkQueue queue,
+VkResult VulkanDeviceDestroyer::queueSubmit(VkQueue queue,
                                    VkCommandBuffer commandBuffer,
                                    VkSemaphore waitSemaphore,
                                    VkPipelineStageFlags waitDstStageMask,
@@ -1386,7 +1386,7 @@ VkResult VulkanDevice::queueSubmit(VkQueue queue,
 	return queueSubmit(queue, 1, &submit, fence);
 }
 
-VkResult VulkanDevice::queueSubmit(VkQueue queue,
+VkResult VulkanDeviceDestroyer::queueSubmit(VkQueue queue,
                                    VkCommandBuffer commandBuffer,
                                    VkSemaphore signalSemaphore,
                                    VkFence fence) const
@@ -1400,7 +1400,7 @@ VkResult VulkanDevice::queueSubmit(VkQueue queue,
 	return queueSubmit(queue, 1, &submit, fence);
 }
 
-VkResult VulkanDevice::queueSubmit(VkQueue queue,
+VkResult VulkanDeviceDestroyer::queueSubmit(VkQueue queue,
                                    VkCommandBuffer commandBuffer,
                                    VkSemaphore waitSemaphore,
                                    VkPipelineStageFlags waitDstStageMask,
@@ -1419,45 +1419,45 @@ VkResult VulkanDevice::queueSubmit(VkQueue queue,
 	return queueSubmit(queue, 1, &submit, fence);
 }
 
-VkResult VulkanDevice::queueWaitIdle(VkQueue queue) const
+VkResult VulkanDeviceDestroyer::queueWaitIdle(VkQueue queue) const
 {
 	return QueueWaitIdle(queue);
 }
 
-VkResult VulkanDevice::waitIdle(VkQueue queue) const
+VkResult VulkanDeviceDestroyer::waitIdle(VkQueue queue) const
 {
 	return QueueWaitIdle(queue);
 }
 
-VkResult VulkanDevice::wait(VkQueue queue) const
+VkResult VulkanDeviceDestroyer::wait(VkQueue queue) const
 {
 	return QueueWaitIdle(queue);
 }
 
-VkResult VulkanDevice::waitForFences(uint32_t fenceCount,
+VkResult VulkanDeviceDestroyer::waitForFences(uint32_t fenceCount,
                                      const VkFence* pFences, bool waitAll,
                                      uint64_t timeout) const
 {
 	return WaitForFences(vkDevice(), fenceCount, pFences, waitAll, timeout);
 }
 
-VkResult VulkanDevice::resetFences(uint32_t fenceCount,
+VkResult VulkanDeviceDestroyer::resetFences(uint32_t fenceCount,
                                    const VkFence* fences) const
 {
 	return ResetFences(vkDevice(), fenceCount, fences);
 }
 
-VkResult VulkanDevice::resetFences(std::initializer_list<VkFence> fences) const
+VkResult VulkanDeviceDestroyer::resetFences(std::initializer_list<VkFence> fences) const
 {
 	return resetFences(uint32_t(fences.size()), fences.begin());
 }
 
-VkResult VulkanDevice::resetFence(const VkFence& fence) const
+VkResult VulkanDeviceDestroyer::resetFence(const VkFence& fence) const
 {
 	return resetFences(1, &fence);
 }
 
-void VulkanDevice::updateDescriptorSets(
+void VulkanDeviceDestroyer::updateDescriptorSets(
     uint32_t descriptorWriteCount,
     const vk::WriteDescriptorSet* descriptorWrites,
     uint32_t descriptorCopyCount,
@@ -1467,105 +1467,105 @@ void VulkanDevice::updateDescriptorSets(
 	                     descriptorCopyCount, descriptorCopies);
 }
 
-void VulkanDevice::updateDescriptorSets(
+void VulkanDeviceDestroyer::updateDescriptorSets(
     uint32_t descriptorWriteCount,
     const vk::WriteDescriptorSet* descriptorWrites) const
 {
 	updateDescriptorSets(descriptorWriteCount, descriptorWrites, 0, nullptr);
 }
 
-void VulkanDevice::updateDescriptorSets(
+void VulkanDeviceDestroyer::updateDescriptorSets(
     uint32_t descriptorCopyCount,
     const vk::CopyDescriptorSet* descriptorCopies) const
 {
 	updateDescriptorSets(0, nullptr, descriptorCopyCount, descriptorCopies);
 }
 
-void VulkanDevice::updateDescriptorSets(
+void VulkanDeviceDestroyer::updateDescriptorSets(
     const vk::WriteDescriptorSet& descriptorWrite) const
 {
 	updateDescriptorSets(1, &descriptorWrite);
 }
 
-void VulkanDevice::updateDescriptorSets(
+void VulkanDeviceDestroyer::updateDescriptorSets(
     std::initializer_list<vk::WriteDescriptorSet> descriptorWrites) const
 {
 	updateDescriptorSets(uint32_t(descriptorWrites.size()),
 	                     descriptorWrites.begin());
 }
 
-void VulkanDevice::updateDescriptorSets(
+void VulkanDeviceDestroyer::updateDescriptorSets(
     const vk::CopyDescriptorSet& descriptorCopy) const
 {
 	updateDescriptorSets(1, &descriptorCopy);
 }
 
-void VulkanDevice::updateDescriptorSets(
+void VulkanDeviceDestroyer::updateDescriptorSets(
     std::initializer_list<vk::CopyDescriptorSet> descriptorCopies) const
 {
 	updateDescriptorSets(uint32_t(descriptorCopies.size()),
 	                     descriptorCopies.begin());
 }
 
-VkResult VulkanDevice::wait(uint32_t fenceCount, const VkFence* pFences,
+VkResult VulkanDeviceDestroyer::wait(uint32_t fenceCount, const VkFence* pFences,
                             bool waitAll, uint64_t timeout) const
 {
 	return waitForFences(fenceCount, pFences, waitAll, timeout);
 }
 
-VkResult VulkanDevice::waitForFence(VkFence fence, uint64_t timeout) const
+VkResult VulkanDeviceDestroyer::waitForFence(VkFence fence, uint64_t timeout) const
 {
 	return WaitForFences(vkDevice(), 1, &fence, true, timeout);
 }
 
-VkResult VulkanDevice::wait(VkFence fence, uint64_t timeout) const
+VkResult VulkanDeviceDestroyer::wait(VkFence fence, uint64_t timeout) const
 {
 	return waitForFence(fence, timeout);
 }
 
-VkResult VulkanDevice::waitSemaphores(cdm::vk::SemaphoreWaitInfo& waitInfo,
+VkResult VulkanDeviceDestroyer::waitSemaphores(cdm::vk::SemaphoreWaitInfo& waitInfo,
                                       uint64_t timeout) const
 {
 	return WaitSemaphores(vkDevice(), &waitInfo, timeout);
 }
 
-VkResult VulkanDevice::wait(cdm::vk::SemaphoreWaitInfo& waitInfo,
+VkResult VulkanDeviceDestroyer::wait(cdm::vk::SemaphoreWaitInfo& waitInfo,
                             uint64_t timeout) const
 {
 	return waitSemaphores(waitInfo, timeout);
 }
 
-VkResult VulkanDevice::createSwapchain(
+VkResult VulkanDeviceDestroyer::createSwapchain(
     const cdm::vk::SwapchainCreateInfoKHR& createInfo,
     VkSwapchainKHR& outSwapchain) const
 {
 	return CreateSwapchainKHR(vkDevice(), &createInfo, nullptr, &outSwapchain);
 }
 
-VkResult VulkanDevice::create(
+VkResult VulkanDeviceDestroyer::create(
     const cdm::vk::SwapchainCreateInfoKHR& createInfo,
     VkSwapchainKHR& outSwapchain) const
 {
 	return createSwapchain(createInfo, outSwapchain);
 }
 
-void VulkanDevice::destroySwapchain(VkSwapchainKHR swapchain) const
+void VulkanDeviceDestroyer::destroySwapchain(VkSwapchainKHR swapchain) const
 {
 	DestroySwapchainKHR(vkDevice(), swapchain, nullptr);
 }
 
-void VulkanDevice::destroy(VkSwapchainKHR swapchain) const
+void VulkanDeviceDestroyer::destroy(VkSwapchainKHR swapchain) const
 {
 	destroySwapchain(swapchain);
 }
 
-VkResult VulkanDevice::queuePresent(
+VkResult VulkanDeviceDestroyer::queuePresent(
     VkQueue queue, const cdm::vk::PresentInfoKHR& present) const
 {
 	return QueuePresentKHR(queue, &present);
 }
 
-VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain,
+VkResult VulkanDeviceDestroyer::queuePresent(VkQueue queue, VkSwapchainKHR swapchain,
                                     uint32_t index) const
 {
 	cdm::vk::PresentInfoKHR present;
@@ -1576,7 +1576,7 @@ VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain,
 	return queuePresent(queue, present);
 }
 
-VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain,
+VkResult VulkanDeviceDestroyer::queuePresent(VkQueue queue, VkSwapchainKHR swapchain,
                                     uint32_t index,
                                     VkSemaphore waitSemaphore) const
 {
@@ -1590,7 +1590,7 @@ VkResult VulkanDevice::queuePresent(VkQueue queue, VkSwapchainKHR swapchain,
 	return queuePresent(queue, present);
 }
 
-VkResult VulkanDevice::debugMarkerSetObjectName(
+VkResult VulkanDeviceDestroyer::debugMarkerSetObjectName(
     const cdm::vk::DebugMarkerObjectNameInfoEXT& nameInfo) const
 {
 	if (DebugMarkerSetObjectNameEXT)
@@ -1599,7 +1599,7 @@ VkResult VulkanDevice::debugMarkerSetObjectName(
 		return VkResult::VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
-VkResult VulkanDevice::debugMarkerSetObjectTag(
+VkResult VulkanDeviceDestroyer::debugMarkerSetObjectTag(
     const cdm::vk::DebugMarkerObjectTagInfoEXT& tagInfo) const
 {
 	if (DebugMarkerSetObjectNameEXT)

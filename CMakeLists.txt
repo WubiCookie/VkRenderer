@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set_property(GLOBAL PROPERTY FOLDER "Third Party")
 
 project(VkRenderer)
 
@@ -70,6 +69,64 @@ set(IMGUI_FILES
     ${IMGUI_DIR}/imgui_widgets.cpp
 )
 
+set_target_properties(glfw PROPERTIES FOLDER "Third Party/GLFW3")
+
+set_target_properties(GenericCodeGen PROPERTIES FOLDER "Third Party/glslang")
+set_target_properties(glslang PROPERTIES FOLDER "Third Party/glslang")
+set_target_properties(glslang-default-resource-limits PROPERTIES FOLDER "Third Party/glslang")
+set_target_properties(MachineIndependent PROPERTIES FOLDER "Third Party/glslang")
+set_target_properties(OGLCompiler PROPERTIES FOLDER "Third Party/glslang")
+set_target_properties(OSDependent PROPERTIES FOLDER "Third Party/glslang")
+set_target_properties(SPIRV PROPERTIES FOLDER "Third Party/glslang")
+
+set_target_properties(spirv-tools-build-version PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spirv-tools-header-DebugInfo PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spirv-tools-header-OpenCLDebugInfo100 PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spv-tools-cldi100 PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spv-tools-clspvreflection PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spv-tools-debuginfo PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spv-tools-spv-amd-gs PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spv-tools-spv-amd-sb PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spv-tools-spv-amd-sevp PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+set_target_properties(spv-tools-spv-amd-stm PROPERTIES FOLDER "Third Party/SPIRV-Tools build")
+
+set_target_properties(SPIRV-Tools-link PROPERTIES FOLDER "Third Party/SPIRV-Tools libraries")
+set_target_properties(SPIRV-Tools-opt PROPERTIES FOLDER "Third Party/SPIRV-Tools libraries")
+set_target_properties(SPIRV-Tools-reduce PROPERTIES FOLDER "Third Party/SPIRV-Tools libraries")
+set_target_properties(SPIRV-Tools-shared PROPERTIES FOLDER "Third Party/SPIRV-Tools libraries")
+set_target_properties(SPIRV-Tools-static PROPERTIES FOLDER "Third Party/SPIRV-Tools libraries")
+
+set_target_properties(spirv-tools-vimsyntax PROPERTIES FOLDER "Third Party/SPIRV-Tools utilities")
+
+set_target_properties(glslangValidator PROPERTIES FOLDER "Third Party/tools")
+
+set_target_properties(add-copyright PROPERTIES FOLDER "Third Party")
+set_target_properties(assimp PROPERTIES FOLDER "Third Party")
+set_target_properties(build-version PROPERTIES FOLDER "Third Party")
+set_target_properties(check-copyright PROPERTIES FOLDER "Third Party")
+set_target_properties(core_tables PROPERTIES FOLDER "Third Party")
+set_target_properties(enum_string_mapping PROPERTIES FOLDER "Third Party")
+set_target_properties(extinst_tables PROPERTIES FOLDER "Third Party")
+set_target_properties(glslang-build-info PROPERTIES FOLDER "Third Party")
+set_target_properties(glslc PROPERTIES FOLDER "Third Party")
+set_target_properties(glslc_exe PROPERTIES FOLDER "Third Party")
+set_target_properties(install-headers PROPERTIES FOLDER "Third Party")
+set_target_properties(IrrXML PROPERTIES FOLDER "Third Party")
+set_target_properties(shaderc PROPERTIES FOLDER "Third Party")
+set_target_properties(shaderc_combined_genfile PROPERTIES FOLDER "Third Party")
+set_target_properties(shaderc_combined-pkg-config PROPERTIES FOLDER "Third Party")
+set_target_properties(shaderc_shared PROPERTIES FOLDER "Third Party")
+set_target_properties(shaderc_static-pkg-config PROPERTIES FOLDER "Third Party")
+set_target_properties(shaderc_util PROPERTIES FOLDER "Third Party")
+set_target_properties(shaderc-online-compile PROPERTIES FOLDER "Third Party")
+set_target_properties(shaderc-pkg-config PROPERTIES FOLDER "Third Party")
+set_target_properties(spirv-tools-pkg-config PROPERTIES FOLDER "Third Party")
+set_target_properties(spirv-tools-shared-pkg-config PROPERTIES FOLDER "Third Party")
+set_target_properties(testdata PROPERTIES FOLDER "Third Party")
+set_target_properties(uninstall PROPERTIES FOLDER "Third Party")
+set_target_properties(UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER "Third Party")
+set_target_properties(zlibstatic PROPERTIES FOLDER "Third Party")
+
 message("==============================================")
 message("                  VkRenderer                  ")
 message("==============================================")
@@ -104,21 +161,35 @@ set(SOURCE_FILES
     src/VkRenderer/Framebuffer.hpp
     src/VkRenderer/Image.cpp
     src/VkRenderer/Image.hpp
+    src/VkRenderer/ImageFactory.cpp
+    src/VkRenderer/ImageFactory.hpp
     src/VkRenderer/ImageView.cpp
     src/VkRenderer/ImageView.hpp
     src/VkRenderer/IrradianceMap.cpp
     src/VkRenderer/IrradianceMap.hpp
     src/VkRenderer/LightTransport.cpp
     src/VkRenderer/LightTransport.hpp
+	src/VkRenderer/LightTransportRenderPasses.cpp
+	src/VkRenderer/LightTransportShaderModules.cpp
+	src/VkRenderer/LightTransportDescriptorsObjects.cpp
+	src/VkRenderer/LightTransportPipelines.cpp
+	src/VkRenderer/LightTransportBuffers.cpp
+	src/VkRenderer/LightTransportImages.cpp
+	src/VkRenderer/LightTransportFramebuffers.cpp
+	src/VkRenderer/LightTransportUpdateDescriptorSets.cpp
     src/VkRenderer/Mandelbulb.cpp
     src/VkRenderer/Mandelbulb.hpp
     src/VkRenderer/Material.cpp
     src/VkRenderer/Material.hpp
     src/VkRenderer/Model.cpp
     src/VkRenderer/Model.hpp
+    src/VkRenderer/MyShaderWriter.cpp
     src/VkRenderer/MyShaderWriter.hpp
+    src/VkRenderer/MyShaderWriter.inl
     src/VkRenderer/PbrShadingModel.cpp
     src/VkRenderer/PbrShadingModel.hpp
+    src/VkRenderer/PipelineFactory.cpp
+    src/VkRenderer/PipelineFactory.hpp
     src/VkRenderer/PrefilterCubemap.cpp
     src/VkRenderer/PrefilterCubemap.hpp
     src/VkRenderer/PrefilteredCubemap.cpp
@@ -141,11 +212,15 @@ set(SOURCE_FILES
     src/VkRenderer/StagingBuffer.hpp
     src/VkRenderer/StandardMesh.cpp
     src/VkRenderer/StandardMesh.hpp
+    src/VkRenderer/Texture1D.cpp
+    src/VkRenderer/Texture1D.hpp
     src/VkRenderer/Texture2D.cpp
     src/VkRenderer/Texture2D.hpp
     src/VkRenderer/TextureInterface.hpp
     src/VkRenderer/UniformBuffer.cpp
     src/VkRenderer/UniformBuffer.hpp
+    src/VkRenderer/VertexInputHelper.cpp
+    src/VkRenderer/VertexInputHelper.hpp
     src/VkRenderer/VulkanDevice.cpp
     src/VkRenderer/VulkanDevice.hpp
     src/VkRenderer/VulkanDevice.inl

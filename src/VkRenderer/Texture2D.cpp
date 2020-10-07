@@ -6,6 +6,8 @@
 
 #include <stdexcept>
 
+#include <iostream>
+
 namespace cdm
 {
 Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
@@ -37,7 +39,7 @@ Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	info.samples = samples;
 	info.flags = 0;
-
+	
 	VmaAllocationCreateInfo imageAllocCreateInfo = {};
 	imageAllocCreateInfo.usage = memoryUsage;
 	imageAllocCreateInfo.requiredFlags = requiredFlags;

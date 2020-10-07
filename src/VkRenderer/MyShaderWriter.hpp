@@ -1,8 +1,13 @@
 #pragma once
 
+#include "VulkanDevice.hpp"
 #include "CompilerSpirV/compileSpirV.hpp"
 #include "ShaderWriter/Intrinsics/Intrinsics.hpp"
 #include "ShaderWriter/Source.hpp"
+#include "VertexInputHelper.hpp"
+#include "cdm_vulkan.hpp"
+
+#include <unordered_map>
 
 #define LocaleW(writer, name, value)                                          \
 	auto name = writer.declLocale(#name, value);
@@ -44,4 +49,295 @@ using MaterialFragmentFunction =
 using CombinedMaterialShadingFragmentFunction =
     sdw::Function<sdw::Vec4, sdw::InUInt, sdw::InVec3, sdw::InVec3,
                   sdw::InVec3, sdw::InVec3>;
+
+struct VertexShaderHelperResult
+{
+	VertexInputHelper vertexInputHelper;
+	std::vector<std::pair<uint32_t, VkDescriptorSetLayoutBinding>> descriptors;
+	UniqueShaderModule module;
+};
+
+struct FragmentShaderHelperResult
+{
+	std::unordered_map<uint32_t, VkFormat> outputAttachments;
+	std::vector<std::pair<uint32_t, VkDescriptorSetLayoutBinding>> descriptors;
+	UniqueShaderModule module;
+};
+
+class VertexWriter;
+class FragmentWriter;
+class ComputeWriter;
+
+class Ubo : public sdw::Ubo
+{
+public:
+	Ubo(VertexWriter& writer, std::string const& name, uint32_t bind,
+	    uint32_t set,
+	    ast::type::MemoryLayout layout = ast::type::MemoryLayout::eStd140);
+	Ubo(
+	   FragmentWriter& writer, std::string const& name, uint32_t bind,
+	   uint32_t set,
+	   ast::type::MemoryLayout layout = ast::type::MemoryLayout::eStd140);
+	// Ubo(
+	//    ComputeWriter& writer, std::string const& name, uint32_t bind,
+	//    uint32_t set,
+	//    ast::type::MemoryLayout layout = ast::type::MemoryLayout::eStd140);
+};
+
+class VertexWriter : public sdw::VertexWriter
+{
+	friend Ubo;
+
+	VertexInputHelper m_vertexInputHelper;
+	std::vector<std::pair<uint32_t, VkDescriptorSetLayoutBinding>> m_descriptors;
+
+public:
+	UniqueShaderModule createShaderModule(const VulkanDevice& vk) const;
+	VertexShaderHelperResult createHelperResult(const VulkanDevice& vk) const;
+
+	inline const std::vector<std::pair<uint32_t, VkDescriptorSetLayoutBinding>>& getDescriptors() const;
+
+	inline void addInputBinding(
+	    const VkVertexInputBindingDescription& binding);
+	inline void addInputBinding(
+	    uint32_t binding, uint32_t stride,
+	    VkVertexInputRate rate =
+	        VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX);
+	inline void addInputAttribute(
+	    const VkVertexInputAttributeDescription& attribute);
+	inline void addInputAttribute(uint32_t location, uint32_t binding,
+	                              VkFormat format, uint32_t offset);
+	inline void addInputAttribute(uint32_t location, uint32_t binding,
+	                              VkFormat format);
+
+	inline const VertexInputHelper& getVertexInputHelper() const;
+
+#pragma region Sampled Image declaration
+	/**
+	 *name
+	 *	Sampled Image declaration.
+	 */
+	/**@{*/
+	template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+	          bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>
+	declSampledImage(std::string const& name, uint32_t binding, uint32_t set);
+	template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+	          bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Optional<
+	    sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT> >
+	declSampledImage(std::string const& name, uint32_t binding, uint32_t set,
+	                 bool enabled);
+	template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+	          bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Array<
+	    sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT> >
+	declSampledImageArray(std::string const& name, uint32_t binding,
+	                      uint32_t set, uint32_t dimension);
+	template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+	          bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Optional<
+	    sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT> > >
+	declSampledImageArray(std::string const& name, uint32_t binding,
+	                      uint32_t set, uint32_t dimension, bool enabled);
+	/**@}*/
+#pragma endregion
+#pragma region Image declaration
+	/**
+	 *name
+	 *	Image declaration.
+	 */
+	/**@{*/
+	template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+	          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>
+	declImage(std::string const& name, uint32_t binding, uint32_t set);
+	template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+	          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Optional<
+	    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT> >
+	declImage(std::string const& name, uint32_t binding, uint32_t set,
+	          bool enabled);
+	template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+	          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Array<
+	    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT> >
+	declImageArray(std::string const& name, uint32_t binding, uint32_t set,
+	               uint32_t dimension);
+	template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+	          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Optional<sdw::Array<
+	    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT> > >
+	declImageArray(std::string const& name, uint32_t binding, uint32_t set,
+	               uint32_t dimension, bool enabled);
+	/**@}*/
+#pragma endregion
+#pragma region Input declaration
+	/**
+	 *name
+	 *	Input declaration.
+	 */
+	/**@{*/
+	template <typename T>
+	inline T declInput(std::string const& name, uint32_t location);
+	template <typename T>
+	inline T declInput(std::string const& name, uint32_t location,
+	                   uint32_t attributes);
+	template <typename T>
+	inline sdw::Array<T> declInputArray(std::string const& name,
+	                                    uint32_t location, uint32_t dimension);
+	template <typename T>
+	inline sdw::Array<T> declInputArray(std::string const& name,
+	                                    uint32_t location, uint32_t dimension,
+	                                    uint32_t attributes);
+	template <typename T>
+	inline sdw::Optional<T> declInput(std::string const& name,
+	                                  uint32_t location, bool enabled);
+	template <typename T>
+	inline sdw::Optional<T> declInput(std::string const& name,
+	                                  uint32_t location, uint32_t attributes,
+	                                  bool enabled);
+	template <typename T>
+	inline sdw::Optional<sdw::Array<T> > declInputArray(
+	    std::string const& name, uint32_t location, uint32_t dimension,
+	    bool enabled);
+	template <typename T>
+	inline sdw::Optional<sdw::Array<T> > declInputArray(
+	    std::string const& name, uint32_t location, uint32_t dimension,
+	    uint32_t attributes, bool enabled);
+	template <typename T>
+	inline T declInput(std::string const& name, uint32_t location,
+	                   bool enabled, T const& defaultValue);
+	template <typename T>
+	inline T declInput(std::string const& name, uint32_t location,
+	                   uint32_t attributes, bool enabled,
+	                   T const& defaultValue);
+	template <typename T>
+	inline sdw::Array<T> declInputArray(std::string const& name,
+	                                    uint32_t location, uint32_t dimension,
+	                                    uint32_t attributes, bool enabled,
+	                                    std::vector<T> const& defaultValue);
+	template <typename T>
+	inline sdw::Array<T> declInputArray(std::string const& name,
+	                                    uint32_t location, uint32_t dimension,
+	                                    bool enabled,
+	                                    std::vector<T> const& defaultValue);
+	/**@}*/
+#pragma endregion
+};
+
+class FragmentWriter : public sdw::FragmentWriter
+{
+	friend Ubo;
+
+	std::unordered_map<uint32_t, VkFormat> m_outputAttachments;
+	std::vector<std::pair<uint32_t, VkDescriptorSetLayoutBinding>> m_descriptors;
+
+public:
+	UniqueShaderModule createShaderModule(const VulkanDevice& vk) const;
+	FragmentShaderHelperResult createHelperResult(const VulkanDevice& vk) const;
+
+	inline const std::vector<std::pair<uint32_t, VkDescriptorSetLayoutBinding>>& getDescriptors() const;
+
+	inline const std::unordered_map<uint32_t, VkFormat>& getOutputAttachments() const;
+
+#pragma region Sampled Image declaration
+	/**
+	 *name
+	 *	Sampled Image declaration.
+	 */
+	/**@{*/
+	template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+	          bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>
+	declSampledImage(std::string const& name, uint32_t binding, uint32_t set);
+	template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+	          bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Optional<
+	    sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT> >
+	declSampledImage(std::string const& name, uint32_t binding, uint32_t set,
+	                 bool enabled);
+	template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+	          bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Array<
+	    sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT> >
+	declSampledImageArray(std::string const& name, uint32_t binding,
+	                      uint32_t set, uint32_t dimension);
+	template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+	          bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Optional<
+	    sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT> > >
+	declSampledImageArray(std::string const& name, uint32_t binding,
+	                      uint32_t set, uint32_t dimension, bool enabled);
+	/**@}*/
+#pragma endregion
+#pragma region Image declaration
+	/**
+	 *name
+	 *	Image declaration.
+	 */
+	/**@{*/
+	template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+	          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>
+	declImage(std::string const& name, uint32_t binding, uint32_t set);
+	template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+	          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Optional<
+	    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT> >
+	declImage(std::string const& name, uint32_t binding, uint32_t set,
+	          bool enabled);
+	template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+	          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Array<
+	    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT> >
+	declImageArray(std::string const& name, uint32_t binding, uint32_t set,
+	               uint32_t dimension);
+	template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+	          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+	inline sdw::Optional<sdw::Array<
+	    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT> > >
+	declImageArray(std::string const& name, uint32_t binding, uint32_t set,
+	               uint32_t dimension, bool enabled);
+	/**@}*/
+#pragma endregion
+#pragma region Output declaration
+	/**
+	 *name
+	 *	Output declaration.
+	 */
+	/**@{*/
+	template <typename T>
+	inline T declOutput(std::string const& name, uint32_t location);
+	template <typename T>
+	inline T declOutput(std::string const& name, uint32_t location,
+	                    uint32_t attributes);
+	template <typename T>
+	inline sdw::Array<T> declOutputArray(std::string const& name,
+	                                     uint32_t location,
+	                                     uint32_t dimension);
+	template <typename T>
+	inline sdw::Array<T> declOutputArray(std::string const& name,
+	                                     uint32_t location, uint32_t dimension,
+	                                     uint32_t attributes);
+	template <typename T>
+	inline sdw::Optional<T> declOutput(std::string const& name,
+	                                   uint32_t location, bool enabled);
+	template <typename T>
+	inline sdw::Optional<T> declOutput(std::string const& name,
+	                                   uint32_t location, uint32_t attributes,
+	                                   bool enabled);
+	template <typename T>
+	inline sdw::Optional<sdw::Array<T>> declOutputArray(
+	    std::string const& name, uint32_t location, uint32_t dimension,
+	    bool enabled);
+	template <typename T>
+	inline sdw::Optional<sdw::Array<T>> declOutputArray(
+	    std::string const& name, uint32_t location, uint32_t dimension,
+	    uint32_t attributes, bool enabled);
+	/**@}*/
+#pragma endregion
+};
 }  // namespace cdm
+
+#include "MyShaderWriter.inl"
