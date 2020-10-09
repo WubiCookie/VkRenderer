@@ -65,5 +65,16 @@ void LightTransport::createDescriptorsObjects()
 		abort();
 	}
 #pragma endregion
+
+#pragma region trace descriptor set
+	m_traceDescriptorSet = vk.allocate(m_descriptorPool, m_traceSetLayouts[0]);
+
+	if (!m_traceDescriptorSet)
+	{
+		std::cerr << "error: failed to allocate trace descriptor set"
+		          << std::endl;
+		abort();
+	}
+#pragma endregion
 }
 }  // namespace cdm

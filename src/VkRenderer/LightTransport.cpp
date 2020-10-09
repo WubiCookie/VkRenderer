@@ -49,7 +49,7 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 
 	m_config.deltaT = 0.5f;
 	m_config.sphereRefraction = 0.7f;
-	
+
 	createRenderPasses();
 	createShaderModules();
 	createDescriptorsObjects();
@@ -60,6 +60,39 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 	updateDescriptorSets();
 
 	vk.setLogInactive();
+
+	//*
+	auto& frame = rw.get().getAvailableCommandBuffer();
+	frame.reset();
+
+	auto& cb = frame.commandBuffer;
+
+	cb.reset();
+	cb.begin();
+	cb.debugMarkerBegin("compute", 0.7f, 1.0f, 0.6f);
+
+	cb.bindPipeline(m_tracePipeline);
+	cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_tracePipelineLayout, 0, m_traceDescriptorSet);
+
+	int32_t i = 1;
+	cb.pushConstants(m_tracePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, &i);
+
+	std::uniform_real_distribution<float> urd(0.0f, 1.0f);
+	float rng = urd(gen);
+	cb.pushConstants(m_tracePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(int32_t), &rng);
+
+	cb.dispatch(VERTEX_BUFFER_LINE_COUNT / THREAD_COUNT);
+
+	cb.debugMarkerEnd();
+	cb.end();
+	if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
+	{
+		std::cerr << "error: failed to submit compute command buffer"
+			        << std::endl;
+		abort();
+	}
+	vk.wait(vk.graphicsQueue());
+	//*/
 }
 
 LightTransport::~LightTransport() {}
@@ -97,9 +130,13 @@ void LightTransport::render(CommandBuffer& cb)
 	vk::SubpassEndInfo subpassEndInfo;
 
 	static int i = VERTEX_BATCH_COUNT;
+	static int i2 = VERTEX_BATCH_COUNT + 1;
+	static int j = 0;
 
-	if (i)
+	if (i2 > 0)
 	{
+		rpInfo.renderArea.extent.width = width * HDR_SCALE;
+		rpInfo.renderArea.extent.height = height * HDR_SCALE;
 		cb.beginRenderPass2(rpInfo, subpassBeginInfo);
 
 		cb.bindPipeline(m_pipeline);
@@ -107,15 +144,34 @@ void LightTransport::render(CommandBuffer& cb)
 		//cb.setScissor(scissor);
 		cb.bindVertexBuffer(m_vertexBuffer);
 		// cb.draw(POINT_COUNT);
-		cb.draw(VERTEX_BUFFER_LINE_COUNT / 2);
+		cb.draw(VERTEX_BUFFER_LINE_COUNT * 2);
 
 		cb.endRenderPass2(subpassEndInfo);
 
-		i--;
+		if (i > 0)
+		{
+			cb.debugMarkerBegin("compute", 0.7f, 1.0f, 0.6f);
+			cb.bindPipeline(m_tracePipeline);
+			cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_tracePipelineLayout, 0, m_traceDescriptorSet);
+			int32_t k = 0;
+			cb.pushConstants(m_tracePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, &k);
+			std::uniform_real_distribution<float> urd(0.0f, 1.0f);
+			float rng = urd(gen);
+			cb.pushConstants(m_tracePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(int32_t), &rng);
+			cb.dispatch(VERTEX_BUFFER_LINE_COUNT / THREAD_COUNT);
+			cb.debugMarkerEnd();
+
+			i--;
+			j++;
+		}
+
+		i2--;
 	}
 
 	rpInfo.framebuffer = m_blitFramebuffer;
 	rpInfo.renderPass = m_blitRenderPass;
+	rpInfo.renderArea.extent.width = width;
+	rpInfo.renderArea.extent.height = height;
 	// rpInfo.renderArea.extent.width = width;
 	// rpInfo.renderArea.extent.height = height;
 	// rpInfo.clearValueCount = 1;
@@ -130,6 +186,16 @@ void LightTransport::render(CommandBuffer& cb)
 	                     m_blitPipelineLayout, 0, m_blitDescriptorSet);
 	//cb.bindVertexBuffer(m_vertexBuffer);
 	// cb.draw(POINT_COUNT);
+
+	//float exposure = widthf / std::max(1.0f, float(j) * float(VERTEX_BUFFER_LINE_COUNT) * float(VERTEX_BATCH_COUNT));
+	//float exposure = widthf / (float(j) * float(VERTEX_BUFFER_LINE_COUNT));
+	//float exposure = 1.0f / (float(j) * float(VERTEX_BUFFER_LINE_COUNT));
+	float exposure = 1.0f / (j * float(VERTEX_BUFFER_LINE_COUNT) / 8);
+	//float exposure = widthf / std::max(1.0f, float(j) * float(VERTEX_BATCH_COUNT) * float(4));
+	//float exposure = widthf / std::max(1.0f, float(j) * float(VERTEX_BATCH_COUNT));
+
+	cb.pushConstants(m_blitPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, &exposure);
+
 	cb.draw(3);
 
 	cb.endRenderPass2(subpassEndInfo);
@@ -143,7 +209,7 @@ void LightTransport::compute(CommandBuffer& cb)
 	//                      m_colorComputePipelineLayout, 1, m_colorComputeSet);
 	// cb.bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, m_rayComputePipeline);
 	// cb.dispatch(RAYS_COUNT / THREAD_COUNT);
-	// 
+	//
 	// vk::BufferMemoryBarrier barrier;
 	// barrier.buffer = m_raysBuffer;
 	// barrier.size = sizeof(RayIteration) * RAYS_COUNT;
@@ -151,7 +217,7 @@ void LightTransport::compute(CommandBuffer& cb)
 	// barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	// cb.pipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 	//                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, barrier);
-	// 
+	//
 	// cb.bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, m_colorComputePipeline);
 	// cb.dispatch(width / 8, height / 8);
 }
@@ -289,61 +355,61 @@ void LightTransport::standaloneDraw()
 
 	auto& cb = frame.commandBuffer;
 
-	/*
+	//*
 	if (reset == true)
 	{
 		reset = false;
 
-		const float waveStep = (750.0f - 360.0f) / float(RAYS_COUNT);
-		const float freqStep = (7.9e14f - 4.05e14f) / float(RAYS_COUNT);
-		// float wave = 400.0f;
-		// float freq = 4.05e14f;
-		float freq = 5.9e14f;
-		std::vector<RayIteration> raysVector(RAYS_COUNT);
-		for (size_t i = 0; i < RAYS_COUNT; i++)
-		{
-			raysVector[i] = RayIteration{};
-			raysVector[i].position = {
-				1000.0f, heightf / 2.0f + (i / float(RAYS_COUNT - 1)) * 80.0f
-			};
-			// raysVector[i].position = {
-			//	10.0f, heightf / 2.0f
-			//};
-			raysVector[i].direction = { -1.0f, 0.0f };
-			// raysVector[i].waveLength = wave;
-			raysVector[i].currentRefraction = m_config.airRefraction;
-			// wave += waveStep;
-
-			raysVector[i].frequency = freq;
-
-			raysVector[i].waveLength = 3.0e8f * 1.0e9f / raysVector[i].frequency;
-
-			// freq += freqStep;
-		}
-
-		auto setDir = [&](size_t i) {
-			vector2 p = { raysVector[i].position.x, raysVector[i].position.y };
-			vector2 c = { widthf / 2.0f, heightf / 2.0f };
-			vector2 d = vector2::from_to(p, c).get_normalized();
-			raysVector[i].direction.x = d.x;
-			raysVector[i].direction.y = d.y;
-		};
-
-		raysVector[0].position = { 0, 0 };
-		raysVector[1].position = { widthf / 2.0f, 0 };
-		raysVector[2].position = { widthf, 0 };
-
-		raysVector[3].position = { 0, heightf / 2.0f };
-
-		raysVector[4].position = { widthf, heightf / 2.0f };
-
-		raysVector[5].position = { 0, heightf };
-		raysVector[6].position = { widthf / 2.0f, heightf };
-		raysVector[7].position = { widthf, heightf };
-
-		for (size_t i = 0; i < RAYS_COUNT; i++)
-			setDir(i);
-
+		//const float waveStep = (750.0f - 360.0f) / float(RAYS_COUNT);
+		//const float freqStep = (7.9e14f - 4.05e14f) / float(RAYS_COUNT);
+		//// float wave = 400.0f;
+		//// float freq = 4.05e14f;
+		//float freq = 5.9e14f;
+		//std::vector<RayIteration> raysVector(RAYS_COUNT);
+		//for (size_t i = 0; i < RAYS_COUNT; i++)
+		//{
+		//	raysVector[i] = RayIteration{};
+		//	raysVector[i].position = {
+		//		1000.0f, heightf / 2.0f + (i / float(RAYS_COUNT - 1)) * 80.0f
+		//	};
+		//	// raysVector[i].position = {
+		//	//	10.0f, heightf / 2.0f
+		//	//};
+		//	raysVector[i].direction = { -1.0f, 0.0f };
+		//	// raysVector[i].waveLength = wave;
+		//	raysVector[i].currentRefraction = m_config.airRefraction;
+		//	// wave += waveStep;
+		//
+		//	raysVector[i].frequency = freq;
+		//
+		//	raysVector[i].waveLength = 3.0e8f * 1.0e9f / raysVector[i].frequency;
+		//
+		//	// freq += freqStep;
+		//}
+		//
+		//auto setDir = [&](size_t i) {
+		//	vector2 p = { raysVector[i].position.x, raysVector[i].position.y };
+		//	vector2 c = { widthf / 2.0f, heightf / 2.0f };
+		//	vector2 d = vector2::from_to(p, c).get_normalized();
+		//	raysVector[i].direction.x = d.x;
+		//	raysVector[i].direction.y = d.y;
+		//};
+		//
+		//raysVector[0].position = { 0, 0 };
+		//raysVector[1].position = { widthf / 2.0f, 0 };
+		//raysVector[2].position = { widthf, 0 };
+		//
+		//raysVector[3].position = { 0, heightf / 2.0f };
+		//
+		//raysVector[4].position = { widthf, heightf / 2.0f };
+		//
+		//raysVector[5].position = { 0, heightf };
+		//raysVector[6].position = { widthf / 2.0f, heightf };
+		//raysVector[7].position = { widthf, heightf };
+		//
+		//for (size_t i = 0; i < RAYS_COUNT; i++)
+		//	setDir(i);
+		//
 		//RayIteration* rayPtr = m_raysBuffer.map<RayIteration>();
 		//std::memcpy(rayPtr, raysVector.data(),
 		//            sizeof(*raysVector.data()) * RAYS_COUNT);
@@ -458,7 +524,7 @@ void LightTransport::standaloneDraw()
 	rw.get().present(m_outputImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, nullptr);
 
-	setSampleAndRandomize(0.0f);
+	//setSampleAndRandomize(0.0f);
 }
 
 void LightTransport::applyImguiParameters() { auto& vk = rw.get().device(); }
@@ -485,38 +551,27 @@ void LightTransport::randomizePoints()
 	//m_computeUbo.unmap();
 }
 
-void LightTransport::setSampleAndRandomize(float s)
+void LightTransport::fillVertexBuffer()
 {
 #pragma region vertexBuffer
-	struct Vertex
-	{
-		vector2 pos;
-		vector2 dir;
-		vector4 col{ 1.0f, 1.0f, 1.0f, 1.0f };
-	};
-	struct Line
-	{
-		Vertex A, B;
-	};
-
-	std::uniform_real_distribution<float> urd(-1.0f, 1.0f);
+	std::uniform_real_distribution<float> urd(0.0f, 2.0f * constants<float>::Pi());
 	std::uniform_real_distribution<float> urdcol(0.0f, 1.0f);
 
 	std::vector<Line> lines(VERTEX_BUFFER_LINE_COUNT);
 	for (auto& line : lines)
 	{
-		vector2 dir;
-		dir.x = urd(gen);
-		dir.y = urd(gen);
-		dir.normalize();
+		radian theta(urd(gen) / 8.0f + 3.14f - (3.14f / 8.0f));
+		vector2 dir{ cos(theta), sin(theta) };
 
-		line.B.pos = dir * 2.0f;
+		line.A.pos = { 0.5, 0 };
+		line.B.pos = dir * 2.0f + line.A.pos;
 		line.A.col.x = urdcol(gen);
 		line.A.col.y = urdcol(gen);
 		line.A.col.z = urdcol(gen);
 		line.B.col = line.A.col;
 
 		dir = line.B.pos - line.A.pos;
+		dir.normalize();
 
 		line.A.dir = dir;
 		line.B.dir = dir;
@@ -526,5 +581,36 @@ void LightTransport::setSampleAndRandomize(float s)
 	std::copy(lines.begin(), lines.end(), data);
 	m_vertexBuffer.unmap();
 #pragma endregion
+}
+
+void LightTransport::fillRaysBuffer()
+{
+	std::uniform_real_distribution<float> urd(0.0f, 2.0f * constants<float>::Pi());
+	std::uniform_real_distribution<float> urdcol(0.0f, 1.0f);
+
+	std::vector<RayIteration> rays(VERTEX_BUFFER_LINE_COUNT);
+	for (auto& ray : rays)
+	{
+		//radian theta(urd(gen) / 4.0f + 3.14f - (3.14f / 4.0f) + 3.14159f);
+		//radian theta(urd(gen) / 8.0f + 3.14f - (3.14f / 8.0f) + 3.14159f/4);
+		//radian theta(urd(gen));
+		radian theta(1.0f);
+		vector2 dir{ cos(theta), sin(theta) };
+
+		//ray.position = { 1, height / 2.0f };
+		ray.position = { widthf / 2, height / 2.0f };
+		ray.direction.x = dir.x;
+		ray.direction.y = dir.y;
+		ray.rng = urdcol(gen);
+	}
+
+	RayIteration* data = m_raysBuffer.map<RayIteration>();
+	std::copy(rays.begin(), rays.end(), data);
+	m_raysBuffer.unmap();
+}
+
+void LightTransport::setSampleAndRandomize(float s)
+{
+	fillVertexBuffer();
 }
 }  // namespace cdm

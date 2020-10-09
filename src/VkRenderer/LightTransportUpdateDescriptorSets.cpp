@@ -19,26 +19,39 @@ void LightTransport::updateDescriptorSets()
 {
 	auto& vk = rw.get().device();
 
-	/*
-#pragma region ray compute UBO
+#pragma region trace compute descriptors
 	{
-		VkDescriptorBufferInfo setBufferInfo{};
-		setBufferInfo.buffer = m_raysBuffer.get();
-		setBufferInfo.range = sizeof(RayIteration) * RAYS_COUNT;
-		setBufferInfo.offset = 0;
+		VkDescriptorBufferInfo raysBufferInfo{};
+		raysBufferInfo.buffer = m_raysBuffer;
+		raysBufferInfo.range = sizeof(RayIteration) * VERTEX_BUFFER_LINE_COUNT;
+		raysBufferInfo.offset = 0;
 
-		vk::WriteDescriptorSet uboWrite;
-		uboWrite.descriptorCount = 1;
-		uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		uboWrite.dstArrayElement = 0;
-		uboWrite.dstBinding = 0;
-		uboWrite.dstSet = m_rayComputeSet.get();
-		uboWrite.pBufferInfo = &setBufferInfo;
+		vk::WriteDescriptorSet write1;
+		write1.descriptorCount = 1;
+		write1.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		write1.dstArrayElement = 0;
+		write1.dstBinding = 0;
+		write1.dstSet = m_traceDescriptorSet;
+		write1.pBufferInfo = &raysBufferInfo;
 
-		vk.updateDescriptorSets(uboWrite);
+		VkDescriptorBufferInfo verticesBufferInfo{};
+		verticesBufferInfo.buffer = m_vertexBuffer;
+		verticesBufferInfo.range = sizeof(Line) * VERTEX_BUFFER_LINE_COUNT;
+		verticesBufferInfo.offset = 0;
+
+		vk::WriteDescriptorSet write2;
+		write2.descriptorCount = 1;
+		write2.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		write2.dstArrayElement = 0;
+		write2.dstBinding = 1;
+		write2.dstSet = m_traceDescriptorSet;
+		write2.pBufferInfo = &verticesBufferInfo;
+
+		vk.updateDescriptorSets({write1, write2});
 	}
 #pragma endregion
 
+	/*
 #pragma region color compute UBO
 	VkDescriptorBufferInfo setBufferInfo{};
 	setBufferInfo.buffer = m_computeUbo.get();

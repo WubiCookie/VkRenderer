@@ -29,8 +29,8 @@ void LightTransport::createFramebuffers()
 		};
 		framebufferInfo.attachmentCount = uint32_t(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = width;
-		framebufferInfo.height = height;
+		framebufferInfo.width = width * HDR_SCALE;
+		framebufferInfo.height = height * HDR_SCALE;
 		framebufferInfo.layers = 1;
 
 		m_framebuffer = vk.create(framebufferInfo);

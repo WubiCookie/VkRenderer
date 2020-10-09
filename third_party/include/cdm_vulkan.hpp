@@ -80,7 +80,7 @@ using BufferViewCreateInfo                 = CreateInfo<VkBufferViewCreateInfo, 
 using CommandBufferAllocateInfo            = CreateInfo<VkCommandBufferAllocateInfo,            VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO>;
 using CommandBufferBeginInfo               = CreateInfo<VkCommandBufferBeginInfo,               VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO>;
 using CommandPoolCreateInfo                = CreateInfo<VkCommandPoolCreateInfo,                VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO>;
-using ComputePipelineCreateInfo            = CreateInfo<VkComputePipelineCreateInfo,            VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO>;
+//using ComputePipelineCreateInfo            = CreateInfo<VkComputePipelineCreateInfo,            VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO>;
 using DebugReportCallbackCreateInfoEXT     = CreateInfo<VkDebugReportCallbackCreateInfoEXT,     VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT>;
 using DebugUtilsMessengerCreateInfoEXT     = CreateInfo<VkDebugUtilsMessengerCreateInfoEXT,     VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT>;
 using DescriptorPoolCreateInfo             = CreateInfo<VkDescriptorPoolCreateInfo,             VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO>;
@@ -134,6 +134,26 @@ using DebugMarkerObjectNameInfoEXT         = CreateInfo<VkDebugMarkerObjectNameI
 using DebugMarkerMarkerInfoEXT             = CreateInfo<VkDebugMarkerMarkerInfoEXT,             VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT>;
 using WriteDescriptorSet                   = CreateInfo<VkWriteDescriptorSet,                   VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET>;
 using CopyDescriptorSet                    = CreateInfo<VkCopyDescriptorSet,                    VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET>;
+
+struct ComputePipelineCreateInfo : VkComputePipelineCreateInfo
+{
+    using Type = VkComputePipelineCreateInfo;
+    static constexpr VkStructureType GetStructureType() noexcept { return VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO; }
+
+    constexpr ComputePipelineCreateInfo() noexcept : VkComputePipelineCreateInfo()
+    {
+        std::memset(this, 0, sizeof(*this));
+        this->sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        this->stage = PipelineShaderStageCreateInfo();
+    }
+    ComputePipelineCreateInfo(const ComputePipelineCreateInfo&) = default;
+    ComputePipelineCreateInfo(const VkComputePipelineCreateInfo& t) { std::memcpy(this, &t, sizeof(t)); };
+    ComputePipelineCreateInfo(ComputePipelineCreateInfo&&) = default;
+    ~ComputePipelineCreateInfo() = default;
+
+    ComputePipelineCreateInfo& operator=(const ComputePipelineCreateInfo&) = default;
+    ComputePipelineCreateInfo& operator=(ComputePipelineCreateInfo&&) = default;
+};
 
 struct Viewport : VkViewport
 {

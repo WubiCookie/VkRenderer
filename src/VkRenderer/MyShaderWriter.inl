@@ -817,4 +817,10 @@ inline sdw::Optional<sdw::Array<T>> FragmentWriter::declOutputArray(
 }
 /**@}*/
 #pragma endregion
+
+inline const std::vector<std::pair<uint32_t, VkDescriptorSetLayoutBinding>>&
+ComputeWriter::getDescriptors() const
+{
+	return m_descriptors;
+}
 }  // namespace cdm

@@ -4,6 +4,7 @@
 #include "cdm_maths.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>
+#include <CompilerGLSL/compileGlsl.hpp>
 #include <ShaderWriter/Intrinsics/Intrinsics.hpp>
 #include <ShaderWriter/Source.hpp>
 
@@ -33,11 +34,8 @@ struct Ray : public sdw::StructInstance
 	      position{ getMember<sdw::Vec2>("position") },
 	      direction{ getMember<sdw::Vec2>("direction") },
 	      waveLength{ getMember<sdw::Float>("waveLength") },
-	      amplitude{ getMember<sdw::Float>("amplitude") },
-	      phase{ getMember<sdw::Float>("phase") },
-	      currentRefraction{ getMember<sdw::Float>("currentRefraction") },
 	      frequency{ getMember<sdw::Float>("frequency") },
-	      speed{ getMember<sdw::Float>("speed") }
+	      rng{ getMember<sdw::Float>("rng") }
 	{
 	}
 
@@ -56,11 +54,8 @@ struct Ray : public sdw::StructInstance
 			result->declMember("position", ast::type::Kind::eVec2F);
 			result->declMember("direction", ast::type::Kind::eVec2F);
 			result->declMember("waveLength", ast::type::Kind::eFloat);
-			result->declMember("amplitude", ast::type::Kind::eFloat);
-			result->declMember("phase", ast::type::Kind::eFloat);
-			result->declMember("currentRefraction", ast::type::Kind::eFloat);
 			result->declMember("frequency", ast::type::Kind::eFloat);
-			result->declMember("speed", ast::type::Kind::eFloat);
+			result->declMember("rng", ast::type::Kind::eFloat);
 		}
 
 		return result;
@@ -69,11 +64,57 @@ struct Ray : public sdw::StructInstance
 	sdw::Vec2 position;
 	sdw::Vec2 direction;
 	sdw::Float waveLength;
-	sdw::Float amplitude;
-	sdw::Float phase;
-	sdw::Float currentRefraction;
 	sdw::Float frequency;
-	sdw::Float speed;
+	sdw::Float rng;
+
+private:
+	using sdw::StructInstance::getMember;
+	using sdw::StructInstance::getMemberArray;
+};
+
+struct RayVertices : public sdw::StructInstance
+{
+	RayVertices(ast::Shader* shader, ast::expr::ExprPtr expr)
+	    : StructInstance{ shader, std::move(expr) },
+	      posA{ getMember<sdw::Vec2>("posA") },
+	      dirA{ getMember<sdw::Vec2>("dirA") },
+	      colA{ getMember<sdw::Vec4>("colA") },
+	      posB{ getMember<sdw::Vec2>("posB") },
+	      dirB{ getMember<sdw::Vec2>("dirB") },
+	      colB{ getMember<sdw::Vec4>("colB") }
+	{
+	}
+
+	RayVertices& operator=(RayVertices const& rhs)
+	{
+		sdw::StructInstance::operator=(rhs);
+		return *this;
+	}
+
+	static ast::type::StructPtr makeType(ast::type::TypesCache& cache)
+	{
+		auto result =
+		    cache.getStruct(ast::type::MemoryLayout::eStd140, "RayVertices");
+
+		if (result->empty())
+		{
+			result->declMember("posA", ast::type::Kind::eVec2F);
+			result->declMember("dirA", ast::type::Kind::eVec2F);
+			result->declMember("colA", ast::type::Kind::eVec4F);
+			result->declMember("posB", ast::type::Kind::eVec2F);
+			result->declMember("dirB", ast::type::Kind::eVec2F);
+			result->declMember("colB", ast::type::Kind::eVec4F);
+		}
+
+		return result;
+	}
+
+	sdw::Vec2 posA;
+	sdw::Vec2 dirA;
+	sdw::Vec4 colA;
+	sdw::Vec2 posB;
+	sdw::Vec2 dirB;
+	sdw::Vec4 colB;
 
 private:
 	using sdw::StructInstance::getMember;
@@ -150,28 +191,31 @@ private:
 	using sdw::StructInstance::getMemberArray;
 };
 
-// Optional macro for parameter types definitions.
 Writer_Parameter(Ray);
+Writer_Parameter(RayVertices);
 Writer_Parameter(SceneStruct);
 
-// Let's create an enumerator for our custom type (we may need more than one
-// custom type, right ?) This enumeration must continue the values from
-// ast::type::Kind
 enum class TypeName
 {
 	eRay = int(ast::type::Kind::eCount),
+	eRayVertices,
 	eSceneStruct,
 };
 }  // namespace shader
 
 namespace sdw
 {
-// Add the specialization of sdw::TypeTraits, for our type
 template <>
 struct TypeTraits<shader::Ray>
 {
 	static ast::type::Kind constexpr TypeEnum =
 	    ast::type::Kind(shader::TypeName::eRay);
+};
+template <>
+struct TypeTraits<shader::RayVertices>
+{
+	static ast::type::Kind constexpr TypeEnum =
+	    ast::type::Kind(shader::TypeName::eRayVertices);
 };
 template <>
 struct TypeTraits<shader::SceneStruct>
@@ -280,6 +324,8 @@ void LightTransport::createShaderModules()
 	VertexShaderHelperResult blitVertexResult;
 	FragmentShaderHelperResult blitFragmentResult;
 
+	ComputeShaderHelperResult traceComputeResult;
+
 #pragma region vertexShader
 	{
 		using namespace sdw;
@@ -297,15 +343,22 @@ void LightTransport::createShaderModules()
 
 		writer.implementMain([&]() {
 			auto invAspect = Float(heightf / widthf);
-			auto biasCorrection = clamp(length(inDirection)/max(abs(inDirection.x()), abs(inDirection.y())), 1.0_f, 1.414214_f);
 
-			fragPosition = vec4(inPosition.x() * invAspect, inPosition.y(), 0.0_f, 1.0_f);
-			//fragPosition = vec4(inPosition.x(), inPosition.y(), 0.0_f, 1.0_f);
+			auto biasCorrection = writer.declLocale(
+			    "biasCorrection",
+			    1.0_f / max(abs(inDirection.x()), abs(inDirection.y())));
+
+			fragPosition =
+			    // vec4(inPosition.x() * invAspect, inPosition.y(),
+			    // 0.0_f, 1.0_f);
+			    vec4(((inPosition.x() / Float(widthf)) * 2.0_f - 1.0_f),
+			         ((inPosition.y() / Float(heightf)) * 2.0_f - 1.0_f),
+			         0.0_f, 1.0_f);
+
 			out.vtx.position = fragPosition;
 
-			//fragColor = inColor * biasCorrection;
-			fragColor = inColor;
-			//fragColor = vec4(biasCorrection, biasCorrection, biasCorrection, 1.0_f);
+			fragColor = inColor * biasCorrection;
+			fragColor.a() = 1.0_f;
 		});
 
 		vertexResult = writer.createHelperResult(vk);
@@ -463,14 +516,14 @@ void LightTransport::createShaderModules()
 		//	}
 		//);
 
-		//auto vertices = writer.declConstantArray<Vec4>(
+		// auto vertices = writer.declConstantArray<Vec4>(
 		//    "vertices", {
 		//                    vec4(0.0_f, -0.5_f, -1.0_f, 1.0_f),
 		//                    vec4(0.5_f, 0.5_f, 1.0_f, 1.0_f),
 		//                    vec4(-0.5_f, 0.5_f, 0.0_f, 1.0_f),
 		//                });
 		//
-		//auto uvs =
+		// auto uvs =
 		//    writer.declConstantArray<Vec2>("uvs", {
 		//                                              vec2(2.0_f, 0.0_f),
 		//                                              vec2(0.0_f, 0.0_f),
@@ -478,11 +531,11 @@ void LightTransport::createShaderModules()
 		//                                          });
 
 		writer.implementMain([&]() {
-			//fragUV = uvs[in.vertexIndex];
-			//out.vtx.position = vertices[in.vertexIndex];
-			 fragUV = vec2(writer.cast<Float>((in.vertexIndex << 1) & 2),
+			// fragUV = uvs[in.vertexIndex];
+			// out.vtx.position = vertices[in.vertexIndex];
+			fragUV = vec2(writer.cast<Float>((in.vertexIndex << 1) & 2),
 			              writer.cast<Float>(in.vertexIndex & 2));
-			 out.vtx.position = vec4(fragUV * 2.0f - 1.0f, 0.0f, 1.0f);
+			out.vtx.position = vec4(fragUV * 2.0f - 1.0f, 0.0f, 1.0f);
 		});
 
 		blitVertexResult = writer.createHelperResult(vk);
@@ -567,49 +620,277 @@ void LightTransport::createShaderModules()
 		    InVec2{ writer, "fragCoord" });
 		//*/
 
-		auto boxFilter = writer.implementFunction<Vec4>("boxFilter", [&](const Vec2& uv)
-			{
-				Vec2 textureStep = writer.declConstant<Vec2>("textureStep", vec2(Float(1.0f / widthf), Float(1.0f / heightf)));
+		auto boxFilter = writer.implementFunction<Vec4>(
+		    "boxFilter",
+		    [&](const Vec2& uv) {
+			    Vec2 textureStep = writer.declConstant<Vec2>(
+			        "textureStep", vec2(Float(1.0f / (widthf * HDR_SCALE)),
+			                            Float(1.0f / (heightf * HDR_SCALE))));
 
-				Vec2 uv1 = writer.declLocale<Vec2>("uv1", uv + vec2(-1.0_f, -1.0_f) * textureStep);
-				Vec2 uv2 = writer.declLocale<Vec2>("uv2", uv + vec2( 0.0_f, -1.0_f) * textureStep);
-				Vec2 uv3 = writer.declLocale<Vec2>("uv3", uv + vec2( 1.0_f, -1.0_f) * textureStep);
-									  
-				Vec2 uv4 = writer.declLocale<Vec2>("uv4", uv + vec2(-1.0_f,  0.0_f) * textureStep);
-				Vec2 uv5 = writer.declLocale<Vec2>("uv5", uv + vec2( 0.0_f,  0.0_f) * textureStep);
-				Vec2 uv6 = writer.declLocale<Vec2>("uv6", uv + vec2( 1.0_f,  0.0_f) * textureStep);
-									  
-				Vec2 uv7 = writer.declLocale<Vec2>("uv7", uv + vec2(-1.0_f,  1.0_f) * textureStep);
-				Vec2 uv8 = writer.declLocale<Vec2>("uv8", uv + vec2( 0.0_f,  1.0_f) * textureStep);
-				Vec2 uv9 = writer.declLocale<Vec2>("uv9", uv + vec2( 1.0_f,  1.0_f) * textureStep);
+			    Vec2 uv1 = writer.declLocale<Vec2>(
+			        "uv1", uv + vec2(-1.0_f, -1.0_f) * textureStep);
+			    Vec2 uv2 = writer.declLocale<Vec2>(
+			        "uv2", uv + vec2(0.0_f, -1.0_f) * textureStep);
+			    Vec2 uv3 = writer.declLocale<Vec2>(
+			        "uv3", uv + vec2(1.0_f, -1.0_f) * textureStep);
 
-				writer.returnStmt<Vec4>((
-					texture(HDRImage, uv1) +
-					texture(HDRImage, uv2) +
-					texture(HDRImage, uv3) +
-					texture(HDRImage, uv4) +
-					texture(HDRImage, uv5) * 2.0_f +
-					texture(HDRImage, uv6) +
-					texture(HDRImage, uv7) +
-					texture(HDRImage, uv8) +
-					texture(HDRImage, uv9)
-					) * Float(1.0f / 9.0f));
+			    Vec2 uv4 = writer.declLocale<Vec2>(
+			        "uv4", uv + vec2(-1.0_f, 0.0_f) * textureStep);
+			    Vec2 uv5 = writer.declLocale<Vec2>(
+			        "uv5", uv + vec2(0.0_f, 0.0_f) * textureStep);
+			    Vec2 uv6 = writer.declLocale<Vec2>(
+			        "uv6", uv + vec2(1.0_f, 0.0_f) * textureStep);
 
-				//fragColor = texture(HDRImage, inUV);
-			}, InVec2{ writer, "uv" });
+			    Vec2 uv7 = writer.declLocale<Vec2>(
+			        "uv7", uv + vec2(-1.0_f, 1.0_f) * textureStep);
+			    Vec2 uv8 = writer.declLocale<Vec2>(
+			        "uv8", uv + vec2(0.0_f, 1.0_f) * textureStep);
+			    Vec2 uv9 = writer.declLocale<Vec2>(
+			        "uv9", uv + vec2(1.0_f, 1.0_f) * textureStep);
+
+			    writer.returnStmt<Vec4>(
+			        (texture(HDRImage, uv1) + texture(HDRImage, uv2) +
+			         texture(HDRImage, uv3) + texture(HDRImage, uv4) +
+			         texture(HDRImage, uv5) * 1.0_f + texture(HDRImage, uv6) +
+			         texture(HDRImage, uv7) + texture(HDRImage, uv8) +
+			         texture(HDRImage, uv9)) *
+			        Float(1.0f / 9.0f));
+
+			    // fragColor = texture(HDRImage, inUV);
+		    },
+		    InVec2{ writer, "uv" });
+
+		auto pcb = writer.declPushConstantsBuffer("pcb");
+		pcb.declMember<Float>("exposure");
+		pcb.end();
 
 		writer.implementMain([&]() {
+			// Vec2 textureStep = writer.declConstant<Vec2>("textureStep",
+			// vec2(Float(1.0f / widthf), Float(1.0f / heightf)));
 
-			//Vec2 textureStep = writer.declConstant<Vec2>("textureStep", vec2(Float(1.0f / widthf), Float(1.0f / heightf)));
+			// fragColor = boxFilter(inUV) * Float(1.0f /
+			// float(VERTEX_BUFFER_LINE_COUNT)); fragColor = texture(HDRImage,
+			// inUV) * Float(1.0f / float(VERTEX_BUFFER_LINE_COUNT)); fragColor
+			// = vec4(pow(texture(HDRImage, inUV).rgb() * Float(widthf /
+			// float(VERTEX_BUFFER_LINE_COUNT * VERTEX_BATCH_COUNT)),
+			// vec3(Float(1.0f/2.2f))), 1.0_f);
 
-			fragColor = boxFilter(inUV) * Float(1.0f / float(VERTEX_BUFFER_LINE_COUNT));
+			fragColor = texture(HDRImage, inUV);
+			// fragColor = boxFilter(inUV);
 
-			//fragColor = texture(HDRImage, inUV);
-			//fragColor = vec4(inUV, 0.0_f, 1.0_f);
-			//fragColor = vec4(ACESFilm(fragColor.rgb()), fragColor.a());
+			fragColor =
+			    vec4(pow((fragColor.rgb() * pcb.getMember<Float>("exposure")),
+			             vec3(Float(1.0f / 2.2f))),
+			         1.0_f);
+
+			// fragColor = texture(HDRImage, inUV);
+			// fragColor = vec4(inUV, 0.0_f, 1.0_f);
+			// fragColor = vec4(ACESFilm(fragColor.rgb()), fragColor.a());
 		});
 
 		blitFragmentResult = writer.createHelperResult(vk);
+	}
+#pragma endregion
+
+#pragma region trace comopute shader
+	{
+		using namespace sdw;
+
+		LightTransportShaderLib<ComputeWriter> writer(m_config);
+
+		writer.declType<shader::Ray>();
+		ast::type::StructPtr rayType =
+		    shader::Ray::makeType(writer.getTypesCache());
+		// Struct type{ writer, rayType };
+		ArraySsboT<shader::Ray> raysSsbo{ writer, "raysSsbo", rayType, 0, 0 };
+		writer.addDescriptor(0, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+		writer.declType<shader::RayVertices>();
+		ast::type::StructPtr rayVerticesType =
+		    shader::RayVertices::makeType(writer.getTypesCache());
+		// Struct type{ writer, rayType };
+		ArraySsboT<shader::RayVertices> rayVerticesSsbo{
+			writer, "rayVerticesSsbo", rayVerticesType, 1, 0
+		};
+		writer.addDescriptor(1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+		auto in = writer.getIn();
+
+		auto pcb = writer.declPushConstantsBuffer("pcb", ast::type::MemoryLayout::eStd140 );
+		pcb.declMember<Int>("init");
+		pcb.declMember<Float>("rng");
+		pcb.end();
+
+		auto sampleVisibleNormal = writer.implementFunction<Float>(
+			"sampleVisibleNormal", [&](const Float& s, const Float& xi, const Float& thetaMin, const Float& thetaMax)
+			{
+				auto a = writer.declLocale<Float>("a", tanh(thetaMin / (2.0_f * s)));
+				auto b = writer.declLocale<Float>("b", tanh(thetaMax / (2.0_f * s)));
+				//writer.returnStmt(2.0_f * s * atanh(a + (b - a) * xi));
+				writer.returnStmt(2.0_f * s * atanh((1.0_f - xi) * a + xi * b));
+				//writer.returnStmt(atanh(a + (b - a)));
+			},
+			InFloat{ writer, "s" },
+			InFloat{ writer, "xi" },
+			InFloat{ writer, "thetaMin" },
+			InFloat{ writer, "thetaMax" }
+		);
+
+		auto sampleRoughMirror = writer.implementFunction<Vec2>(
+			"sampleRoughMirror", [&](const Vec2& w_o, const Float& s, Float& rng)
+			{
+				//auto theta0 = writer.declLocale<Float>("theta0", atan2(w_o.y(), w_o.x()));
+				//auto thetaMin = writer.declLocale<Float>("thetaMin", max(asin(theta0), 0.0_f) - (writer.Pi / 2.0_f));
+				//auto thetaMax = writer.declLocale<Float>("thetaMax", min(asin(theta0), 0.0_f) + (writer.Pi / 2.0_f));
+				auto thetaMin = writer.declLocale<Float>("thetaMin", max(asin(w_o.x()), 0.0_f) - (writer.Pi / 2.0_f));
+				auto thetaMax = writer.declLocale<Float>("thetaMax", min(asin(w_o.x()), 0.0_f) + (writer.Pi / 2.0_f));
+
+				auto thetaM = writer.declLocale<Float>("thetaM", sampleVisibleNormal(s, writer.randomFloat(rng), thetaMin, thetaMax));
+				//auto m = writer.declLocale<Vec2>("m", vec2(sin(thetaM), cos(thetaM)));
+				auto m = writer.declLocale<Vec2>("m", vec2(cos(thetaM), sin(thetaM)));
+
+				writer.returnStmt(m * (dot(w_o, m) * 2.0_f) - w_o);
+
+				//writer.returnStmt(2.0_f * s * atanh(a + (b - a) * xi));
+			},
+			InVec2{ writer, "w_o" },
+			InFloat{ writer, "s" },
+			InOutFloat{ writer, "rng" }
+		);
+
+		auto intersectPlane = writer.implementFunction<Void>(
+		    "intersectPlane",
+		    [&](const Vec2& a, const Vec2& b, const Vec2& pos, const Vec2& dir,
+		        Float& tMin, Float& tMax, Vec2& normal) {
+			    // auto a = writer.declLocale<Vec2>("a", vec2(0.0_f,
+			    // Float(heightf))); auto b = writer.declLocale<Vec2>("b",
+			    // vec2(Float(widthf), Float(heightf)));
+
+			    auto sT = writer.declLocale<Vec2>("sT", b - a);
+			    auto sN = writer.declLocale<Vec2>("sN", vec2(-sT.y(), sT.x()));
+
+			    auto t = writer.declLocale<Float>(
+			        "t", dot(sN, a - pos) / dot(sN, dir));
+			    auto u =
+			        writer.declLocale<Float>("u", dot(sT, pos + dir * t - a));
+
+			    IF(writer, t < tMin || t >= tMax || u < 0.0 || u > dot(sT, sT))
+			    {
+				    writer.returnStmt();
+			    }
+			    FI;
+
+			    tMax = t;
+			    normal = normalize(sN);
+			    // mat = matId;
+		    },
+		    InVec2{ writer, "a" }, InVec2{ writer, "b" },
+		    InVec2{ writer, "pos" }, InVec2{ writer, "dir" },
+		    InOutFloat{ writer, "tMin" }, InOutFloat{ writer, "tMax" },
+		    InOutVec2{ writer, "normal" });
+
+		writer.inputLayout(THREAD_COUNT);
+		writer.implementMain([&]() {
+			Int init = pcb.getMember<Int>("init");
+			//Float rng = writer.declLocale<Float>("seed", pcb.getMember<Float>("rng"));
+
+			UInt index =
+				writer.declLocale("index", in.globalInvocationID.x());
+
+			IF(writer, init == 1_i)
+			{
+				rayVerticesSsbo[index].colA = vec4(1.0_f);
+				rayVerticesSsbo[index].colB = vec4(1.0_f);
+			}
+			ELSE
+			{
+				Float tMin = writer.declLocale("tMin", 1.0e-4_f);
+				Float tMax = writer.declLocale("tMax", 1.0e30_f);
+				Vec2 normal = writer.declLocale("normal", vec2(0.0_f));
+
+				auto a = writer.declLocale<Vec2>("a", vec2(0.0_f, 0.0_f));
+				auto b = writer.declLocale<Vec2>("b", vec2(Float(widthf), 0.0_f));
+				auto c = writer.declLocale<Vec2>("c", vec2(Float(widthf), Float(heightf)));
+				auto d = writer.declLocale<Vec2>("d", vec2(0.0_f, Float(heightf)));
+
+				//intersectPlane(a, b, raysSsbo[index].position, raysSsbo[index].direction, tMin, tMax, normal);
+				//intersectPlane(b, c, raysSsbo[index].position, raysSsbo[index].direction, tMin, tMax, normal);
+				intersectPlane(c, d, raysSsbo[index].position, raysSsbo[index].direction, tMin, tMax, normal);
+				//intersectPlane(d, a, raysSsbo[index].position, raysSsbo[index].direction, tMin, tMax, normal);
+
+				IF(writer, tMax == 1.0e30_f)
+				{
+					rayVerticesSsbo[index].posA = raysSsbo[index].position;
+					rayVerticesSsbo[index].posB =
+					    raysSsbo[index].position +
+					    raysSsbo[index].direction * tMax;
+					rayVerticesSsbo[index].dirA = raysSsbo[index].direction;
+					rayVerticesSsbo[index].dirB = raysSsbo[index].direction;
+					// rayVerticesSsbo[index].colA = vec4(0.0_f);
+					// rayVerticesSsbo[index].colB = vec4(0.0_f);
+					//rayVerticesSsbo[index].colA = rayVerticesSsbo[index].colA * 0.9_f;
+					//rayVerticesSsbo[index].colB = rayVerticesSsbo[index].colB * 0.9_f;
+				}
+				ELSE
+				{
+					rayVerticesSsbo[index].posA = raysSsbo[index].position;
+					rayVerticesSsbo[index].posB =
+					    raysSsbo[index].position +
+					    raysSsbo[index].direction * tMax;
+					rayVerticesSsbo[index].dirA = raysSsbo[index].direction;
+					rayVerticesSsbo[index].dirB = raysSsbo[index].direction;
+					// rayVerticesSsbo[index].colA = vec4(0.0_f);
+					// rayVerticesSsbo[index].colB = vec4(0.0_f);
+					rayVerticesSsbo[index].colA = rayVerticesSsbo[index].colA * 0.9_f;
+					rayVerticesSsbo[index].colB = rayVerticesSsbo[index].colB * 0.9_f;
+
+					raysSsbo[index].position = rayVerticesSsbo[index].posB;
+
+					Vec2 w_o = writer.declLocale<Vec2>("w_o", reflect(raysSsbo[index].direction, normal));
+					//Vec2 w_o = writer.declLocale<Vec2>("w_o", normal);
+					//Vec2 w_o = writer.declLocale<Vec2>("w_o", raysSsbo[index].direction);
+
+
+					//Float s = writer.declLocale<Float>("s", 2.0_f);
+					//Float s = writer.declLocale<Float>("s", 0.01_f);
+
+					//Float thetaMin = writer.declLocale<Float>("thetaMin", max(asin(w_o.x()), 0.0_f) - (writer.Pi / 2.0_f));
+					//Float thetaMax = writer.declLocale<Float>("thetaMax", min(asin(w_o.x()), 0.0_f) + (writer.Pi / 2.0_f));
+
+					//Float a1 = writer.declLocale<Float>("a1", tanh(thetaMin / (2.0_f * s)));
+					//Float b1 = writer.declLocale<Float>("b1", tanh(thetaMax / (2.0_f * s)));
+					////writer.returnStmt(2.0_f * s * atanh(a + (b - a) * xi));
+
+					Float r = writer.declLocale<Float>("r", raysSsbo[index].rng);
+
+
+					//Float xi = writer.declLocale<Float>("xi", writer.randomFloat(r));
+
+
+					////auto thetaM = writer.declLocale<Float>("thetaM", sampleVisibleNormal(s, writer.randomFloat(rng), thetaMin, thetaMax));
+					//Float thetaM = writer.declLocale<Float>("thetaM", 2.0_f * s * atanh(a1 + (b1 - a1) * xi));
+					//Vec2 m = writer.declLocale<Vec2>("m", vec2(sin(thetaM), cos(thetaM)));
+
+					////writer.returnStmt(m * (dot(w_o, m) * 2.0_f) - w_o);
+					//Vec2 d = writer.declLocale<Vec2>("d", m * (dot(w_o, m) * 2.0_f) - w_o);
+					//raysSsbo[index].direction = d;
+					//raysSsbo[index].direction = w_o;
+					raysSsbo[index].direction = sampleRoughMirror(w_o, 0.01_f, r);
+					raysSsbo[index].rng = r;
+					    //reflect(raysSsbo[index].direction, normal);
+
+				}
+				FI;
+			}
+			FI;
+		});
+
+		//ast::SpecialisationInfo si;
+		//glsl::GlslConfig c;
+		//std::cout << glsl::compileGlsl(writer.getShader(), si, c) << std::endl;
+		//std::cout << spirv::writeSpirv(writer.getShader()) << std::endl;
+
+		traceComputeResult = writer.createHelperResult(vk);
 	}
 #pragma endregion
 
@@ -617,8 +898,9 @@ void LightTransport::createShaderModules()
 	// factory.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 	// factory.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 	factory.clearDynamicStates();
-	factory.setViewport(0.0f, 0.0f, widthf, heightf, 0.0f, 1.0f);
-	factory.setScissor(0, 0, width, height);
+	factory.setViewport(0.0f, 0.0f, widthf * HDR_SCALE, heightf * HDR_SCALE,
+	                    0.0f, 1.0f);
+	factory.setScissor(0, 0, width * HDR_SCALE, height * HDR_SCALE);
 
 	{
 		auto [pipelineLayout, descriptorSetLayouts] =
@@ -634,9 +916,9 @@ void LightTransport::createShaderModules()
 	factory.setLayout(m_pipelineLayout);
 	factory.clearColorBlendAttachmentStates();
 	vk::PipelineColorBlendAttachmentState blendState(true);
-    //blendState.blendEnable = true;
-	//blendState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	//blendState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	// blendState.blendEnable = true;
+	// blendState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	// blendState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	blendState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
 	blendState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
 	factory.addColorBlendAttachmentState(blendState);
@@ -644,13 +926,21 @@ void LightTransport::createShaderModules()
 	m_pipeline = factory.createPipeline();
 
 	{
-		auto [pipelineLayout, descriptorSetLayouts] =
-		    factory.createLayout(blitVertexResult, blitFragmentResult);
+		std::vector<VkPushConstantRange> pushConstants;
+
+		pushConstants.push_back(
+		    { VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+		      sizeof(float) });
+
+		auto [pipelineLayout, descriptorSetLayouts] = factory.createLayout(
+		    blitVertexResult, blitFragmentResult, pushConstants);
 
 		m_blitPipelineLayout = std::move(pipelineLayout);
 		m_blitSetLayouts = std::move(descriptorSetLayouts);
 	}
 
+	factory.setViewport(0.0f, 0.0f, widthf, heightf, 0.0f, 1.0f);
+	factory.setScissor(0, 0, width, height);
 	factory.setShaderModules(blitVertexResult.module,
 	                         blitFragmentResult.module);
 	factory.setVertexInputHelper(blitVertexResult.vertexInputHelper);
@@ -662,5 +952,29 @@ void LightTransport::createShaderModules()
 	factory.setTopology(
 	    VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	m_blitPipeline = factory.createPipeline();
+
+	ComputePipelineFactory cfactory(vk);
+
+	{
+		std::vector<VkPushConstantRange> pushConstants;
+
+		pushConstants.push_back(
+		    { VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT, 0,
+		      sizeof(int32_t) + sizeof(float) });
+		//pushConstants.push_back(
+		//    { VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT,
+		//      sizeof(int32_t), sizeof(float) });
+
+		auto [pipelineLayout, descriptorSetLayouts] =
+		    cfactory.createLayout(traceComputeResult, pushConstants);
+
+		m_tracePipelineLayout = std::move(pipelineLayout);
+		m_traceSetLayouts = std::move(descriptorSetLayouts);
+	}
+
+	cfactory.setShaderModule(traceComputeResult.module);
+	cfactory.setLayout(m_tracePipelineLayout);
+
+	m_tracePipeline = cfactory.createPipeline();
 }
 }  // namespace cdm

@@ -8,15 +8,21 @@
 #include "Texture1D.hpp"
 #include "Texture2D.hpp"
 
+#include "cdm_maths.hpp"
+
 #include <memory>
 #include <random>
 
 //constexpr size_t RAYS_COUNT = 1024 * 2;
-constexpr size_t RAYS_COUNT = 8;
+//constexpr size_t RAYS_COUNT = 8;
 //constexpr size_t THREAD_COUNT = 16;
 constexpr size_t THREAD_COUNT = 8;
-constexpr size_t VERTEX_BUFFER_LINE_COUNT = 8;
-constexpr size_t VERTEX_BATCH_COUNT = 500;
+constexpr size_t VERTEX_BUFFER_LINE_COUNT = 4096*4;
+//constexpr size_t VERTEX_BUFFER_LINE_COUNT = 1024;
+//constexpr size_t VERTEX_BATCH_COUNT = 2048*64;
+//constexpr size_t VERTEX_BATCH_COUNT = 2048*1;
+constexpr size_t VERTEX_BATCH_COUNT = 8;
+constexpr float HDR_SCALE = 1.0f;
 
 namespace cdm
 {
@@ -47,14 +53,14 @@ struct RayIteration
 	// Orange	590–625 nm	480–510 THz
 	// Red		625–740 nm	405–480 THz
 	float waveLength = 625.0f;
-	float amplitude = 1.0f;
-	float phase = 0.0f;
-	float currentRefraction = 1.0f;
+	//float amplitude = 1.0f;
+	//float phase = 0.0f;
+	//float currentRefraction = 1.0f;
 
 	float frequency = 4.8e14f;
-	float speed = 3e8f;
+	//float speed = 3e8f;
+	float rng = 0.0f;
 	float _0;
-	float _1;
 };
 
 class LightTransport final
@@ -73,13 +79,18 @@ class LightTransport final
 	Movable<VkDescriptorSet> m_descriptorSet;
 	UniquePipelineLayout m_pipelineLayout;
 	UniqueGraphicsPipeline m_pipeline;
-	
+
 	std::vector<UniqueDescriptorSetLayout> m_blitSetLayouts;
 	Movable<VkDescriptorSet> m_blitDescriptorSet;
 	UniquePipelineLayout m_blitPipelineLayout;
 	UniqueGraphicsPipeline m_blitPipeline;
 
-	//Buffer m_raysBuffer;
+	std::vector<UniqueDescriptorSetLayout> m_traceSetLayouts;
+	Movable<VkDescriptorSet> m_traceDescriptorSet;
+	UniquePipelineLayout m_tracePipelineLayout;
+	UniqueComputePipeline m_tracePipeline;
+
+	Buffer m_raysBuffer;
 	Buffer m_vertexBuffer;
 	//Buffer m_computeUbo;
 
@@ -89,6 +100,17 @@ class LightTransport final
 
 	std::random_device rd;
 	std::mt19937 gen;
+
+	struct Vertex
+	{
+		vector2 pos;
+		vector2 dir;
+		vector4 col{ 1.0f, 1.0f, 1.0f, 1.0f };
+	};
+	struct Line
+	{
+		Vertex A, B;
+	};
 
 public:
 	struct Config
@@ -113,7 +135,7 @@ public:
 		float sphereRefraction = 0.7f;
 		float deltaT = 1.0f;
 		float lightsSpeed = 1.0f;
-		int32_t raysCount = RAYS_COUNT;
+		int32_t raysCount = VERTEX_BUFFER_LINE_COUNT;
 		float raySize = 1.5f;
 
 		float airRefractionScale = 0.0f;
@@ -135,6 +157,9 @@ private:
 	void createImages();
 	void createFramebuffers();
 	void updateDescriptorSets();
+
+	void fillVertexBuffer();
+	void fillRaysBuffer();
 
 public:
 	LightTransport(RenderWindow& renderWindow);

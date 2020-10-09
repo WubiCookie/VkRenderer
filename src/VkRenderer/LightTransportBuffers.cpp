@@ -32,7 +32,8 @@ void LightTransport::createBuffers()
 		Vertex A, B;
 	};
 
-	std::uniform_real_distribution<float> urd(0.0f, 2.0f * constants<float>::Pi());
+	std::uniform_real_distribution<float> urd(0.0f,
+	                                          2.0f * constants<float>::Pi());
 	std::uniform_real_distribution<float> urdcol(0.0f, 1.0f);
 
 	std::vector<Line> lines(VERTEX_BUFFER_LINE_COUNT);
@@ -48,32 +49,31 @@ void LightTransport::createBuffers()
 		line.B.col = line.A.col;
 
 		dir = line.B.pos - line.A.pos;
+		dir.normalize();
 
 		line.A.dir = dir;
 		line.B.dir = dir;
 	}
 
 	m_vertexBuffer = Buffer(
-	    rw, sizeof(*lines.data()) * lines.size(),
-	    VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
-	        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT  //|
-	                                           //VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-	    ,
+	    rw, sizeof(Line) * VERTEX_BUFFER_LINE_COUNT,
+	    VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+	        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-	Line* data = m_vertexBuffer.map<Line>();
-	std::copy(lines.begin(), lines.end(), data);
-	m_vertexBuffer.unmap();
+	//fillVertexBuffer();
+#pragma endregion
+
+#pragma region ray compute UBO
+	m_raysBuffer =
+	    Buffer(rw, sizeof(RayIteration) * VERTEX_BUFFER_LINE_COUNT,
+	           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
+	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+	fillRaysBuffer();
 #pragma endregion
 
 	/*
-#pragma region ray compute UBO
-	m_raysBuffer =
-	    Buffer(rw, sizeof(RayIteration) * RAYS_COUNT,
-	           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
-	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-#pragma endregion
-
 #pragma region color compute UBO
 	m_computeUbo = Buffer(
 	    rw, sizeof(m_config), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,

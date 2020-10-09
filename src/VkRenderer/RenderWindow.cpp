@@ -258,6 +258,7 @@ static VkPresentModeKHR chooseSwapPresentMode(
 		}
 	}
 
+	return VK_PRESENT_MODE_IMMEDIATE_KHR;
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 

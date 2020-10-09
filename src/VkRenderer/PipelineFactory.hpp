@@ -93,17 +93,21 @@ public:
 
 	std::pair<UniquePipelineLayout, std::vector<UniqueDescriptorSetLayout>>
 	createLayout(const VertexShaderHelperResult& vertexHelperResult,
-	             const FragmentShaderHelperResult& fragmentHelperResult);
+	             const FragmentShaderHelperResult& fragmentHelperResult,
+	             const std::vector<VkPushConstantRange>& pushConstants = {});
 
 	UniqueGraphicsPipeline createPipeline();
 };
 
 class ComputePipelineFactory
 {
-	UniqueShaderModule m_computeModule;
+	std::reference_wrapper<const VulkanDevice> m_vulkanDevice;
+
+	VkShaderModule m_computeModule = nullptr;
+	VkPipelineLayout m_layout = nullptr;
 
 public:
-	ComputePipelineFactory() = default;
+	ComputePipelineFactory(const VulkanDevice& vulkanDevice);
 	~ComputePipelineFactory() = default;
 
 	ComputePipelineFactory(const ComputePipelineFactory&) = default;
@@ -112,6 +116,13 @@ public:
 	ComputePipelineFactory& operator=(const ComputePipelineFactory&) = default;
 	ComputePipelineFactory& operator=(ComputePipelineFactory&&) = default;
 
-	void setShaderWriter(const ComputeWriter& computeWriter);
+	void setShaderModule(VkShaderModule computeModule);
+	void setLayout(VkPipelineLayout layout);
+
+	std::pair<UniquePipelineLayout, std::vector<UniqueDescriptorSetLayout>>
+	createLayout(const ComputeShaderHelperResult& computeHelperResult,
+	             const std::vector<VkPushConstantRange>& pushConstants = {});
+
+	UniqueComputePipeline createPipeline();
 };
 }  // namespace cdm
