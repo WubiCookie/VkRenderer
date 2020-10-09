@@ -142,9 +142,20 @@ struct ComputePipelineCreateInfo : VkComputePipelineCreateInfo
 
     constexpr ComputePipelineCreateInfo() noexcept : VkComputePipelineCreateInfo()
     {
-        std::memset(this, 0, sizeof(*this));
-        this->sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        this->stage = PipelineShaderStageCreateInfo();
+        // VkStructureType                    sType;
+        // const void*                        pNext;
+        // VkPipelineCreateFlags              flags;
+        // VkPipelineShaderStageCreateInfo    stage;
+        // VkPipelineLayout                   layout;
+        // VkPipeline                         basePipelineHandle;
+        // int32_t                            basePipelineIndex;
+        sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        pNext = nullptr;
+        flags = VkPipelineCreateFlags();
+        stage = PipelineShaderStageCreateInfo();
+        layout = nullptr;
+        basePipelineHandle = nullptr;
+        basePipelineIndex = -1;
     }
     ComputePipelineCreateInfo(const ComputePipelineCreateInfo&) = default;
     ComputePipelineCreateInfo(const VkComputePipelineCreateInfo& t) { std::memcpy(this, &t, sizeof(t)); };

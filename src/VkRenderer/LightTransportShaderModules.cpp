@@ -3,8 +3,8 @@
 #include "PipelineFactory.hpp"
 #include "cdm_maths.hpp"
 
-#include <CompilerSpirV/compileSpirV.hpp>
 #include <CompilerGLSL/compileGlsl.hpp>
+#include <CompilerSpirV/compileSpirV.hpp>
 #include <ShaderWriter/Intrinsics/Intrinsics.hpp>
 #include <ShaderWriter/Source.hpp>
 
@@ -33,6 +33,7 @@ struct Ray : public sdw::StructInstance
 	    : StructInstance{ shader, std::move(expr) },
 	      position{ getMember<sdw::Vec2>("position") },
 	      direction{ getMember<sdw::Vec2>("direction") },
+	      polarDirection{ getMember<sdw::Float>("polarDirection") },
 	      waveLength{ getMember<sdw::Float>("waveLength") },
 	      frequency{ getMember<sdw::Float>("frequency") },
 	      rng{ getMember<sdw::Float>("rng") }
@@ -53,6 +54,7 @@ struct Ray : public sdw::StructInstance
 		{
 			result->declMember("position", ast::type::Kind::eVec2F);
 			result->declMember("direction", ast::type::Kind::eVec2F);
+			result->declMember("polarDirection", ast::type::Kind::eFloat);
 			result->declMember("waveLength", ast::type::Kind::eFloat);
 			result->declMember("frequency", ast::type::Kind::eFloat);
 			result->declMember("rng", ast::type::Kind::eFloat);
@@ -63,6 +65,7 @@ struct Ray : public sdw::StructInstance
 
 	sdw::Vec2 position;
 	sdw::Vec2 direction;
+	sdw::Float polarDirection;
 	sdw::Float waveLength;
 	sdw::Float frequency;
 	sdw::Float rng;
@@ -357,7 +360,8 @@ void LightTransport::createShaderModules()
 
 			out.vtx.position = fragPosition;
 
-			fragColor = inColor * biasCorrection;
+			//fragColor = inColor * biasCorrection;
+			fragColor = inColor;
 			fragColor.a() = 1.0_f;
 		});
 
@@ -376,115 +380,9 @@ void LightTransport::createShaderModules()
 		auto inColor = writer.declInput<Vec4>("inColor", 1u);
 
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0u);
-		// auto fragColorHDR = writer.declOutput<Vec4>("fragColorHDR", 1u);
-
-		// auto kernelStorageImage =
-		//    writer.declImage<RWFImg2DRgba32>("kernelStorageImage", 0, 1);
-		//
-		// auto kernelImage =
-		//    writer.declSampledImage<FImg2DRgba32>("kernelImage", 1, 1);
-
-		/*
-		auto ACESFilm = writer.implementFunction<Vec3>(
-		    "ACESFilm",
-		    [&](const Vec3& x_arg) {
-		        auto ACESMatrix = writer.declLocale<Mat3>(
-		            "ACESMatrix", mat3(vec3(0.59719_f, 0.35458_f, 0.04823_f),
-		                               vec3(0.07600_f, 0.90834_f, 0.01566_f),
-		                               vec3(0.02840_f, 0.13383_f, 0.83777_f)));
-		        ACESMatrix = transpose(ACESMatrix);
-		        auto ACESMatrixInv = writer.declLocale<Mat3>(
-		            "ACESMatrixInv", inverse(ACESMatrix));
-		        auto x = writer.declLocale("x", x_arg);
-
-		        // RGB to ACES conversion
-		        x = ACESMatrix * x;
-
-		        // ACES system tone scale (RTT+ODT)
-		        auto a = writer.declLocale("a", 0.0245786_f);
-		        auto b = writer.declLocale("b", -0.000090537_f);
-		        auto c = writer.declLocale("c", 0.983729_f);
-		        auto d = writer.declLocale("d", 0.4329510_f);
-		        auto e = writer.declLocale("e", 0.238081_f);
-		        x = (x * (x + a) + b) / (x * (x * c + d) + e);
-
-		        // ACES to RGB conversion
-		        x = ACESMatrixInv * x;
-
-		        writer.returnStmt(x);
-		    },
-		    InVec3{ writer, "x_arg" });
-
-		auto bloom = writer.implementFunction<Vec3>(
-		    "bloom",
-		    [&](const Float& scale, const Float& threshold,
-		        const Vec2& fragCoord) {
-		        auto logScale =
-		            writer.declLocale("logScale", log2(scale) + 1.0_f);
-
-		        auto bloomV3 = writer.declLocale("bloomV3", vec3(0.0_f));
-
-		        FOR(writer, Int, y, -1_i, y <= 1_i, ++y)
-		        {
-		            FOR(writer, Int, x, -1_i, x <= 1_i, ++x)
-		            {
-		                bloomV3 += sdw::textureLod(
-		                               kernelImage,
-		                               (fragCoord + vec2(x, y) * vec2(scale)) /
-		                                   vec2(writer.Width, writer.Height),
-		                               logScale)
-		                               .rgb();
-		            }
-		            ROF;
-		        }
-		        ROF;
-
-		        writer.returnStmt(
-		            max(bloomV3 / vec3(9.0_f) - vec3(threshold), vec3(0.0_f)));
-		    },
-		    InFloat{ writer, "scale" }, InFloat{ writer, "threshold" },
-		    InVec2{ writer, "fragCoord" });
-		//*/
-
+		
 		writer.implementMain([&]() {
-			// auto uv = writer.declLocale(
-			//    "uv", in.fragCoord.xy() / vec2(1280.0_f, 720.0_f));
-			//
-			// auto col =
-			//    writer.declLocale("col", sdw::texture(kernelImage,
-			//    uv).rgb());
-			//
-			// auto bloomAscale1 = writer.declLocale(
-			//    "BloomAscale1", writer.ubo.getMember<Float>("bloomAscale1"));
-			// auto bloomAscale2 = writer.declLocale(
-			//    "BloomAscale2", writer.ubo.getMember<Float>("bloomAscale2"));
-			// auto bloomBscale1 = writer.declLocale(
-			//    "BloomBscale1", writer.ubo.getMember<Float>("bloomBscale1"));
-			// auto bloomBscale2 = writer.declLocale(
-			//    "BloomBscale2", writer.ubo.getMember<Float>("bloomBscale2"));
-			//
-			// auto bloomA = writer.declLocale(
-			//    "bloomA",
-			//    bloom(bloomAscale1 * writer.Height, 0.0_f,
-			//    in.fragCoord.xy()));
-			// auto bloomB = writer.declLocale(
-			//    "bloomB",
-			//    bloom(bloomBscale1 * writer.Height, 0.0_f,
-			//    in.fragCoord.xy()));
-			//
-			//// auto bloomA = writer.declLocale(
-			//    "bloomA", bloom(0.15_f, 0.0_f, in.fragCoord.xy()));
-			// auto bloomB = writer.declLocale(
-			//    "bloomB", bloom(0.05_f, 0.0_f, in.fragCoord.xy()));
-			//
-			// auto bloomSum =
-			//    writer.declLocale("bloomSum", bloomA * vec3(bloomAscale2) +
-			//                                      bloomB *
-			//                                      vec3(bloomBscale2));
-
 			fragColor = inColor;
-			// fragColor = vec4(ACESFilm(col), 1.0_f);
-			// fragColor = vec4(ACESFilm(col + bloomSum), 1.0_f);
 		});
 
 		fragmentResult = writer.createHelperResult(vk);
@@ -536,6 +434,7 @@ void LightTransport::createShaderModules()
 			fragUV = vec2(writer.cast<Float>((in.vertexIndex << 1) & 2),
 			              writer.cast<Float>(in.vertexIndex & 2));
 			out.vtx.position = vec4(fragUV * 2.0f - 1.0f, 0.0f, 1.0f);
+			fragUV = vec2(fragUV.x(), 1.0_f - fragUV.y());
 		});
 
 		blitVertexResult = writer.createHelperResult(vk);
@@ -588,38 +487,6 @@ void LightTransport::createShaderModules()
 		    },
 		    InVec3{ writer, "x_arg" });
 
-		/*
-		auto bloom = writer.implementFunction<Vec3>(
-		    "bloom",
-		    [&](const Float& scale, const Float& threshold,
-		        const Vec2& fragCoord) {
-		        auto logScale =
-		            writer.declLocale("logScale", log2(scale) + 1.0_f);
-
-		        auto bloomV3 = writer.declLocale("bloomV3", vec3(0.0_f));
-
-		        FOR(writer, Int, y, -1_i, y <= 1_i, ++y)
-		        {
-		            FOR(writer, Int, x, -1_i, x <= 1_i, ++x)
-		            {
-		                bloomV3 += sdw::textureLod(
-		                               kernelImage,
-		                               (fragCoord + vec2(x, y) * vec2(scale)) /
-		                                   vec2(writer.Width, writer.Height),
-		                               logScale)
-		                               .rgb();
-		            }
-		            ROF;
-		        }
-		        ROF;
-
-		        writer.returnStmt(
-		            max(bloomV3 / vec3(9.0_f) - vec3(threshold), vec3(0.0_f)));
-		    },
-		    InFloat{ writer, "scale" }, InFloat{ writer, "threshold" },
-		    InVec2{ writer, "fragCoord" });
-		//*/
-
 		auto boxFilter = writer.implementFunction<Vec4>(
 		    "boxFilter",
 		    [&](const Vec2& uv) {
@@ -665,27 +532,13 @@ void LightTransport::createShaderModules()
 		pcb.end();
 
 		writer.implementMain([&]() {
-			// Vec2 textureStep = writer.declConstant<Vec2>("textureStep",
-			// vec2(Float(1.0f / widthf), Float(1.0f / heightf)));
-
-			// fragColor = boxFilter(inUV) * Float(1.0f /
-			// float(VERTEX_BUFFER_LINE_COUNT)); fragColor = texture(HDRImage,
-			// inUV) * Float(1.0f / float(VERTEX_BUFFER_LINE_COUNT)); fragColor
-			// = vec4(pow(texture(HDRImage, inUV).rgb() * Float(widthf /
-			// float(VERTEX_BUFFER_LINE_COUNT * VERTEX_BATCH_COUNT)),
-			// vec3(Float(1.0f/2.2f))), 1.0_f);
-
 			fragColor = texture(HDRImage, inUV);
-			// fragColor = boxFilter(inUV);
+			 //fragColor = boxFilter(inUV);
 
 			fragColor =
 			    vec4(pow((fragColor.rgb() * pcb.getMember<Float>("exposure")),
 			             vec3(Float(1.0f / 2.2f))),
 			         1.0_f);
-
-			// fragColor = texture(HDRImage, inUV);
-			// fragColor = vec4(inUV, 0.0_f, 1.0_f);
-			// fragColor = vec4(ACESFilm(fragColor.rgb()), fragColor.a());
 		});
 
 		blitFragmentResult = writer.createHelperResult(vk);
@@ -701,7 +554,6 @@ void LightTransport::createShaderModules()
 		writer.declType<shader::Ray>();
 		ast::type::StructPtr rayType =
 		    shader::Ray::makeType(writer.getTypesCache());
-		// Struct type{ writer, rayType };
 		ArraySsboT<shader::Ray> raysSsbo{ writer, "raysSsbo", rayType, 0, 0 };
 		writer.addDescriptor(0, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
@@ -716,47 +568,47 @@ void LightTransport::createShaderModules()
 
 		auto in = writer.getIn();
 
-		auto pcb = writer.declPushConstantsBuffer("pcb", ast::type::MemoryLayout::eStd140 );
-		pcb.declMember<Int>("init");
-		pcb.declMember<Float>("rng");
-		pcb.end();
+		auto pcb =
+		    writer.declPushConstantsBuffer("pcb"
+		                                   //, ast::type::MemoryLayout::eStd140
+		    );
+		m_pc.addPcbMembers(pcb);
 
 		auto sampleVisibleNormal = writer.implementFunction<Float>(
-			"sampleVisibleNormal", [&](const Float& s, const Float& xi, const Float& thetaMin, const Float& thetaMax)
-			{
-				auto a = writer.declLocale<Float>("a", tanh(thetaMin / (2.0_f * s)));
-				auto b = writer.declLocale<Float>("b", tanh(thetaMax / (2.0_f * s)));
-				//writer.returnStmt(2.0_f * s * atanh(a + (b - a) * xi));
-				writer.returnStmt(2.0_f * s * atanh((1.0_f - xi) * a + xi * b));
-				//writer.returnStmt(atanh(a + (b - a)));
-			},
-			InFloat{ writer, "s" },
-			InFloat{ writer, "xi" },
-			InFloat{ writer, "thetaMin" },
-			InFloat{ writer, "thetaMax" }
-		);
+		    "sampleVisibleNormal",
+		    [&](const Float& s, const Float& xi, const Float& thetaMin,
+		        const Float& thetaMax) {
+			    auto a = writer.declLocale<Float>(
+			        "a", tanh(thetaMin / (2.0_f * s)));
+			    auto b = writer.declLocale<Float>(
+			        "b", tanh(thetaMax / (2.0_f * s)));
+			    writer.returnStmt(2.0_f * s * atanh(a + (b - a) * xi));
+			    writer.returnStmt(2.0_f * s * atanh((1.0_f - xi) * a + xi * b));
+		    },
+		    InFloat{ writer, "s" }, InFloat{ writer, "xi" },
+		    InFloat{ writer, "thetaMin" }, InFloat{ writer, "thetaMax" });
 
 		auto sampleRoughMirror = writer.implementFunction<Vec2>(
-			"sampleRoughMirror", [&](const Vec2& w_o, const Float& s, Float& rng)
-			{
-				//auto theta0 = writer.declLocale<Float>("theta0", atan2(w_o.y(), w_o.x()));
-				//auto thetaMin = writer.declLocale<Float>("thetaMin", max(asin(theta0), 0.0_f) - (writer.Pi / 2.0_f));
-				//auto thetaMax = writer.declLocale<Float>("thetaMax", min(asin(theta0), 0.0_f) + (writer.Pi / 2.0_f));
-				auto thetaMin = writer.declLocale<Float>("thetaMin", max(asin(w_o.x()), 0.0_f) - (writer.Pi / 2.0_f));
-				auto thetaMax = writer.declLocale<Float>("thetaMax", min(asin(w_o.x()), 0.0_f) + (writer.Pi / 2.0_f));
+		    "sampleRoughMirror",
+		    [&](const Vec2& w_o, const Float& s, Float& rng) {
+			    auto thetaMin = writer.declLocale<Float>(
+			        "thetaMin",
+			        max(asin(w_o.x()), 0.0_f) - (writer.Pi / 2.0_f));
+			    auto thetaMax = writer.declLocale<Float>(
+			        "thetaMax",
+			        min(asin(w_o.x()), 0.0_f) + (writer.Pi / 2.0_f));
 
-				auto thetaM = writer.declLocale<Float>("thetaM", sampleVisibleNormal(s, writer.randomFloat(rng), thetaMin, thetaMax));
-				//auto m = writer.declLocale<Vec2>("m", vec2(sin(thetaM), cos(thetaM)));
-				auto m = writer.declLocale<Vec2>("m", vec2(cos(thetaM), sin(thetaM)));
+			    auto thetaM = writer.declLocale<Float>(
+			        "thetaM", sampleVisibleNormal(s, writer.randomFloat(rng),
+			                                      thetaMin, thetaMax));
 
-				writer.returnStmt(m * (dot(w_o, m) * 2.0_f) - w_o);
+			    auto m = writer.declLocale<Vec2>(
+			        "m", vec2(sin(thetaM), cos(thetaM)));
 
-				//writer.returnStmt(2.0_f * s * atanh(a + (b - a) * xi));
-			},
-			InVec2{ writer, "w_o" },
-			InFloat{ writer, "s" },
-			InOutFloat{ writer, "rng" }
-		);
+			    writer.returnStmt(m * (dot(w_o, m) * 2.0_f) - w_o);
+		    },
+		    InVec2{ writer, "w_o" }, InFloat{ writer, "s" },
+		    InOutFloat{ writer, "rng" });
 
 		auto intersectPlane = writer.implementFunction<Void>(
 		    "intersectPlane",
@@ -792,103 +644,187 @@ void LightTransport::createShaderModules()
 		writer.inputLayout(THREAD_COUNT);
 		writer.implementMain([&]() {
 			Int init = pcb.getMember<Int>("init");
-			//Float rng = writer.declLocale<Float>("seed", pcb.getMember<Float>("rng"));
+			Float rng =
+			    writer.declLocale<Float>("seed", pcb.getMember<Float>("rng"));
+			Float s = writer.declLocale<Float>("s", m_pc.getSmoothness(pcb));
 
-			UInt index =
-				writer.declLocale("index", in.globalInvocationID.x());
+			Locale(bumpsCount, m_pc.getBumpsCount(pcb));
+
+			UInt rayIndex =
+			    writer.declLocale("rayIndex", in.globalInvocationID.x());
+			UInt vertexIndex = writer.declLocale(
+			    "vertexIndex", rayIndex * m_pc.getBumpsCount(pcb));
+			Float indexf =
+			    writer.declLocale("indexf", writer.cast<Float>(rayIndex));
+
+			Float saltedrng =
+			    writer.declLocale<Float>("saltedrng", rng + indexf);
+
+			auto& ray = raysSsbo[rayIndex];
 
 			IF(writer, init == 1_i)
 			{
-				rayVerticesSsbo[index].colA = vec4(1.0_f);
-				rayVerticesSsbo[index].colB = vec4(1.0_f);
+				auto& vertex = rayVerticesSsbo[vertexIndex];
+				 vertex.colA = vec4(1.0_f);
+				 vertex.colB = vec4(1.0_f);
 			}
 			ELSE
 			{
+				/*
+				{
+					auto& vertex = rayVerticesSsbo[vertexIndex];
+
+					Float tMin = writer.declLocale("tMin", 1.0e-4_f);
+					Float tMax = writer.declLocale("tMax", 1.0e30_f);
+					Vec2 normal = writer.declLocale("normal", vec2(0.0_f));
+					// Float polarNormal = writer.declLocale("polarNormal",
+					// 0.0_f);
+					Locale(polarNormal, 0.0_f);
+					Locale(polarDirection, 0.0_f);
+					Locale(cartesianDirection, vec2(0.0_f));
+
+					auto a = writer.declLocale<Vec2>("a", vec2(0.0_f, 0.0_f));
+					auto b = writer.declLocale<Vec2>(
+					    "b", vec2(Float(widthf), 0.0_f));
+					auto c = writer.declLocale<Vec2>(
+					    "c", vec2(Float(widthf), Float(heightf)));
+					auto d = writer.declLocale<Vec2>(
+					    "d", vec2(0.0_f, Float(heightf)));
+
+					intersectPlane(a, b, ray.position, ray.direction, tMin,
+					               tMax, normal);
+					intersectPlane(b, c, ray.position, ray.direction, tMin,
+					               tMax, normal);
+					intersectPlane(c, d, ray.position, ray.direction, tMin,
+					               tMax, normal);
+					intersectPlane(d, a, ray.position, ray.direction, tMin,
+					               tMax, normal);
+
+					IF(writer, tMax == 1.0e30_f)
+					{
+						vertex.posA = ray.position;
+						vertex.posB = ray.position + ray.direction * tMax;
+						vertex.dirA = ray.direction;
+						vertex.dirB = ray.direction;
+					}
+					ELSE
+					{
+						vertex.posA = ray.position;
+						vertex.posB = ray.position + ray.direction * tMax;
+						vertex.dirA = ray.direction;
+						vertex.dirB = ray.direction;
+						vertex.colA = vertex.colA * 0.9_f;
+						vertex.colB = vertex.colB * 0.9_f;
+
+						ray.position = vertex.posB;
+
+						polarNormal = atan2(normal.y(), normal.x());
+						polarDirection =
+						    atan2(ray.direction.y(), ray.direction.x());
+						polarDirection = polarDirection - polarNormal;
+						cartesianDirection =
+						    vec2(cos(polarDirection), sin(polarDirection));
+
+						Float r = writer.declLocale<Float>("r", ray.rng);
+
+						Locale(newDirection,
+						       sampleRoughMirror(cartesianDirection, s, r));
+						polarDirection =
+						    atan2(newDirection.y(), newDirection.x());
+						polarDirection = polarDirection + polarNormal;
+
+						ray.direction =
+						    vec2(cos(polarDirection), sin(polarDirection));
+
+						ray.rng = r;
+					}
+					FI;
+				}
+
+				vertexIndex++;
+				//*/
+				
 				Float tMin = writer.declLocale("tMin", 1.0e-4_f);
 				Float tMax = writer.declLocale("tMax", 1.0e30_f);
 				Vec2 normal = writer.declLocale("normal", vec2(0.0_f));
 
-				auto a = writer.declLocale<Vec2>("a", vec2(0.0_f, 0.0_f));
-				auto b = writer.declLocale<Vec2>("b", vec2(Float(widthf), 0.0_f));
-				auto c = writer.declLocale<Vec2>("c", vec2(Float(widthf), Float(heightf)));
-				auto d = writer.declLocale<Vec2>("d", vec2(0.0_f, Float(heightf)));
-
-				//intersectPlane(a, b, raysSsbo[index].position, raysSsbo[index].direction, tMin, tMax, normal);
-				//intersectPlane(b, c, raysSsbo[index].position, raysSsbo[index].direction, tMin, tMax, normal);
-				intersectPlane(c, d, raysSsbo[index].position, raysSsbo[index].direction, tMin, tMax, normal);
-				//intersectPlane(d, a, raysSsbo[index].position, raysSsbo[index].direction, tMin, tMax, normal);
-
-				IF(writer, tMax == 1.0e30_f)
+				FOR(writer, UInt, i, vertexIndex, i < vertexIndex + bumpsCount, i++)
 				{
-					rayVerticesSsbo[index].posA = raysSsbo[index].position;
-					rayVerticesSsbo[index].posB =
-					    raysSsbo[index].position +
-					    raysSsbo[index].direction * tMax;
-					rayVerticesSsbo[index].dirA = raysSsbo[index].direction;
-					rayVerticesSsbo[index].dirB = raysSsbo[index].direction;
-					// rayVerticesSsbo[index].colA = vec4(0.0_f);
-					// rayVerticesSsbo[index].colB = vec4(0.0_f);
-					//rayVerticesSsbo[index].colA = rayVerticesSsbo[index].colA * 0.9_f;
-					//rayVerticesSsbo[index].colB = rayVerticesSsbo[index].colB * 0.9_f;
+					//auto& previousVertex = rayVerticesSsbo[i - 1_u];
+					auto& vertex = rayVerticesSsbo[i];
+
+					tMin = 1.0e-4_f;
+					tMax = 1.0e30_f;
+					normal = vec2(0.0_f);
+
+					// Float polarNormal = writer.declLocale("polarNormal",
+					// 0.0_f);
+					Locale(polarNormal, 0.0_f);
+					Locale(polarDirection, 0.0_f);
+					Locale(cartesianDirection, vec2(0.0_f));
+					Locale(rayPosition, ray.position);
+					Locale(rayDirection, ray.direction);
+
+					auto a = writer.declLocale<Vec2>("a", vec2(0.0_f, 0.0_f));
+					auto b = writer.declLocale<Vec2>(
+					    "b", vec2(Float(widthf), 0.0_f));
+					auto c = writer.declLocale<Vec2>(
+					    "c", vec2(Float(widthf), Float(heightf)));
+					auto d = writer.declLocale<Vec2>(
+					    "d", vec2(0.0_f, Float(heightf)));
+
+					intersectPlane(a, b, rayPosition, rayDirection, tMin, tMax, normal);
+					intersectPlane(b, c, rayPosition, rayDirection, tMin, tMax, normal);
+					intersectPlane(c, d, rayPosition, rayDirection, tMin, tMax, normal);
+					intersectPlane(d, a, rayPosition, rayDirection, tMin, tMax, normal);
+
+					IF(writer, tMax == 1.0e30_f)
+					{
+						vertex.posA = rayPosition;
+						vertex.posB = rayPosition + rayDirection * tMax;
+						vertex.dirA = rayDirection;
+						vertex.dirB = rayDirection;
+					}
+					ELSE
+					{
+						vertex.posA = rayPosition;
+						vertex.posB = rayPosition + rayDirection * tMax;
+						vertex.dirA = rayDirection;
+						vertex.dirB = rayDirection;
+						vertex.colA = vec4(1.0_f);//vertex.colA;// * 0.9_f;
+						vertex.colB = vec4(1.0_f);//vertex.colB;// * 0.9_f;
+
+						ray.position = vertex.posB;
+
+						polarNormal = atan2(normal.y(), normal.x());
+						//polarDirection = atan2(rayDirection.y(), rayDirection.x());
+						polarDirection = ray.polarDirection;
+						polarDirection = polarDirection - polarNormal;
+						cartesianDirection = vec2(cos(polarDirection), sin(polarDirection));
+
+						Float r = writer.declLocale<Float>("r", ray.rng);
+
+						Locale(newDirection, sampleRoughMirror(cartesianDirection, s, r));
+						polarDirection = atan2(newDirection.y(), newDirection.x());
+						polarDirection = polarDirection + polarNormal;
+
+						ray.direction = vec2(cos(polarDirection), sin(polarDirection));
+						ray.polarDirection = polarDirection;
+
+						ray.rng = r;
+					}
+					FI;
 				}
-				ELSE
-				{
-					rayVerticesSsbo[index].posA = raysSsbo[index].position;
-					rayVerticesSsbo[index].posB =
-					    raysSsbo[index].position +
-					    raysSsbo[index].direction * tMax;
-					rayVerticesSsbo[index].dirA = raysSsbo[index].direction;
-					rayVerticesSsbo[index].dirB = raysSsbo[index].direction;
-					// rayVerticesSsbo[index].colA = vec4(0.0_f);
-					// rayVerticesSsbo[index].colB = vec4(0.0_f);
-					rayVerticesSsbo[index].colA = rayVerticesSsbo[index].colA * 0.9_f;
-					rayVerticesSsbo[index].colB = rayVerticesSsbo[index].colB * 0.9_f;
-
-					raysSsbo[index].position = rayVerticesSsbo[index].posB;
-
-					Vec2 w_o = writer.declLocale<Vec2>("w_o", reflect(raysSsbo[index].direction, normal));
-					//Vec2 w_o = writer.declLocale<Vec2>("w_o", normal);
-					//Vec2 w_o = writer.declLocale<Vec2>("w_o", raysSsbo[index].direction);
-
-
-					//Float s = writer.declLocale<Float>("s", 2.0_f);
-					//Float s = writer.declLocale<Float>("s", 0.01_f);
-
-					//Float thetaMin = writer.declLocale<Float>("thetaMin", max(asin(w_o.x()), 0.0_f) - (writer.Pi / 2.0_f));
-					//Float thetaMax = writer.declLocale<Float>("thetaMax", min(asin(w_o.x()), 0.0_f) + (writer.Pi / 2.0_f));
-
-					//Float a1 = writer.declLocale<Float>("a1", tanh(thetaMin / (2.0_f * s)));
-					//Float b1 = writer.declLocale<Float>("b1", tanh(thetaMax / (2.0_f * s)));
-					////writer.returnStmt(2.0_f * s * atanh(a + (b - a) * xi));
-
-					Float r = writer.declLocale<Float>("r", raysSsbo[index].rng);
-
-
-					//Float xi = writer.declLocale<Float>("xi", writer.randomFloat(r));
-
-
-					////auto thetaM = writer.declLocale<Float>("thetaM", sampleVisibleNormal(s, writer.randomFloat(rng), thetaMin, thetaMax));
-					//Float thetaM = writer.declLocale<Float>("thetaM", 2.0_f * s * atanh(a1 + (b1 - a1) * xi));
-					//Vec2 m = writer.declLocale<Vec2>("m", vec2(sin(thetaM), cos(thetaM)));
-
-					////writer.returnStmt(m * (dot(w_o, m) * 2.0_f) - w_o);
-					//Vec2 d = writer.declLocale<Vec2>("d", m * (dot(w_o, m) * 2.0_f) - w_o);
-					//raysSsbo[index].direction = d;
-					//raysSsbo[index].direction = w_o;
-					raysSsbo[index].direction = sampleRoughMirror(w_o, 0.01_f, r);
-					raysSsbo[index].rng = r;
-					    //reflect(raysSsbo[index].direction, normal);
-
-				}
-				FI;
+				ROF;
 			}
 			FI;
 		});
 
-		//ast::SpecialisationInfo si;
-		//glsl::GlslConfig c;
-		//std::cout << glsl::compileGlsl(writer.getShader(), si, c) << std::endl;
-		//std::cout << spirv::writeSpirv(writer.getShader()) << std::endl;
+		// ast::SpecialisationInfo si;
+		// glsl::GlslConfig c;
+		// std::cout << glsl::compileGlsl(writer.getShader(), si, c) <<
+		// std::endl; std::cout << spirv::writeSpirv(writer.getShader()) <<
+		// std::endl;
 
 		traceComputeResult = writer.createHelperResult(vk);
 	}
@@ -958,10 +894,10 @@ void LightTransport::createShaderModules()
 	{
 		std::vector<VkPushConstantRange> pushConstants;
 
-		pushConstants.push_back(
-		    { VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT, 0,
-		      sizeof(int32_t) + sizeof(float) });
-		//pushConstants.push_back(
+		pushConstants.push_back(m_pc.getRange());
+		//{ VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT, 0,
+		// sizeof(int32_t) + sizeof(float) + sizeof(float) });
+		// pushConstants.push_back(
 		//    { VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT,
 		//      sizeof(int32_t), sizeof(float) });
 

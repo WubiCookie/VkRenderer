@@ -253,7 +253,7 @@ target_include_directories(VkRenderer
 
 # link_directories(${SHADERC_LIBRARY_DIR})
 #target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp shaderc_combined)
-target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV sdw::CompilerGlsl assimp::assimp )
+target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp )
 
 set_target_properties(VkRenderer PROPERTIES CXX_STANDARD 17)
 

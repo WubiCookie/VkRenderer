@@ -10,18 +10,22 @@
 
 #include "cdm_maths.hpp"
 
+#include <ShaderWriter/Intrinsics/Intrinsics.hpp>
+#include <ShaderWriter/Source.hpp>
+
 #include <memory>
 #include <random>
 
 //constexpr size_t RAYS_COUNT = 1024 * 2;
 //constexpr size_t RAYS_COUNT = 8;
-//constexpr size_t THREAD_COUNT = 16;
-constexpr size_t THREAD_COUNT = 8;
+constexpr size_t THREAD_COUNT = 16;
+//constexpr size_t THREAD_COUNT = 8;
 constexpr size_t VERTEX_BUFFER_LINE_COUNT = 4096*4;
-//constexpr size_t VERTEX_BUFFER_LINE_COUNT = 1024;
-//constexpr size_t VERTEX_BATCH_COUNT = 2048*64;
+//constexpr size_t VERTEX_BUFFER_LINE_COUNT = 1;
+constexpr size_t VERTEX_BATCH_COUNT = 2048*64;
 //constexpr size_t VERTEX_BATCH_COUNT = 2048*1;
-constexpr size_t VERTEX_BATCH_COUNT = 8;
+//constexpr size_t VERTEX_BATCH_COUNT = 8;
+constexpr size_t BUMPS = 3;
 constexpr float HDR_SCALE = 1.0f;
 
 namespace cdm
@@ -44,6 +48,8 @@ struct RayIteration
 	Vec2 position;
 	Vec2 direction;
 
+	float polarDirection;
+
 	// Color		Wavelength	Frequency
 	// Violet	380–450 nm	680–790 THz
 	// Blue		450–485 nm	620–680 THz
@@ -60,7 +66,6 @@ struct RayIteration
 	float frequency = 4.8e14f;
 	//float speed = 3e8f;
 	float rng = 0.0f;
-	float _0;
 };
 
 class LightTransport final
@@ -146,6 +151,29 @@ public:
 
 private:
 	Config m_config;
+
+	struct PushConstants
+	{
+		int32_t init = 1;
+		float rng = 0.0f;
+		float smoothness = 0.01f;
+		uint32_t bumpsCount = BUMPS;
+
+		void addPcbMembers(sdw::Pcb& pcb);
+
+		sdw::Int getInit(sdw::Pcb& pcb);
+		sdw::Float getRng(sdw::Pcb& pcb);
+		sdw::Float getSmoothness(sdw::Pcb& pcb);
+		sdw::UInt getBumpsCount(sdw::Pcb& pcb);
+
+		VkPushConstantRange getRange();
+	};
+
+	PushConstants m_pc;
+
+	float m_angle = 1.0f;
+	float m_aperture = 0.1f;
+	float m_sourceSize = 0.0f;
 
 	void applyImguiParameters();
 

@@ -54,6 +54,8 @@ struct matrix4x3;
 struct matrix4;
 struct euler_angles;
 struct quaternion;
+struct cartesian_direction2d;
+struct polar_direction2d;
 struct line;
 struct plane;
 //struct rect;
@@ -95,6 +97,11 @@ struct constants
 	static constexpr T deg_to_rad();
 	static constexpr T rad_to_deg();
 };
+
+template<typename T>
+constexpr int sign(T val);
+template<typename T>
+constexpr int signnum(T val);
 
 struct complex
 {
@@ -635,6 +642,49 @@ struct quaternion
 
 vector3 operator*(const normalized<quaternion>& q, const vector3& v);
 
+struct cartesian_direction2d
+{
+	float x, y;
+
+	cartesian_direction2d() = default;
+	cartesian_direction2d(float x, float y);
+	cartesian_direction2d(const normalized<vector2>& direction);
+	cartesian_direction2d(const polar_direction2d& direction);
+	cartesian_direction2d(const radian& angle);
+	cartesian_direction2d(const cartesian_direction2d&) = default;
+	cartesian_direction2d(cartesian_direction2d&&) = default;
+	~cartesian_direction2d() = default;
+
+	cartesian_direction2d& operator=(const cartesian_direction2d&) = default;
+	cartesian_direction2d& operator=(cartesian_direction2d&&) = default;
+	
+	cartesian_direction2d& rotate(const radian& angle);
+	cartesian_direction2d get_rotated(const radian& angle);
+};
+
+struct polar_direction2d
+{
+	radian angle;
+
+	polar_direction2d() = default;
+	polar_direction2d(float x, float y);
+	polar_direction2d(const normalized<vector2>& direction);
+	polar_direction2d(const cartesian_direction2d& direction);
+	polar_direction2d(const radian& angle);
+	polar_direction2d(const polar_direction2d&) = default;
+	polar_direction2d(polar_direction2d&&) = default;
+	~polar_direction2d() = default;
+
+	polar_direction2d& operator=(const polar_direction2d&) = default;
+	polar_direction2d& operator=(polar_direction2d&&) = default;
+
+	polar_direction2d& rotate(const radian& angle);
+	polar_direction2d get_rotated(const radian& angle);
+	
+	polar_direction2d& wrap();
+	polar_direction2d get_wrapped();
+};
+
 struct line
 {
 	float coefficient;
@@ -854,6 +904,17 @@ template<typename T>
 constexpr T constants<T>::deg_to_rad() { return static_cast<T>(Pi() / 180.0); }
 template<typename T>
 constexpr T constants<T>::rad_to_deg() { return static_cast<T>(180.0 / Pi()); }
+
+template<typename T>
+constexpr int sign(T val)
+{
+    return (T(0) <= val) - (val < T(0));
+}
+template<typename T>
+constexpr int signnum(T val)
+{
+    return (T(0) < val) - (val < T(0));
+}
 
 inline complex::complex(float real, float imaginary) : r(real), i(imaginary) {}
 inline complex::complex(const radian& angle) : r(cosf(angle)), i(sinf(angle)) {}
@@ -2565,6 +2626,58 @@ inline quaternion quaternion::operator-() const { return get_negated(); }
 
 inline bool quaternion::operator==(const quaternion& q) const { return x == q.x && y == q.y && z == q.z && w == q.w; }
 inline bool quaternion::operator!=(const quaternion& q) const { return !operator==(q); }
+
+inline cartesian_direction2d::cartesian_direction2d(float x_, float y_) : cartesian_direction2d(normalized<vector2>({ x_, y_ })) {}
+inline cartesian_direction2d::cartesian_direction2d(const normalized<vector2>& direction) : x(direction->x), y(direction->y) {}
+inline cartesian_direction2d::cartesian_direction2d(const polar_direction2d& direction) : cartesian_direction2d(direction.angle) {}
+inline cartesian_direction2d::cartesian_direction2d(const radian& angle) : cartesian_direction2d(cos(angle), sin(angle)) {}
+	
+inline cartesian_direction2d& cartesian_direction2d::rotate(const radian& angle)
+{
+	const float c = cos(angle);
+	const float s = sin(angle);
+    x = x * c - y * s;
+    y = x * s + y * c;
+
+	return *this;
+}
+inline cartesian_direction2d cartesian_direction2d::get_rotated(const radian& angle)
+{
+	cartesian_direction2d res = *this;
+	res.rotate(angle);
+	return res;
+}
+
+inline polar_direction2d::polar_direction2d(float x, float y) : polar_direction2d(radian(atan2(y, x))) {}
+inline polar_direction2d::polar_direction2d(const normalized<vector2>& direction) : polar_direction2d(direction->x, direction->y) {}
+inline polar_direction2d::polar_direction2d(const cartesian_direction2d& direction) : polar_direction2d(direction.y, direction.x) {}
+inline polar_direction2d::polar_direction2d(const radian& angle_) : angle(angle_) {}
+
+inline polar_direction2d& polar_direction2d::rotate(const radian& angle_)
+{
+	angle += angle_;
+	return *this;
+}
+inline polar_direction2d polar_direction2d::get_rotated(const radian& angle)
+{
+	polar_direction2d res = *this;
+	res.rotate(angle);
+	return res;
+}
+inline polar_direction2d& polar_direction2d::wrap()
+{
+	int s = -sign(angle);
+	while (angle > constants<float>::Pi() ||
+		angle <= -constants<float>::Pi())
+		angle -= constants<float>::Pi() * s;
+	return *this;
+}
+inline polar_direction2d polar_direction2d::get_wrapped()
+{
+	polar_direction2d res = *this;
+	res.wrap();
+	return res;
+}
 
 inline bool line::is_parallel(const line& l1, const line& l2)
 {

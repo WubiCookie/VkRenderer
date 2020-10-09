@@ -36,7 +36,7 @@ void LightTransport::updateDescriptorSets()
 
 		VkDescriptorBufferInfo verticesBufferInfo{};
 		verticesBufferInfo.buffer = m_vertexBuffer;
-		verticesBufferInfo.range = sizeof(Line) * VERTEX_BUFFER_LINE_COUNT;
+		verticesBufferInfo.range = sizeof(Line) * VERTEX_BUFFER_LINE_COUNT * BUMPS;
 		verticesBufferInfo.offset = 0;
 
 		vk::WriteDescriptorSet write2;
