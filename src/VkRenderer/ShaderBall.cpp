@@ -1609,22 +1609,22 @@ void ShaderBall::imgui(CommandBuffer& cb)
 
 	ImGui::Render();
 
-	// vk::ImageMemoryBarrier barrier;
-	// barrier.image = m_highlightColorAttachmentTexture;
-	// barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	// barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	// barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	// barrier.subresourceRange.baseMipLevel = 0;
-	// barrier.subresourceRange.levelCount = 1;
-	// barrier.subresourceRange.baseArrayLayer = 0;
-	// barrier.subresourceRange.layerCount = 1;
-	// barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	// barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	// cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	//                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
-	//                   barrier);
+	 vk::ImageMemoryBarrier barrier;
+	 barrier.image = m_highlightColorAttachmentTexture;
+	 barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	 barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	 barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	 barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	 barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	 barrier.subresourceRange.baseMipLevel = 0;
+	 barrier.subresourceRange.levelCount = 1;
+	 barrier.subresourceRange.baseArrayLayer = 0;
+	 barrier.subresourceRange.layerCount = 1;
+	 barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	 barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	 cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+	                   barrier);
 
 	{
 		std::array clearValues = { VkClearValue{}, VkClearValue{} };
@@ -1648,11 +1648,11 @@ void ShaderBall::imgui(CommandBuffer& cb)
 	vk::SubpassEndInfo subpassEndInfo2;
 	cb.endRenderPass2(subpassEndInfo2);
 
-	// barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-	// barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	// cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	//                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
-	//                   barrier);
+	 barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	 barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	 cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+	                   barrier);
 }
 
 void ShaderBall::standaloneDraw()

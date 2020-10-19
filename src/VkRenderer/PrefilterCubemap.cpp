@@ -649,10 +649,12 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 			VkImageSubresourceRange range{};
 			range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			range.baseArrayLayer = layer;
+			//range.baseArrayLayer = 0;
 			range.baseMipLevel = mipLevel;
+			//range.layerCount = 6;
 			range.layerCount = 1;
 			range.levelCount = 1;
-			imageViews.emplace_back(cubemap.createView(range));
+			imageViews.emplace_back(cubemap.createView2D(range));
 			std::string name = "prefilter ImageView layer(" +
 			                   std::to_string(layer) + ") mipLevel(" +
 			                   std::to_string(mipLevel) + ")";

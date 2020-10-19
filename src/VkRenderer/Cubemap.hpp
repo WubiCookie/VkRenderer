@@ -82,6 +82,8 @@ public:
 	const VkImageView& viewFace5() const { return m_imageViewFace5.get(); }
 	UniqueImageView createView(
 	    const VkImageSubresourceRange& subresourceRange) const;
+	UniqueImageView createView2D(
+	    const VkImageSubresourceRange& subresourceRange) const;
 	const VkSampler& sampler() const override { return m_sampler.get(); }
 	const VmaAllocation& allocation() const override
 	{

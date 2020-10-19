@@ -147,6 +147,24 @@ UniqueImageView Cubemap::createView(
 	return vk.create(viewInfo);
 }
 
+UniqueImageView Cubemap::createView2D(
+    const VkImageSubresourceRange& subresourceRange) const
+{
+	auto& vk = rw.get()->device();
+
+	vk::ImageViewCreateInfo viewInfo;
+	viewInfo.image = m_image.get();
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = m_format;
+	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.subresourceRange = subresourceRange;
+
+	return vk.create(viewInfo);
+}
+
 void Cubemap::transitionLayoutImmediate(VkImageLayout oldLayout,
                                         VkImageLayout newLayout)
 {
