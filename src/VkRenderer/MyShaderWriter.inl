@@ -13,32 +13,32 @@ VertexWriter::getDescriptors() const
 }
 
 inline void VertexWriter::addInputBinding(
-    const VkVertexInputBindingDescription& binding)
+	const VkVertexInputBindingDescription& binding)
 {
 	m_vertexInputHelper.addInputBinding(binding);
 }
 
 inline void VertexWriter::addInputBinding(uint32_t binding, uint32_t stride,
-                                          VkVertexInputRate rate)
+										  VkVertexInputRate rate)
 {
 	m_vertexInputHelper.addInputBinding(binding, stride, rate);
 }
 
 inline void VertexWriter::addInputAttribute(
-    const VkVertexInputAttributeDescription& attribute)
+	const VkVertexInputAttributeDescription& attribute)
 {
 	m_vertexInputHelper.addInputAttribute(attribute);
 }
 
 inline void VertexWriter::addInputAttribute(uint32_t location,
-                                            uint32_t binding, VkFormat format,
-                                            uint32_t offset)
+											uint32_t binding, VkFormat format,
+											uint32_t offset)
 {
 	m_vertexInputHelper.addInputAttribute(location, binding, format, offset);
 }
 
 inline void VertexWriter::addInputAttribute(uint32_t location,
-                                            uint32_t binding, VkFormat format)
+											uint32_t binding, VkFormat format)
 {
 	m_vertexInputHelper.addInputAttribute(location, binding, format);
 }
@@ -61,10 +61,10 @@ inline const VertexInputHelper& VertexWriter::getVertexInputHelper() const
  */
 /**@{*/
 template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
-          bool ArrayedT, bool DepthT, bool MsT>
+		  bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>
 VertexWriter::declSampledImage(std::string const& name, uint32_t binding,
-                               uint32_t set)
+							   uint32_t set)
 {
 	VkDescriptorSetLayoutBinding b{};
 	b.binding = binding;
@@ -77,10 +77,10 @@ VertexWriter::declSampledImage(std::string const& name, uint32_t binding,
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
-          bool ArrayedT, bool DepthT, bool MsT>
+		  bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Optional<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>
 VertexWriter::declSampledImage(std::string const& name, uint32_t binding,
-                               uint32_t set, bool enabled)
+							   uint32_t set, bool enabled)
 {
 	VkDescriptorSetLayoutBinding b{};
 	b.binding = binding;
@@ -93,10 +93,10 @@ VertexWriter::declSampledImage(std::string const& name, uint32_t binding,
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
-          bool ArrayedT, bool DepthT, bool MsT>
+		  bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>
 VertexWriter::declSampledImageArray(std::string const& name, uint32_t binding,
-                                    uint32_t set, uint32_t dimension)
+									uint32_t set, uint32_t dimension)
 {
 	VkDescriptorSetLayoutBinding b{};
 	b.binding = binding;
@@ -106,16 +106,16 @@ VertexWriter::declSampledImageArray(std::string const& name, uint32_t binding,
 	m_descriptors.push_back({ set, b });
 
 	return sdw::VertexWriter::declSampledImageArray(name, binding, set,
-	                                                dimension);
+													dimension);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
-          bool ArrayedT, bool DepthT, bool MsT>
+		  bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Optional<
-    sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>>
+	sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>>
 VertexWriter::declSampledImageArray(std::string const& name, uint32_t binding,
-                                    uint32_t set, uint32_t dimension,
-                                    bool enabled)
+									uint32_t set, uint32_t dimension,
+									bool enabled)
 {
 	VkDescriptorSetLayoutBinding b{};
 	b.binding = binding;
@@ -125,7 +125,7 @@ VertexWriter::declSampledImageArray(std::string const& name, uint32_t binding,
 	m_descriptors.push_back({ set, b });
 
 	return sdw::VertexWriter::declSampledImageArray(name, binding, set,
-	                                                dimension, enabled);
+													dimension, enabled);
 }
 /**@}*/
 #pragma endregion
@@ -136,42 +136,42 @@ VertexWriter::declSampledImageArray(std::string const& name, uint32_t binding,
  */
 /**@{*/
 template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
-          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+		  ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>
 VertexWriter::declImage(std::string const& name, uint32_t binding,
-                        uint32_t set)
+						uint32_t set)
 {
 	return sdw::VertexWriter::declImage(name, binding, set);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
-          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+		  ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Optional<
-    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>
+	sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>
 VertexWriter::declImage(std::string const& name, uint32_t binding,
-                        uint32_t set, bool enabled)
+						uint32_t set, bool enabled)
 {
 	return sdw::VertexWriter::declImage(name, binding, set, enabled);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
-          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+		  ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Array<sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>
 VertexWriter::declImageArray(std::string const& name, uint32_t binding,
-                             uint32_t set, uint32_t dimension)
+							 uint32_t set, uint32_t dimension)
 {
 	return sdw::VertexWriter::declImageArray(name, binding, set, dimension);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
-          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+		  ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Optional<
-    sdw::Array<sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>>
+	sdw::Array<sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>>
 VertexWriter::declImageArray(std::string const& name, uint32_t binding,
-                             uint32_t set, uint32_t dimension, bool enabled)
+							 uint32_t set, uint32_t dimension, bool enabled)
 {
 	return sdw::VertexWriter::declImageArray(name, binding, set, dimension,
-	                                         enabled);
+											 enabled);
 }
 /**@}*/
 #pragma endregion
@@ -202,7 +202,7 @@ inline T VertexWriter::declInput(std::string const& name, uint32_t location)
 
 template <typename T>
 inline T VertexWriter::declInput(std::string const& name, uint32_t location,
-                                 uint32_t attributes)
+								 uint32_t attributes)
 {
 	addInputBinding(0, 0);
 
@@ -222,8 +222,8 @@ inline T VertexWriter::declInput(std::string const& name, uint32_t location,
 
 template <typename T>
 inline sdw::Array<T> VertexWriter::declInputArray(std::string const& name,
-                                                  uint32_t location,
-                                                  uint32_t dimension)
+												  uint32_t location,
+												  uint32_t dimension)
 {
 	addInputBinding(0, 0);
 
@@ -243,9 +243,9 @@ inline sdw::Array<T> VertexWriter::declInputArray(std::string const& name,
 
 template <typename T>
 inline sdw::Array<T> VertexWriter::declInputArray(std::string const& name,
-                                                  uint32_t location,
-                                                  uint32_t dimension,
-                                                  uint32_t attributes)
+												  uint32_t location,
+												  uint32_t dimension,
+												  uint32_t attributes)
 {
 	addInputBinding(0, 0);
 
@@ -261,13 +261,13 @@ inline sdw::Array<T> VertexWriter::declInputArray(std::string const& name,
 		abort();
 
 	return sdw::VertexWriter::declInputArray<T>(name, location, dimension,
-	                                            attributes);
+												attributes);
 }
 
 template <typename T>
 inline sdw::Optional<T> VertexWriter::declInput(std::string const& name,
-                                                uint32_t location,
-                                                bool enabled)
+												uint32_t location,
+												bool enabled)
 {
 	if (enabled)
 	{
@@ -290,9 +290,9 @@ inline sdw::Optional<T> VertexWriter::declInput(std::string const& name,
 
 template <typename T>
 inline sdw::Optional<T> VertexWriter::declInput(std::string const& name,
-                                                uint32_t location,
-                                                uint32_t attributes,
-                                                bool enabled)
+												uint32_t location,
+												uint32_t attributes,
+												bool enabled)
 {
 	if (enabled)
 	{
@@ -311,13 +311,13 @@ inline sdw::Optional<T> VertexWriter::declInput(std::string const& name,
 	}
 
 	return sdw::VertexWriter::declInput<T>(name, location, attributes,
-	                                       enabled);
+										   enabled);
 }
 
 template <typename T>
 inline sdw::Optional<sdw::Array<T>> VertexWriter::declInputArray(
-    std::string const& name, uint32_t location, uint32_t dimension,
-    bool enabled)
+	std::string const& name, uint32_t location, uint32_t dimension,
+	bool enabled)
 {
 	if (enabled)
 	{
@@ -336,13 +336,13 @@ inline sdw::Optional<sdw::Array<T>> VertexWriter::declInputArray(
 	}
 
 	return sdw::VertexWriter::declInputArray<T>(name, location, dimension,
-	                                            enabled);
+												enabled);
 }
 
 template <typename T>
 inline sdw::Optional<sdw::Array<T>> VertexWriter::declInputArray(
-    std::string const& name, uint32_t location, uint32_t dimension,
-    uint32_t attributes, bool enabled)
+	std::string const& name, uint32_t location, uint32_t dimension,
+	uint32_t attributes, bool enabled)
 {
 	if (enabled)
 	{
@@ -361,12 +361,12 @@ inline sdw::Optional<sdw::Array<T>> VertexWriter::declInputArray(
 	}
 
 	return sdw::VertexWriter::declInputArray<T>(name, location, dimension,
-	                                            attributes, enabled);
+												attributes, enabled);
 }
 
 template <typename T>
 inline T VertexWriter::declInput(std::string const& name, uint32_t location,
-                                 bool enabled, T const& defaultValue)
+								 bool enabled, T const& defaultValue)
 {
 	if (enabled)
 	{
@@ -385,13 +385,13 @@ inline T VertexWriter::declInput(std::string const& name, uint32_t location,
 	}
 
 	return sdw::VertexWriter::declInput<T>(name, location, dimension,
-	                                       defaultValue);
+										   defaultValue);
 }
 
 template <typename T>
 inline T VertexWriter::declInput(std::string const& name, uint32_t location,
-                                 uint32_t attributes, bool enabled,
-                                 T const& defaultValue)
+								 uint32_t attributes, bool enabled,
+								 T const& defaultValue)
 {
 	if (enabled)
 	{
@@ -410,13 +410,13 @@ inline T VertexWriter::declInput(std::string const& name, uint32_t location,
 	}
 
 	return sdw::VertexWriter::declInput<T>(name, location, attributes, enabled,
-	                                       defaultValue);
+										   defaultValue);
 }
 
 template <typename T>
 inline sdw::Array<T> VertexWriter::declInputArray(
-    std::string const& name, uint32_t location, uint32_t dimension,
-    uint32_t attributes, bool enabled, std::vector<T> const& defaultValue)
+	std::string const& name, uint32_t location, uint32_t dimension,
+	uint32_t attributes, bool enabled, std::vector<T> const& defaultValue)
 {
 	if (enabled)
 	{
@@ -435,13 +435,13 @@ inline sdw::Array<T> VertexWriter::declInputArray(
 	}
 
 	return sdw::VertexWriter::declInputArray<T>(
-	    name, location, dimension, attributes, enabled, defaultValue);
+		name, location, dimension, attributes, enabled, defaultValue);
 }
 
 template <typename T>
 inline sdw::Array<T> VertexWriter::declInputArray(
-    std::string const& name, uint32_t location, uint32_t dimension,
-    bool enabled, std::vector<T> const& defaultValue)
+	std::string const& name, uint32_t location, uint32_t dimension,
+	bool enabled, std::vector<T> const& defaultValue)
 {
 	if (enabled)
 	{
@@ -460,7 +460,7 @@ inline sdw::Array<T> VertexWriter::declInputArray(
 	}
 
 	return sdw::VertexWriter::declInputArray<T>(name, location, dimension,
-	                                            enabled, defaultValue);
+												enabled, defaultValue);
 }
 /**@}*/
 #pragma endregion
@@ -484,10 +484,10 @@ FragmentWriter::getOutputAttachments() const
  */
 /**@{*/
 template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
-          bool ArrayedT, bool DepthT, bool MsT>
+		  bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>
 FragmentWriter::declSampledImage(std::string const& name, uint32_t binding,
-                                 uint32_t set)
+								 uint32_t set)
 {
 	VkDescriptorSetLayoutBinding b{};
 	b.binding = binding;
@@ -497,15 +497,15 @@ FragmentWriter::declSampledImage(std::string const& name, uint32_t binding,
 	m_descriptors.push_back({ set, b });
 
 	return sdw::FragmentWriter::declSampledImage<FormatT, DimT, ArrayedT,
-	                                             DepthT, MsT>(name, binding,
-	                                                          set);
+												 DepthT, MsT>(name, binding,
+															  set);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
-          bool ArrayedT, bool DepthT, bool MsT>
+		  bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Optional<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>
 FragmentWriter::declSampledImage(std::string const& name, uint32_t binding,
-                                 uint32_t set, bool enabled)
+								 uint32_t set, bool enabled)
 {
 	VkDescriptorSetLayoutBinding b{};
 	b.binding = binding;
@@ -515,16 +515,16 @@ FragmentWriter::declSampledImage(std::string const& name, uint32_t binding,
 	m_descriptors.push_back({ set, b });
 
 	return sdw::FragmentWriter::declSampledImage<FormatT, DimT, ArrayedT,
-	                                             DepthT, MsT>(name, binding,
-	                                                          set, enabled);
+												 DepthT, MsT>(name, binding,
+															  set, enabled);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
-          bool ArrayedT, bool DepthT, bool MsT>
+		  bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>
 FragmentWriter::declSampledImageArray(std::string const& name,
-                                      uint32_t binding, uint32_t set,
-                                      uint32_t dimension)
+									  uint32_t binding, uint32_t set,
+									  uint32_t dimension)
 {
 	VkDescriptorSetLayoutBinding b{};
 	b.binding = binding;
@@ -534,17 +534,17 @@ FragmentWriter::declSampledImageArray(std::string const& name,
 	m_descriptors.push_back({ set, b });
 
 	return sdw::FragmentWriter::declSampledImageArray<FormatT, DimT, ArrayedT,
-	                                                  DepthT, MsT>(
-	    name, binding, set, dimension);
+													  DepthT, MsT>(
+		name, binding, set, dimension);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
-          bool ArrayedT, bool DepthT, bool MsT>
+		  bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Optional<
-    sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>>
+	sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>>
 FragmentWriter::declSampledImageArray(std::string const& name,
-                                      uint32_t binding, uint32_t set,
-                                      uint32_t dimension, bool enabled)
+									  uint32_t binding, uint32_t set,
+									  uint32_t dimension, bool enabled)
 {
 	VkDescriptorSetLayoutBinding b{};
 	b.binding = binding;
@@ -554,8 +554,8 @@ FragmentWriter::declSampledImageArray(std::string const& name,
 	m_descriptors.push_back({ set, b });
 
 	return sdw::FragmentWriter::declSampledImageArray<FormatT, DimT, ArrayedT,
-	                                                  DepthT, MsT>(
-	    name, binding, set, dimension, enabled);
+													  DepthT, MsT>(
+		name, binding, set, dimension, enabled);
 }
 /**@}*/
 #pragma endregion
@@ -566,48 +566,48 @@ FragmentWriter::declSampledImageArray(std::string const& name,
  */
 /**@{*/
 template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
-          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+		  ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>
 FragmentWriter::declImage(std::string const& name, uint32_t binding,
-                          uint32_t set)
+						  uint32_t set)
 {
 	return sdw::FragmentWriter::declImage<FormatT, AccessT, DimT, ArrayedT,
-	                                      DepthT, MsT>(name, binding, set);
+										  DepthT, MsT>(name, binding, set);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
-          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+		  ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Optional<
-    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>
+	sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>
 FragmentWriter::declImage(std::string const& name, uint32_t binding,
-                          uint32_t set, bool enabled)
+						  uint32_t set, bool enabled)
 {
 	return sdw::FragmentWriter::declImage<FormatT, AccessT, DimT, ArrayedT,
-	                                      DepthT, MsT>(name, binding, set,
-	                                                   enabled);
+										  DepthT, MsT>(name, binding, set,
+													   enabled);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
-          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+		  ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Array<sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>
 FragmentWriter::declImageArray(std::string const& name, uint32_t binding,
-                               uint32_t set, uint32_t dimension)
+							   uint32_t set, uint32_t dimension)
 {
 	return sdw::FragmentWriter::declImageArray<FormatT, AccessT, DimT,
-	                                           ArrayedT, DepthT, MsT>(
-	    name, binding, set, dimension);
+											   ArrayedT, DepthT, MsT>(
+		name, binding, set, dimension);
 }
 
 template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
-          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+		  ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
 inline sdw::Optional<
-    sdw::Array<sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>>
+	sdw::Array<sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>>
 FragmentWriter::declImageArray(std::string const& name, uint32_t binding,
-                               uint32_t set, uint32_t dimension, bool enabled)
+							   uint32_t set, uint32_t dimension, bool enabled)
 {
 	return sdw::FragmentWriter::declImageArray<FormatT, AccessT, DimT,
-	                                           ArrayedT, DepthT, MsT>(
-	    name, binding, set, dimension, enabled);
+											   ArrayedT, DepthT, MsT>(
+		name, binding, set, dimension, enabled);
 }
 /**@}*/
 #pragma endregion
@@ -640,7 +640,7 @@ inline T FragmentWriter::declOutput(std::string const& name, uint32_t location)
 
 template <typename T>
 inline T FragmentWriter::declOutput(std::string const& name, uint32_t location,
-                                    uint32_t attributes)
+									uint32_t attributes)
 {
 	if constexpr (std::is_same_v<T, sdw::Float>)
 		m_outputAttachments[location] = VK_FORMAT_R32_SFLOAT;
@@ -662,8 +662,8 @@ inline T FragmentWriter::declOutput(std::string const& name, uint32_t location,
 
 template <typename T>
 inline sdw::Array<T> FragmentWriter::declOutputArray(std::string const& name,
-                                                     uint32_t location,
-                                                     uint32_t dimension)
+													 uint32_t location,
+													 uint32_t dimension)
 {
 	if constexpr (std::is_same_v<T, sdw::Float>)
 		m_outputAttachments[location] = VK_FORMAT_R32_SFLOAT;
@@ -685,9 +685,9 @@ inline sdw::Array<T> FragmentWriter::declOutputArray(std::string const& name,
 
 template <typename T>
 inline sdw::Array<T> FragmentWriter::declOutputArray(std::string const& name,
-                                                     uint32_t location,
-                                                     uint32_t dimension,
-                                                     uint32_t attributes)
+													 uint32_t location,
+													 uint32_t dimension,
+													 uint32_t attributes)
 {
 	if constexpr (std::is_same_v<T, sdw::Float>)
 		m_outputAttachments[location] = VK_FORMAT_R32_SFLOAT;
@@ -705,13 +705,13 @@ inline sdw::Array<T> FragmentWriter::declOutputArray(std::string const& name,
 		abort();
 
 	return sdw::FragmentWriter::declOutputArray<T>(name, location, dimension,
-	                                               attributes);
+												   attributes);
 }
 
 template <typename T>
 inline sdw::Optional<T> FragmentWriter::declOutput(std::string const& name,
-                                                   uint32_t location,
-                                                   bool enabled)
+												   uint32_t location,
+												   bool enabled)
 {
 	if (enabled)
 	{
@@ -736,9 +736,9 @@ inline sdw::Optional<T> FragmentWriter::declOutput(std::string const& name,
 
 template <typename T>
 inline sdw::Optional<T> FragmentWriter::declOutput(std::string const& name,
-                                                   uint32_t location,
-                                                   uint32_t attributes,
-                                                   bool enabled)
+												   uint32_t location,
+												   uint32_t attributes,
+												   bool enabled)
 {
 	if (enabled)
 	{
@@ -759,13 +759,13 @@ inline sdw::Optional<T> FragmentWriter::declOutput(std::string const& name,
 	}
 
 	return sdw::FragmentWriter::declOutput<T>(name, location, attributes,
-	                                          enabled);
+											  enabled);
 }
 
 template <typename T>
 inline sdw::Optional<sdw::Array<T>> FragmentWriter::declOutputArray(
-    std::string const& name, uint32_t location, uint32_t dimension,
-    bool enabled)
+	std::string const& name, uint32_t location, uint32_t dimension,
+	bool enabled)
 {
 	if (enabled)
 	{
@@ -786,13 +786,13 @@ inline sdw::Optional<sdw::Array<T>> FragmentWriter::declOutputArray(
 	}
 
 	return sdw::FragmentWriter::declOutputArray<T>(name, location, dimension,
-	                                               enabled);
+												   enabled);
 }
 
 template <typename T>
 inline sdw::Optional<sdw::Array<T>> FragmentWriter::declOutputArray(
-    std::string const& name, uint32_t location, uint32_t dimension,
-    uint32_t attributes, bool enabled)
+	std::string const& name, uint32_t location, uint32_t dimension,
+	uint32_t attributes, bool enabled)
 {
 	if (enabled)
 	{
@@ -813,7 +813,7 @@ inline sdw::Optional<sdw::Array<T>> FragmentWriter::declOutputArray(
 	}
 
 	return sdw::FragmentWriter::declOutputArray<T>(name, location, dimension,
-	                                               attributes, enabled);
+												   attributes, enabled);
 }
 /**@}*/
 #pragma endregion

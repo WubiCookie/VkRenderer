@@ -456,13 +456,13 @@ UniqueComputePipeline ComputePipelineFactory::createPipeline()
 {
 	const auto& vk = m_vulkanDevice.get();
 
-    // VkStructureType                    sType;
-    // const void*                        pNext;
-    // VkPipelineCreateFlags              flags;
-    // VkPipelineShaderStageCreateInfo    stage;
-    // VkPipelineLayout                   layout;
-    // VkPipeline                         basePipelineHandle;
-    // int32_t                            basePipelineIndex;
+	// VkStructureType                    sType;
+	// const void*                        pNext;
+	// VkPipelineCreateFlags              flags;
+	// VkPipelineShaderStageCreateInfo    stage;
+	// VkPipelineLayout                   layout;
+	// VkPipeline                         basePipelineHandle;
+	// int32_t                            basePipelineIndex;
 	vk::ComputePipelineCreateInfo pipelineInfo;
 	pipelineInfo.stage.module = m_computeModule;
 	pipelineInfo.stage.pName = "main";

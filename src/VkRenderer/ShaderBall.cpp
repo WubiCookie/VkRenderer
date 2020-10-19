@@ -527,7 +527,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
-	//colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	// colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -561,7 +561,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	VkAttachmentDescription colorResolveAttachment = {};
 	colorResolveAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
 	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	//colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	// colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -1390,7 +1390,8 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		VkClearValue clearDepth{};
 		clearDepth.depthStencil.depth = 1.0f;
 
-		std::array clearValues = { clearColor, clearID, clearDepth, clearColor, clearID };
+		std::array clearValues = { clearColor, clearID, clearDepth, clearColor,
+			                       clearID };
 
 		vk::RenderPassBeginInfo rpInfo;
 		rpInfo.framebuffer = m_framebuffer;
@@ -1528,95 +1529,95 @@ void ShaderBall::imgui(CommandBuffer& cb)
 		if (m_lastSelectedHighlightID < m_meshes.size() &&
 		    m_showMaterialWindow)
 		{
-			ImGui::Begin("Material", &m_showMaterialWindow);
+		    ImGui::Begin("Material", &m_showMaterialWindow);
 
-			auto& m = m_meshes[m_lastSelectedHighlightID].materialData;
+		    auto& m = m_meshes[m_lastSelectedHighlightID].materialData;
 
-			bool changed = false;
+		    bool changed = false;
 
-			changed |= ImGui::DragFloat("u scale", &m.uScale, 0.01f);
-			changed |= ImGui::DragFloat("v scale", &m.vScale, 0.01f);
+		    changed |= ImGui::DragFloat("u scale", &m.uScale, 0.01f);
+		    changed |= ImGui::DragFloat("v scale", &m.vScale, 0.01f);
 
-			changed |= ImGui::DragFloat("u shift", &m.uShift, 0.01f);
-			changed |= ImGui::DragFloat("v shift", &m.vShift, 0.01f);
+		    changed |= ImGui::DragFloat("u shift", &m.uShift, 0.01f);
+		    changed |= ImGui::DragFloat("v shift", &m.vShift, 0.01f);
 
-			changed |=
-			    ImGui::DragFloat("metalness scale", &m.metalnessScale, 0.01f);
-			changed |= ImGui::DragFloat("metalness shift", &m.metalnessShift,
-			                            0.001f, 0.0f, 1.0f);
+		    changed |=
+		        ImGui::DragFloat("metalness scale", &m.metalnessScale, 0.01f);
+		    changed |= ImGui::DragFloat("metalness shift", &m.metalnessShift,
+		                                0.001f, 0.0f, 1.0f);
 
-			changed |=
-			    ImGui::DragFloat("roughness scale", &m.roughnessScale, 0.01f);
-			changed |= ImGui::DragFloat("roughness shift", &m.roughnessShift,
-			                            0.001f, 0.001f, 0.999f);
+		    changed |=
+		        ImGui::DragFloat("roughness scale", &m.roughnessScale, 0.01f);
+		    changed |= ImGui::DragFloat("roughness shift", &m.roughnessShift,
+		                                0.001f, 0.001f, 0.999f);
 
-			static uint32_t pmin = 0;
-			static uint32_t pmax = 15;
+		    static uint32_t pmin = 0;
+		    static uint32_t pmax = 15;
 
-			changed |=
-			    ImGui::DragScalar("albedo index", ImGuiDataType_U32,
-			                      &m.textureIndices[0], 0.1f, &pmin, &pmax);
-			changed |=
-			    ImGui::DragScalar("displacement index", ImGuiDataType_U32,
-			                      &m.textureIndices[1], 0.1f, &pmin, &pmax);
-			changed |=
-			    ImGui::DragScalar("metal index", ImGuiDataType_U32,
-			                      &m.textureIndices[2], 0.1f, &pmin, &pmax);
-			changed |=
-			    ImGui::DragScalar("normal index", ImGuiDataType_U32,
-			                      &m.textureIndices[3], 0.1f, &pmin, &pmax);
-			changed |=
-			    ImGui::DragScalar("roughness index", ImGuiDataType_U32,
-			                      &m.textureIndices[4], 0.1f, &pmin, &pmax);
+		    changed |=
+		        ImGui::DragScalar("albedo index", ImGuiDataType_U32,
+		                          &m.textureIndices[0], 0.1f, &pmin, &pmax);
+		    changed |=
+		        ImGui::DragScalar("displacement index", ImGuiDataType_U32,
+		                          &m.textureIndices[1], 0.1f, &pmin, &pmax);
+		    changed |=
+		        ImGui::DragScalar("metal index", ImGuiDataType_U32,
+		                          &m.textureIndices[2], 0.1f, &pmin, &pmax);
+		    changed |=
+		        ImGui::DragScalar("normal index", ImGuiDataType_U32,
+		                          &m.textureIndices[3], 0.1f, &pmin, &pmax);
+		    changed |=
+		        ImGui::DragScalar("roughness index", ImGuiDataType_U32,
+		                          &m.textureIndices[4], 0.1f, &pmin, &pmax);
 
-			// changed |= ImGui::SliderFloat("CamFocalDistance",
-			//	&m_config.camFocalDistance, 0.1f, 30.0f);
-			// changed |= ImGui::SliderFloat("CamFocalLength",
-			//	&m_config.camFocalLength, 0.0f, 20.0f);
-			// changed |= ImGui::SliderFloat("CamAperture",
-			// &m_config.camAperture, 	0.0f, 5.0f);
+		    // changed |= ImGui::SliderFloat("CamFocalDistance",
+		    //	&m_config.camFocalDistance, 0.1f, 30.0f);
+		    // changed |= ImGui::SliderFloat("CamFocalLength",
+		    //	&m_config.camFocalLength, 0.0f, 20.0f);
+		    // changed |= ImGui::SliderFloat("CamAperture",
+		    // &m_config.camAperture, 	0.0f, 5.0f);
 
-			// changed |= ImGui::DragFloat3("rotation", &m_config.camRot.x,
-			// 0.01f); changed |= ImGui::DragFloat3("lightDir",
-			// &m_config.lightDir.x, 0.01f);
+		    // changed |= ImGui::DragFloat3("rotation", &m_config.camRot.x,
+		    // 0.01f); changed |= ImGui::DragFloat3("lightDir",
+		    // &m_config.lightDir.x, 0.01f);
 
-			// changed |= ImGui::SliderFloat("scene radius",
-			// &m_config.sceneRadius, 	0.0f, 10.0f);
+		    // changed |= ImGui::SliderFloat("scene radius",
+		    // &m_config.sceneRadius, 	0.0f, 10.0f);
 
-			// ImGui::SliderFloat("BloomAscale1", &m_config.bloomAscale1,
-			// 0.0f, 1.0f); ImGui::SliderFloat("BloomAscale2",
-			// &m_config.bloomAscale2, 0.0f, 1.0f);
-			// ImGui::SliderFloat("BloomBscale1", &m_config.bloomBscale1,
-			// 0.0f, 1.0f); ImGui::SliderFloat("BloomBscale2",
-			// &m_config.bloomBscale2, 0.0f, 1.0f);
+		    // ImGui::SliderFloat("BloomAscale1", &m_config.bloomAscale1,
+		    // 0.0f, 1.0f); ImGui::SliderFloat("BloomAscale2",
+		    // &m_config.bloomAscale2, 0.0f, 1.0f);
+		    // ImGui::SliderFloat("BloomBscale1", &m_config.bloomBscale1,
+		    // 0.0f, 1.0f); ImGui::SliderFloat("BloomBscale2",
+		    // &m_config.bloomBscale2, 0.0f, 1.0f);
 
-			// if (changed)
-			//	applyImguiParameters();
+		    // if (changed)
+		    //	applyImguiParameters();
 
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-			            1000.0f / ImGui::GetIO().Framerate,
-			            ImGui::GetIO().Framerate);
-			ImGui::End();
+		    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+		                1000.0f / ImGui::GetIO().Framerate,
+		                ImGui::GetIO().Framerate);
+		    ImGui::End();
 		}
 		//*/
 	}
 
 	ImGui::Render();
 
-	 vk::ImageMemoryBarrier barrier;
-	 barrier.image = m_highlightColorAttachmentTexture;
-	 barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	 barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	 barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	 barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	 barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	 barrier.subresourceRange.baseMipLevel = 0;
-	 barrier.subresourceRange.levelCount = 1;
-	 barrier.subresourceRange.baseArrayLayer = 0;
-	 barrier.subresourceRange.layerCount = 1;
-	 barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	 barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	 cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	vk::ImageMemoryBarrier barrier;
+	barrier.image = m_highlightColorAttachmentTexture;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 	                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
 	                   barrier);
 
@@ -1642,9 +1643,9 @@ void ShaderBall::imgui(CommandBuffer& cb)
 	vk::SubpassEndInfo subpassEndInfo2;
 	cb.endRenderPass2(subpassEndInfo2);
 
-	 barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-	 barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	 cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 	                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
 	                   barrier);
 }
@@ -1695,8 +1696,8 @@ void ShaderBall::standaloneDraw()
 	        .get_transposed();
 	m_config.viewPos = cameraTr.position;
 
-	//m_config.copyTo(m_matricesUBO.map());
-	//m_matricesUBO.unmap();
+	// m_config.copyTo(m_matricesUBO.map());
+	// m_matricesUBO.unmap();
 
 	m_bunnySceneObject->transform.position = { 0, 0, -20 };
 	m_bunnySceneObject->transform.scale = { 6, 6, 6 };
