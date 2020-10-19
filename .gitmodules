@@ -1,15 +1,15 @@
 [submodule "third_party/imgui"]
-	path = third_party/imgui
-	url = https://github.com/ocornut/imgui.git
+    path = third_party/imgui
+    url = https://github.com/ocornut/imgui.git
 [submodule "external/glfw"]
-	path = external/glfw
-	url = https://github.com/glfw/glfw.git
+    path = external/glfw
+    url = https://github.com/glfw/glfw.git
 [submodule "external/assimp"]
-	path = external/assimp
-	url = https://github.com/assimp/assimp.git
+    path = external/assimp
+    url = https://github.com/assimp/assimp.git
 [submodule "external/shaderc"]
-	path = external/shaderc
-	url = https://github.com/google/shaderc.git
+    path = external/shaderc
+    url = https://github.com/google/shaderc.git
 [submodule "external/ShaderWriter"]
-	path = external/ShaderWriter
-	url = https://github.com/DragonJoker/ShaderWriter.git
+    path = external/ShaderWriter
+    url = https://github.com/DragonJoker/ShaderWriter.git

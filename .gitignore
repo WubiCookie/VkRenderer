@@ -2,6 +2,7 @@ build/
 build-shaderc/
 assimp-build/
 glfw-build/
+bin/
 
 *.exe
 *.log
