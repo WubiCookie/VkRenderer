@@ -106,14 +106,10 @@ class ShaderBall final
 	SceneObject* m_bunnySceneObject2;
 	SceneObject* m_bunnySceneObject3;
 
-	std::vector<ShaderBallMesh> m_meshes;
-	// std::vector<Vertex> vertices;
-	// std::vector<uint32_t> indices;
-
 	// Buffer m_vertexBuffer;
 	// Buffer m_indexBuffer;
-	Buffer m_matricesUBO;
-	Buffer m_materialUBO;
+	//Buffer m_matricesUBO;
+	//Buffer m_materialUBO;
 
 	Texture2D m_equirectangularTexture;
 

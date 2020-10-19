@@ -136,7 +136,10 @@ void Scene::removeSceneObject(SceneObject& sceneObject)
 	               });
 }
 
-void Scene::draw(CommandBuffer& cb, VkRenderPass renderPass) {}
+void Scene::draw(CommandBuffer& cb, VkRenderPass renderPass)
+{
+
+}
 
 // sdw::Ubo Scene::buildSceneUbo(sdw::ShaderWriter& writer, uint32_t binding,
 //                              uint32_t set)

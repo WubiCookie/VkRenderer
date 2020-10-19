@@ -239,8 +239,8 @@ int main()
 		// rw.present();
 
 		//Mandelbulb mandelbulb(rw);
-		//ShaderBall shaderBall(rw);
-		LightTransport lightTransport(rw);
+		ShaderBall shaderBall(rw);
+		//LightTransport lightTransport(rw);
 
 		auto start = std::chrono::steady_clock::now();
 		auto end = std::chrono::steady_clock::now();
@@ -361,7 +361,7 @@ int main()
 
 			rw.pollEvents();
 
-			/*
+			//*
 			shaderBall.cameraTr.rotation =
 			    quaternion(vector3(0, 1, 0), degree(rotationX)) *
 			    quaternion(vector3(1, 0, 0), degree(rotationY));
@@ -398,8 +398,8 @@ int main()
 			// vk.resetFence(fence.get());
 
 			// mandelbulb.standaloneDraw();
-			// shaderBall.standaloneDraw();
-			lightTransport.standaloneDraw();
+			 shaderBall.standaloneDraw();
+			//lightTransport.standaloneDraw();
 
 			// rw.acquireNextImage(fence.get());
 

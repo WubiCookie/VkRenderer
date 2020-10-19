@@ -949,6 +949,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region UBO
+	/*
 	m_matricesUBO = Buffer(
 	    rw, sizeof(m_config), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
@@ -994,6 +995,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	uboWrite.pBufferInfo = &setBufferInfo;
 
 	vk.updateDescriptorSets(uboWrite);
+	//*/
 #pragma endregion
 
 #pragma region equirectangularHDR
@@ -1411,16 +1413,6 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
 		                     0, m_descriptorSet);
 
-		for (uint32_t i = 0; i < m_meshes.size(); i++)
-		{
-			auto& mesh = m_meshes[i];
-			cb.pushConstants(m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-			                 &mesh.materialData);
-			mesh.draw(cb);
-		}
-
-		// m_bunnyPipeline.bindPipeline(cb);
-
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
@@ -1532,6 +1524,7 @@ void ShaderBall::imgui(CommandBuffer& cb)
 		static float f = 0.0f;
 		static int counter = 0;
 
+		/*
 		if (m_lastSelectedHighlightID < m_meshes.size() &&
 		    m_showMaterialWindow)
 		{
@@ -1605,6 +1598,7 @@ void ShaderBall::imgui(CommandBuffer& cb)
 			            ImGui::GetIO().Framerate);
 			ImGui::End();
 		}
+		//*/
 	}
 
 	ImGui::Render();
@@ -1701,8 +1695,8 @@ void ShaderBall::standaloneDraw()
 	        .get_transposed();
 	m_config.viewPos = cameraTr.position;
 
-	m_config.copyTo(m_matricesUBO.map());
-	m_matricesUBO.unmap();
+	//m_config.copyTo(m_matricesUBO.map());
+	//m_matricesUBO.unmap();
 
 	m_bunnySceneObject->transform.position = { 0, 0, -20 };
 	m_bunnySceneObject->transform.scale = { 6, 6, 6 };
