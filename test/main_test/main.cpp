@@ -160,7 +160,7 @@ int main()
 	/*
 	int w, h, c;
 	float* imageData = stbi_loadf(
-	    "D:/Projects/git/VkRenderer-data/PaperMill_Ruins_E/"
+	    "../resources/PaperMill_Ruins_E/"
 	    "PaperMill_E_3k.hdr",
 	    &w, &h, &c, 4);
 

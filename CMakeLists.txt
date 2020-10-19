@@ -4,15 +4,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(VkRenderer)
 
-unset(PROJECTS_BINARIES_OUTPUT_DIR)
-
-list(APPEND CMAKE_MODULE_PATH ${GLFW3_PATH})
-list(APPEND CMAKE_MODULE_PATH ${ASSIMP_PATH})
-
 find_package(Vulkan REQUIRED)
-# find_package(glfw3 REQUIRED)
-# find_package(Assimp REQUIRED)
-# find_package(ShaderWriter REQUIRED)
 
 set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "")
 set(ASSIMP_INSTALL OFF CACHE BOOL "")
@@ -39,20 +31,6 @@ message("                     GLFW                     ")
 message("==============================================")
 set(GLFW_DIR "external/glfw")
 add_subdirectory(${GLFW_DIR})
-# set(IMGUI_FILES
-#   ${IMGUI_DIR}/imconfig.h
-#   ${IMGUI_DIR}/imgui.h
-#   ${IMGUI_DIR}/examples/imgui_impl_glfw.cpp
-#   src/VkRenderer/my_imgui_impl_vulkan.cpp
-#   src/VkRenderer/my_imgui_impl_vulkan.h
-#   ${IMGUI_DIR}/imgui.cpp
-#   ${IMGUI_DIR}/imgui_draw.cpp
-#   ${IMGUI_DIR}/imgui_demo.cpp
-#   ${IMGUI_DIR}/imgui_widgets.cpp
-# )
-
-# set(SHADERC_LIBRARY_DIR "" CACHE PATH "Path to shaderc library directory (folder containing shaderc_combined.lib)")
-# set(SHADERC_INCLUDE_DIR "" CACHE PATH "Path to shaderc include directory (folder containing shaderc/shaderc.h)")
 
 message("==============================================")
 message("                    Assimp                    ")
@@ -121,7 +99,21 @@ set_target_properties(glfw PROPERTIES FOLDER "Third Party/GLFW3")
 # set_target_properties(glslangValidator PROPERTIES FOLDER "Third Party/tools")
 
 # set_target_properties(add-copyright PROPERTIES FOLDER "Third Party")
+#set_target_properties(assimp PROPERTIES FOLDER "Third Party" COMPILE_OPTIONS "/WX- /MP /bigobj")
+#get_target_property(ASSIMP_COMPILE_OPTIONS assimp COMPILE_OPTIONS)
+#list(REMOVE_ITEM ASSIMP_COMPILE_OPTIONS "/WX")
+#set_target_properties(assimp PROPERTIES FOLDER "Third Party" COMPILE_OPTIONS "${ASSIMP_COMPILE_OPTIONS}")
 set_target_properties(assimp PROPERTIES FOLDER "Third Party")
+if(MSVC)
+    target_compile_options(assimp PUBLIC /WX-)
+endif()
+#message("${ASSIMP_COMPILE_OPTIONS}")
+#message("${ASSIMP_COMPILE_OPTIONS}")
+##set_target_properties(assimp PROPERTIES FOLDER "Third Party" COMPILE_OPTIONS "/WX-;${ASSIMP_COMPILE_OPTIONS};/WX-;")
+#get_target_property(ASSIMP_COMPILE_OPTIONS assimp COMPILE_OPTIONS)
+#message("${ASSIMP_COMPILE_OPTIONS}")
+#target_compile_options(assimp PUBLIC "/WX-")
+#target_compile_options(assimp BEFORE PUBLIC /WX-)
 # set_target_properties(build-version PROPERTIES FOLDER "Third Party")
 # set_target_properties(check-copyright PROPERTIES FOLDER "Third Party")
 # set_target_properties(core_tables PROPERTIES FOLDER "Third Party")
@@ -308,6 +300,10 @@ if(MSVC)
     target_compile_options(MainTest PUBLIC "/MP")
 endif()
 
-unset(PROJECTS_BINARIES_OUTPUT_DIR)
-
 add_compile_definitions(_AMD64_)
+
+#file(DOWNLOAD sftp://c.seizilles@sirius.isart.lan:10022/JeuVideo/P_CLASSE/MGP_2021/4_Partage_Classe/bunny-skyboxHDR.7z "${CMAKE_CURRENT_LIST_DIR}/resources/bunny-skyboxHDR.tar")
+#execute_process(
+#    COMMAND ${CMAKE_COMMAND} -E tar xzf "${CMAKE_CURRENT_LIST_DIR}/resources/bunny-skyboxHDR.tar"
+#    WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/resources/"
+#)

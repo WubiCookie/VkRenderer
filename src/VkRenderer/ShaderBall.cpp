@@ -434,7 +434,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region bunny mesh
 	const aiScene* bunnyScene = importer.ReadFile(
-	    "D:/Projects/git/VkRenderer-data/bunny.obj",
+	    "../resources/bunny.obj",
 	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
 	        aiProcess_CalcTangentSpace);
 
@@ -504,7 +504,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region assimp
 	// const aiScene* scene = importer.ReadFile(
-	//    "D:/Projects/git/VkRenderer-data/ShaderBall.fbx",
+	//    "../resources/ShaderBall.fbx",
 	//    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
 	//        aiProcess_CalcTangentSpace);
 
@@ -1001,11 +1001,11 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma region equirectangularHDR
 	int w, h, c;
 	float* imageData = stbi_loadf(
-	    "D:/Projects/git/VkRenderer-data/PaperMill_Ruins_E/"
+	    "../resources/PaperMill_Ruins_E/"
 	    "PaperMill_E_3k.hdr",
-	    //"D:/Projects/git/VkRenderer-data/Milkyway/"
+	    //"../resources/Milkyway/"
 	    //"Milkyway_small.hdr",
-	    //"D:/Projects/git/VkRenderer-data/UV-Testgrid/"
+	    //"../resources/UV-Testgrid/"
 	    //"testgrid.jpg",
 	    &w, &h, &c, 4);
 
@@ -1257,7 +1257,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		}
 	};
 
-	std::string resourcePath = "D:/Projects/git/VkRenderer-data/";
+	std::string resourcePath = "../resources/";
 	// resourcePath += "Metal007_4K-JPG/";
 	// resourcePath += "Marble009_8K-JPG/";
 	resourcePath += "Leather011_8K-JPG/";
@@ -1265,7 +1265,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	// resourcePath += "Chip001_4K-JPG";
 
 	// updateTextureDescriptor(
-	//    "D:/Projects/git/VkRenderer-data/Marble009_2K-JPG/"
+	//    "../resources/Marble009_2K-JPG/"
 	//    "Marble009_2K_Color.jpg",
 	//    m_albedos, 1);
 	updateTextureDescriptor(resourcePath + "/Color.jpg", m_albedos, 1);
@@ -1276,15 +1276,15 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	updateTextureDescriptor(resourcePath + "/Roughness.jpg", m_roughnesses, 1);
 
 	updateTextureDescriptor(
-	    "D:/Projects/git/VkRenderer-data/MathieuMaurel ShaderBall "
+	    "../resources/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_INBALL.png",
 	    m_albedos, 2);
 	updateTextureDescriptor(
-	    "D:/Projects/git/VkRenderer-data/MathieuMaurel ShaderBall "
+	    "../resources/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_REPERE.png",
 	    m_albedos, 8);
 	updateTextureDescriptor(
-	    "D:/Projects/git/VkRenderer-data/MathieuMaurel ShaderBall "
+	    "../resources/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_CYCLO.png",
 	    m_albedos, 9);
 	// m_meshes[9].materialData.uScale = 20.0f;
