@@ -136,9 +136,14 @@ void Scene::removeSceneObject(SceneObject& sceneObject)
 	               });
 }
 
-void Scene::draw(CommandBuffer& cb, VkRenderPass renderPass)
+void Scene::draw(CommandBuffer& cb, VkRenderPass renderPass,
+                 std::optional<VkViewport> viewport,
+                 std::optional<VkRect2D> scissor)
 {
-
+	for (auto& sceneObject : m_sceneObjects)
+	{
+		sceneObject->draw(cb, renderPass, viewport, scissor);
+	}
 }
 
 // sdw::Ubo Scene::buildSceneUbo(sdw::ShaderWriter& writer, uint32_t binding,

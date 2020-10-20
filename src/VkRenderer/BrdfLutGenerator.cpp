@@ -28,7 +28,7 @@ BrdfLutGenerator::BrdfLutGenerator(RenderWindow& renderWindow,
 {
 	auto& vk = rw.get().device();
 
-	vk.setLogActive();
+	LogRRID log(vk);
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
@@ -573,9 +573,10 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 
 	vk.wait(vk.graphicsQueue());
 
-	CommandBuffer cb(vk, rw.get().oneTimeCommandPool());
-	cb.begin();
-	cb.debugMarkerBegin("generate BRDF LUT", 0.2f, 0.8f, 0.8f);
+	//CommandBuffer cb(vk, rw.get().oneTimeCommandPool());
+	auto& frame = rw.get().getAvailableCommandBuffer();
+	frame.reset();
+	CommandBuffer& cb = frame.commandBuffer;
 
 	VkClearValue clearColor{};
 
@@ -594,26 +595,51 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 
 	vk::SubpassEndInfo subpassEndInfo;
 
-	cb.beginRenderPass2(rpInfo, subpassBeginInfo);
-
-	cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-	// cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
-	// 0,
-	//                     m_descriptorSet);
-	cb.bindVertexBuffer(m_vertexBuffer);
-	cb.draw(6);
-
-	cb.endRenderPass2(subpassEndInfo);
-
-	cb.debugMarkerEnd();
-	cb.end();
-	if (vk.queueSubmit(vk.graphicsQueue(), cb) != VK_SUCCESS)
+	constexpr size_t RowCount = 4;
+	constexpr size_t ColumnCount = 4;
+	std::vector<vk::Rect2D> scissors(RowCount * ColumnCount);
+	for (size_t y = 0; y < RowCount; y++)
 	{
-		std::cerr << "error: failed to submit imgui command buffer"
-		          << std::endl;
-		abort();
+		vk::Rect2D scissor;
+		scissor.extent.width = m_resolution / ColumnCount;
+		scissor.extent.height = m_resolution / RowCount;
+		scissor.offset.y = y * scissor.extent.height;
+
+		for (size_t x = 0; x < ColumnCount; x++)
+		{
+			scissor.offset.x = x * scissor.extent.width;
+
+			scissors[x + ColumnCount * y] = scissor;
+		}
 	}
-	vk.wait(vk.graphicsQueue());
+
+	for (const auto& scissor : scissors)
+	{
+		cb.begin();
+		cb.debugMarkerBegin("generate BRDF LUT", 0.2f, 0.8f, 0.8f);
+		rpInfo.renderArea = scissor;
+		cb.beginRenderPass2(rpInfo, subpassBeginInfo);
+
+		cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+		// cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
+		// m_pipelineLayout, 0,
+		//                     m_descriptorSet);
+		cb.bindVertexBuffer(m_vertexBuffer);
+		cb.draw(6);
+
+		cb.endRenderPass2(subpassEndInfo);
+
+		cb.debugMarkerEnd();
+		cb.end();
+		if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+		{
+			std::cerr << "error: failed to submit imgui command buffer"
+			          << std::endl;
+			abort();
+		}
+		vk.wait(frame.fence);
+		frame.reset();
+	}
 
 	lut.transitionLayoutImmediate(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

@@ -217,6 +217,9 @@ public:
 	PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesNV GetPhysicalDeviceCooperativeMatrixPropertiesNV;
 	PFN_vkGetPhysicalDeviceExternalImageFormatPropertiesNV GetPhysicalDeviceExternalImageFormatPropertiesNV;
 	PFN_vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV;
+	
+	PFN_vkCmdSetCheckpointNV CmdSetCheckpointNV;
+	PFN_vkGetQueueCheckpointDataNV GetQueueCheckpointDataNV;
 
 	// PFN_vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX
 	// GetPhysicalDeviceGeneratedCommandsPropertiesNVX;
@@ -892,9 +895,6 @@ public:
 
 	PFN_vkCmdSetExclusiveScissorNV CmdSetExclusiveScissorNV = nullptr;
 
-	PFN_vkCmdSetCheckpointNV CmdSetCheckpointNV = nullptr;
-	PFN_vkGetQueueCheckpointDataNV GetQueueCheckpointDataNV = nullptr;
-
 	PFN_vkAcquirePerformanceConfigurationINTEL AcquirePerformanceConfigurationINTEL = nullptr;
 	PFN_vkCmdSetPerformanceMarkerINTEL CmdSetPerformanceMarkerINTEL = nullptr;
 	PFN_vkCmdSetPerformanceOverrideINTEL CmdSetPerformanceOverrideINTEL = nullptr;
@@ -1078,6 +1078,20 @@ public:
 
 	const VulkanDevice& device() const { return vkDevice.get(); }
 	double creationTime() const { return m_creationTime; }
+};
+
+class LogRRID
+{
+	std::reference_wrapper<const VulkanDevice> m_device;
+
+public:
+	LogRRID(const VulkanDevice& vulkanDevice);
+	LogRRID(const LogRRID&) = default;
+	LogRRID(LogRRID&&) = default;
+	~LogRRID();
+
+	LogRRID& operator=(const LogRRID&) = default;
+	LogRRID& operator=(LogRRID&&) = default;
 };
 }  // namespace cdm
 

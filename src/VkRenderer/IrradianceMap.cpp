@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <iostream>
 
 namespace cdm
 {
@@ -83,7 +84,7 @@ IrradianceMap::IrradianceMap(RenderWindow& renderWindow, uint32_t resolution,
 	m_irradianceMap = e2i.computeCubemap(equirectangularTexture);
 
 	std::filesystem::create_directory(cacheDirPath);
-
+	
 	std::string outFileName;
 	for (uint32_t layer = 0; layer < 6; layer++)
 	{

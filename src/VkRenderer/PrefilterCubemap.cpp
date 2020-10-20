@@ -40,7 +40,7 @@ PrefilterCubemap::PrefilterCubemap(RenderWindow& renderWindow,
 {
 	auto& vk = rw.get().device();
 
-	vk.setLogActive();
+	LogRRID log(vk);
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
@@ -122,7 +122,7 @@ PrefilterCubemap::PrefilterCubemap(RenderWindow& renderWindow,
 		writer.implementMain([&]() {
 			// fragPosition = inPosition;
 			fragPosition =
-			    vec3(inPosition.x(),  - inPosition.y(), inPosition.z());
+			    vec3(inPosition.x(), -inPosition.y(), inPosition.z());
 			out.vtx.position = matrix * vec4(inPosition, 1.0_f);
 		});
 
@@ -361,19 +361,30 @@ PrefilterCubemap::PrefilterCubemap(RenderWindow& renderWindow,
 	m_vertexBuffer = Buffer(
 	    rw, vertices.size() * sizeof(*vertices.data()),
 	    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	    // VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-	StagingBuffer verticesStagingBuffer(rw, vertices.data(), vertices.size());
+	// m_vertexBuffer.upload(vertices.data(), sizeof(*vertices.data()) *
+	// vertices.size())
+	m_vertexBuffer.upload(vertices.data(), vertices.size());
 
-	CommandBuffer copyCB(vk, rw.get().oneTimeCommandPool());
-	copyCB.begin();
-	copyCB.copyBuffer(verticesStagingBuffer, m_vertexBuffer,
-	                  sizeof(*vertices.data()) * vertices.size());
-	copyCB.end();
+	// StagingBuffer verticesStagingBuffer(rw, vertices.data(),
+	// vertices.size());
 
-	if (vk.queueSubmit(vk.graphicsQueue(), copyCB.get()) != VK_SUCCESS)
-		throw std::runtime_error("could not copy vertex buffer");
-	vk.wait(vk.graphicsQueue());
+	////CommandBuffer copyCB(vk, rw.get().oneTimeCommandPool());
+	// auto& frame = rw.get().getAvailableCommandBuffer();
+	// CommandBuffer& copyCB = frame.commandBuffer;
+	// frame.reset();
+
+	// copyCB.begin();
+	// copyCB.copyBuffer(verticesStagingBuffer, m_vertexBuffer,
+	//                  sizeof(*vertices.data()) * vertices.size());
+	// copyCB.end();
+
+	// if (vk.queueSubmit(vk.graphicsQueue(), copyCB.get()) != VK_SUCCESS)
+	//	throw std::runtime_error("could not copy vertex buffer");
+	// vk.wait(vk.graphicsQueue());
+	// frame.reset();
 #pragma endregion
 
 #pragma region descriptor pool
@@ -649,9 +660,9 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 			VkImageSubresourceRange range{};
 			range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			range.baseArrayLayer = layer;
-			//range.baseArrayLayer = 0;
+			// range.baseArrayLayer = 0;
 			range.baseMipLevel = mipLevel;
-			//range.layerCount = 6;
+			// range.layerCount = 6;
 			range.layerCount = 1;
 			range.levelCount = 1;
 			imageViews.emplace_back(cubemap.createView2D(range));
@@ -660,7 +671,8 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 			                   std::to_string(mipLevel) + ")";
 			vk.debugMarkerSetObjectName(
 			    imageViews.back().get(),
-			    VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, name);
+			    // VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT,
+			    name);
 
 			framebufferInfo.width = m_cubemapWidth * std::pow(0.5, mipLevel);
 			framebufferInfo.height = m_cubemapWidth * std::pow(0.5, mipLevel);
@@ -670,7 +682,8 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 			       ") mipLevel(" + std::to_string(mipLevel) + ")";
 			vk.debugMarkerSetObjectName(
 			    framebuffers[layer].back().get(),
-			    VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, name);
+			    // VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT,
+			    name);
 
 			if (!framebuffers[layer].back())
 			{
@@ -680,65 +693,13 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 			}
 		}
 	}
-
-	// framebufferInfo.pAttachments = &cubemap.viewFace0();
-	// UniqueFramebuffer framebuffer0 = vk.create(framebufferInfo);
-	// if (!framebuffer0)
-	//{
-	//	std::cerr << "error: failed to create framebuffer" << std::endl;
-	//	abort();
-	//}
-	//
-	// framebufferInfo.pAttachments = &cubemap.viewFace1();
-	// UniqueFramebuffer framebuffer1 = vk.create(framebufferInfo);
-	// if (!framebuffer1)
-	//{
-	//	std::cerr << "error: failed to create framebuffer" << std::endl;
-	//	abort();
-	//}
-	//
-	// framebufferInfo.pAttachments = &cubemap.viewFace2();
-	// UniqueFramebuffer framebuffer2 = vk.create(framebufferInfo);
-	// if (!framebuffer2)
-	//{
-	//	std::cerr << "error: failed to create framebuffer" << std::endl;
-	//	abort();
-	//}
-	//
-	// framebufferInfo.pAttachments = &cubemap.viewFace3();
-	// UniqueFramebuffer framebuffer3 = vk.create(framebufferInfo);
-	// if (!framebuffer3)
-	//{
-	//	std::cerr << "error: failed to create framebuffer" << std::endl;
-	//	abort();
-	//}
-	//
-	// framebufferInfo.pAttachments = &cubemap.viewFace4();
-	// UniqueFramebuffer framebuffer4 = vk.create(framebufferInfo);
-	// if (!framebuffer4)
-	//{
-	//	std::cerr << "error: failed to create framebuffer" << std::endl;
-	//	abort();
-	//}
-	//
-	// framebufferInfo.pAttachments = &cubemap.viewFace5();
-	// UniqueFramebuffer framebuffer5 = vk.create(framebufferInfo);
-	// if (!framebuffer5)
-	//{
-	//	std::cerr << "error: failed to create framebuffer" << std::endl;
-	//	abort();
-	//}
-	//
-	// std::array framebuffers{ std::ref(framebuffer0), std::ref(framebuffer1),
-	//	                     std::ref(framebuffer2), std::ref(framebuffer3),
-	//	                     std::ref(framebuffer4), std::ref(framebuffer5) };
 #pragma endregion
 
 	vk.wait(vk.graphicsQueue());
 
-	CommandBuffer cb(vk, rw.get().oneTimeCommandPool());
-	cb.begin();
-	cb.debugMarkerBegin("prefilter cubemap", 0.8f, 0.8f, 0.2f);
+	auto& frame = rw.get().getAvailableCommandBuffer();
+	frame.reset();
+	CommandBuffer& cb = frame.commandBuffer;
 
 	matrix4 proj = matrix4::perspective(90_deg, 1.0f, 0.1f, 10.0f);
 
@@ -751,68 +712,141 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 		matrix4::look_at({ 0, 0, 0 }, { 0, 0, -1 }, { 0, -1, 0 })
 	};
 
-	PrefilterCubemapPushConstant pc;
+	// PrefilterCubemapPushConstant pc;
 
-	vk::RenderPassBeginInfo rpInfo;
-	rpInfo.renderPass = m_renderPass;
-	rpInfo.renderArea.extent.width = m_cubemapWidth;
-	rpInfo.renderArea.extent.height = m_cubemapWidth;
+	// vk::RenderPassBeginInfo rpInfo;
 
 	vk::SubpassBeginInfo subpassBeginInfo;
 	subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
 
 	vk::SubpassEndInfo subpassEndInfo;
 
+	std::vector<matrix4> mvps(6);
+	for (uint32_t i = 0; i < 6; i++)
+	{
+		mvps[i] = proj * views[i];
+		mvps[i].transpose();
+	}
+
+	std::vector<vk::Viewport> viewports(m_mipLevels);
+	std::vector<std::array<vk::RenderPassBeginInfo, 6>> rpInfos(m_mipLevels);
+	std::vector<std::array<PrefilterCubemapPushConstant, 6>> pcs(m_mipLevels);
+	for (uint32_t i = 0; i < m_mipLevels; i++)
+	{
+		uint32_t mipWidth = m_cubemapWidth * std::pow(0.5, i);
+		uint32_t mipHeight = m_cubemapWidth * std::pow(0.5, i);
+
+		for (uint32_t j = 0; j < 6; j++)
+		{
+			rpInfos[i][j].renderPass = m_renderPass;
+			rpInfos[i][j].renderArea.extent.width = mipWidth;
+			rpInfos[i][j].renderArea.extent.height = mipHeight;
+			rpInfos[i][j].framebuffer = framebuffers[j][i];
+
+			pcs[i][j].roughness = float(i) / float(m_mipLevels - 1);
+			pcs[i][j].matrix = mvps[j];
+		}
+
+		viewports[i].width = float(mipWidth);
+		viewports[i].height = float(mipHeight);
+		viewports[i].minDepth = 0.0f;
+		viewports[i].maxDepth = 1.0f;
+	}
+
 	for (uint32_t mipLevel = 0; mipLevel < m_mipLevels; mipLevel++)
 	{
-		uint32_t mipWidth = m_cubemapWidth * std::pow(0.5, mipLevel);
-		uint32_t mipHeight = m_cubemapWidth * std::pow(0.5, mipLevel);
-		rpInfo.renderArea.extent.width = mipWidth;
-		rpInfo.renderArea.extent.height = mipHeight;
-
-		VkViewport viewport{};
-		viewport.width = float(mipWidth);
-		viewport.height = float(mipHeight);
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		cb.setViewport(viewport);
-
-		pc.roughness = (float)mipLevel / (float)(m_mipLevels - 1);
-
-		for (uint32_t i = 0; i < 6; i++)
+		constexpr size_t RowCount = 4;
+		constexpr size_t ColumnCount = 4;
+		std::vector<vk::Rect2D> scissors(RowCount * ColumnCount);
+		for (size_t y = 0; y < RowCount; y++)
 		{
-			rpInfo.framebuffer = framebuffers[i][mipLevel];
+			vk::Rect2D scissor;
+			scissor.extent.width =
+			    m_cubemapWidth * std::pow(0.5, mipLevel) / ColumnCount;
+			scissor.extent.height =
+			    m_cubemapWidth * std::pow(0.5, mipLevel) / RowCount;
+			scissor.offset.y = y * scissor.extent.height;
 
-			cb.beginRenderPass2(rpInfo, subpassBeginInfo);
+			for (size_t x = 0; x < ColumnCount; x++)
+			{
+				scissor.offset.x = x * scissor.extent.width;
+
+				scissors[x + ColumnCount * y] = scissor;
+			}
+		}
+
+		for (const auto& scissor : scissors)
+		{
+			cb.begin();
+			cb.debugMarkerBegin("prefilter cubemap", 0.8f, 0.8f, 0.2f);
 
 			cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 			cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
 			                     m_pipelineLayout, 0, m_descriptorSet);
 			cb.bindVertexBuffer(m_vertexBuffer);
 
-			pc.matrix = proj * views[i];
-			pc.matrix.transpose();
+			// uint32_t mipWidth = m_cubemapWidth * std::pow(0.5, mipLevel);
+			// uint32_t mipHeight = m_cubemapWidth * std::pow(0.5, mipLevel);
+			// rpInfo.renderArea.extent.width = mipWidth;
+			// rpInfo.renderArea.extent.height = mipHeight;
 
-			cb.pushConstants(
-			    m_pipelineLayout,
-			    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-			    &pc);
-			cb.draw(36);
+			// VkViewport viewport{};
+			// viewport.width = float(mipWidth);
+			// viewport.height = float(mipHeight);
+			// viewport.minDepth = 0.0f;
+			// viewport.maxDepth = 1.0f;
 
-			cb.endRenderPass2(subpassEndInfo);
+			cb.setViewport(viewports[mipLevel]);
+			// pc.roughness = (float)mipLevel / (float)(m_mipLevels - 1);
+
+			for (uint32_t i = 0; i < 6; i++)
+			{
+				// rpInfo.framebuffer = framebuffers[i][mipLevel];
+
+				rpInfos[mipLevel][i].renderArea = scissor;
+
+				// cb.beginRenderPass2(rpInfos[mipLevel][i], subpassBeginInfo);
+				cb.beginRenderPass(rpInfos[mipLevel][i]);
+
+				// pc.matrix = mvps[i];
+				// pc.matrix.transpose();
+
+				cb.pushConstants(
+				    m_pipelineLayout,
+				    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				    0, &pcs[mipLevel][i]);
+				cb.draw(36);
+
+				// cb.endRenderPass2(subpassEndInfo);
+				cb.endRenderPass();
+			}
+
+			cb.debugMarkerEnd();
+			cb.end();
+
+			if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) !=
+			    VK_SUCCESS)
+			{
+				std::cerr << "error: failed to submit imgui command buffer"
+				          << std::endl;
+				abort();
+			}
+			vk.wait(frame.fence);
+			frame.reset();
 		}
 	}
 
-	cb.debugMarkerEnd();
-	cb.end();
-	if (vk.queueSubmit(vk.graphicsQueue(), cb) != VK_SUCCESS)
-	{
-		std::cerr << "error: failed to submit imgui command buffer"
-		          << std::endl;
-		abort();
-	}
-	vk.wait(vk.graphicsQueue());
+	// cb.debugMarkerEnd();
+	// cb.end();
+
+	// if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+	//{
+	//	std::cerr << "error: failed to submit imgui command buffer"
+	//	          << std::endl;
+	//	abort();
+	//}
+	// vk.wait(frame.fence);
+	// frame.reset();
 
 	cubemap.generateMipmapsImmediate(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

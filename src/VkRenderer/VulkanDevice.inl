@@ -5,7 +5,7 @@
 namespace cdm
 {
 template <typename VkHandle>
-VkResult VulkanDevice::debugMarkerSetObjectName(
+VkResult VulkanDeviceDestroyer::debugMarkerSetObjectName(
     VkHandle object, VkDebugReportObjectTypeEXT objectType,
     std::string_view objectName) const
 {
@@ -18,7 +18,7 @@ VkResult VulkanDevice::debugMarkerSetObjectName(
 }
 
 template <typename VkHandle, typename T>
-VkResult VulkanDevice::debugMarkerSetObjectTag(
+VkResult VulkanDeviceDestroyer::debugMarkerSetObjectTag(
     VkHandle object, VkDebugReportObjectTypeEXT objectType, uint64_t tagName,
     const T& tag) const
 {

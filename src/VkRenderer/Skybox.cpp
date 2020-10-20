@@ -36,7 +36,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 {
 	auto& vk = rw.get().device();
 
-	vk.setLogActive();
+	LogRRID log(vk);
 
 #define Locale(name, value) auto name = writer.declLocale(#name, value);
 #define FLOAT(name) auto name = writer.declLocale<Float>(#name);

@@ -145,7 +145,6 @@ int main()
 	RenderWindow rw(1280, 720, true);
 
 	auto& vk = rw.device();
-	vk.setLogActive();
 
 	// BrdfLut lut(rw, 1024, "brdfLut.hdr");
 
@@ -419,5 +418,4 @@ int main()
 		vk.wait();
 	}
 
-	vk.setLogInactive();
 }

@@ -68,7 +68,9 @@ public:
 
 	void removeSceneObject(SceneObject& sceneObject);
 
-	void draw(CommandBuffer& cb, VkRenderPass renderPass);
+	void draw(CommandBuffer& cb, VkRenderPass renderPass,
+	          std::optional<VkViewport> viewport = std::nullopt,
+	          std::optional<VkRect2D> scissor = std::nullopt);
 
 	class SceneUbo : private sdw::Ubo
 	{

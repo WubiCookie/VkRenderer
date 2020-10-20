@@ -38,7 +38,7 @@ EquirectangularToCubemap::EquirectangularToCubemap(RenderWindow& renderWindow,
 {
 	auto& vk = rw.get().device();
 
-	vk.setLogActive();
+	LogRRID log(vk);
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
@@ -559,7 +559,10 @@ Cubemap EquirectangularToCubemap::computeCubemap(
 
 	vk.wait(vk.graphicsQueue());
 
-	CommandBuffer cb(vk, rw.get().oneTimeCommandPool());
+	auto& frame = rw.get().getAvailableCommandBuffer();
+	frame.reset();
+	CommandBuffer& cb = frame.commandBuffer;
+
 	cb.begin();
 	cb.debugMarkerBegin("render cubemap", 0.2f, 0.4f, 1.0f);
 
@@ -614,13 +617,14 @@ Cubemap EquirectangularToCubemap::computeCubemap(
 
 	cb.debugMarkerEnd();
 	cb.end();
-	if (vk.queueSubmit(vk.graphicsQueue(), cb) != VK_SUCCESS)
+	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
 	{
 		std::cerr << "error: failed to submit imgui command buffer"
 		          << std::endl;
 		abort();
 	}
-	vk.wait(vk.graphicsQueue());
+	vk.wait(frame.fence);
+	frame.reset();
 
 	cubemap.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

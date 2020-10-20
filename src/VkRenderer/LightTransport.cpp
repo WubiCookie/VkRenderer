@@ -75,7 +75,7 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 {
 	auto& vk = rw.get().device();
 
-	vk.setLogActive();
+	LogRRID log(vk);
 
 	// m_config.spherePos.x = 67.0f;
 	// m_config.spherePos.y = 357.0f;
@@ -95,8 +95,6 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 	createImages();
 	createFramebuffers();
 	updateDescriptorSets();
-
-	vk.setLogInactive();
 
 	/*
 	auto& frame = rw.get().getAvailableCommandBuffer();

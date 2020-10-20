@@ -173,7 +173,10 @@ void Cubemap::transitionLayoutImmediate(VkImageLayout oldLayout,
 
 	auto& vk = rw.get()->device();
 
-	CommandBuffer transitionCB(vk, rw.get()->commandPool());
+	// CommandBuffer transitionCB(vk, rw.get()->commandPool());
+	auto& frame = rw.get()->getAvailableCommandBuffer();
+	frame.reset();
+	CommandBuffer& transitionCB = frame.commandBuffer;
 
 	transitionCB.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	vk::ImageMemoryBarrier barrier;
@@ -189,16 +192,27 @@ void Cubemap::transitionLayoutImmediate(VkImageLayout oldLayout,
 	barrier.subresourceRange.layerCount = 6;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = 0;
-	transitionCB.pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-	                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-	                             VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
+	transitionCB.pipelineBarrier(  // VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                               // VK_PIPELINE_STAGE_TRANSFER_BIT,
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+	    // VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
+	    0,
+	    // VK_DEPENDENCY_BY_REGION_BIT,
+	    barrier);
 	if (transitionCB.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record transition command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), transitionCB.get()) != VK_SUCCESS)
-		throw std::runtime_error("failed to submit transition command buffer");
+	VkResult submitRes =
+	    vk.queueSubmit(vk.graphicsQueue(), transitionCB.get(), frame.fence);
+	if (submitRes != VK_SUCCESS)
+		throw std::runtime_error(
+		    std::string("failed to submit transition command buffer ") +
+		    std::string(vk::result_to_string(submitRes)));
 
-	vk.wait(vk.graphicsQueue());
+	// vk.wait(vk.graphicsQueue());
+	vk.wait(frame.fence);
+	frame.reset();
 }
 
 void Cubemap::generateMipmapsImmediate(VkImageLayout currentLayout)
@@ -216,7 +230,10 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 
 	auto& vk = rw.get()->device();
 
-	CommandBuffer mipmapCB(vk, rw.get()->commandPool());
+	// CommandBuffer mipmapCB(vk, rw.get()->commandPool());
+	auto& frame = rw.get()->getAvailableCommandBuffer();
+	frame.reset();
+	CommandBuffer& mipmapCB = frame.commandBuffer;
 
 	mipmapCB.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	mipmapCB.debugMarkerBegin("mipmap generation");
@@ -231,10 +248,15 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 6;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	mipmapCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-	                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
+	// barrier.srcAccessMask = 0;
+	barrier.dstAccessMask =
+	    VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+	barrier.srcAccessMask = 0;
+	// barrier.dstAccessMask = 0;
+	mipmapCB.pipelineBarrier(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+	                         VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                         // VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	                         0, barrier);
 
 	int32_t mipWidth = int32_t(m_width);
 	int32_t mipHeight = int32_t(m_height);
@@ -244,8 +266,10 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 		barrier.subresourceRange.baseMipLevel = i;
 		barrier.oldLayout = initialLayout;
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.srcAccessMask =
+		    VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+		barrier.dstAccessMask =
+		    VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
 		mipmapCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
 		                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
@@ -271,11 +295,12 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrier.newLayout = finalLayout;
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.srcAccessMask =
+		    VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+		barrier.dstAccessMask =
+		    VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
 		mipmapCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-		                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-		                         barrier);
+		                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 		if (mipWidth > 1)
 			mipWidth /= 2;
@@ -286,20 +311,27 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	barrier.newLayout = finalLayout;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	barrier.srcAccessMask =
+	    VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+	// barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	// barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
 	mipmapCB.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-	                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-	                         barrier);
+	                         // VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+	                         // VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+	                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, barrier);
 
 	mipmapCB.debugMarkerEnd();
 	if (mipmapCB.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record mipmap command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), mipmapCB.get()) != VK_SUCCESS)
+	if (vk.queueSubmit(vk.graphicsQueue(), mipmapCB.get(), frame.fence) !=
+	    VK_SUCCESS)
 		throw std::runtime_error("failed to submit mipmap command buffer");
 
-	vk.wait(vk.graphicsQueue());
+	// vk.wait(vk.graphicsQueue());
+	vk.wait(frame.fence);
+	frame.reset();
 }
 
 void Cubemap::uploadDataImmediate(const void* texels, size_t size,
@@ -322,7 +354,9 @@ void Cubemap::uploadDataImmediate(const void* texels, size_t size,
 
 	StagingBuffer stagingBuffer(*(rw.get()), texels, size);
 
-	CommandBuffer cb(vk, rw.get()->commandPool());
+	auto& frame = rw.get()->getAvailableCommandBuffer();
+	frame.reset();
+	CommandBuffer& cb = frame.commandBuffer;
 
 	cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -355,10 +389,13 @@ void Cubemap::uploadDataImmediate(const void* texels, size_t size,
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
+	if (vk.queueSubmit(vk.graphicsQueue(), cb.get(), frame.fence) !=
+	    VK_SUCCESS)
 		throw std::runtime_error("failed to submit upload command buffer");
 
-	vk.wait(vk.graphicsQueue());
+	// vk.wait(vk.graphicsQueue());
+	vk.wait(frame.fence);
+	frame.reset();
 }
 
 Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
@@ -379,6 +416,8 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 
 	auto& vk = rw.get()->device();
 
+	LogRRID log(vk);
+
 	VkDeviceSize dataSize = size();
 
 	Buffer tmpBuffer(*(rw.get()), dataSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -396,7 +435,10 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 	copy.imageSubresource.layerCount = 1;
 	copy.imageSubresource.mipLevel = mipLevel;
 
-	CommandBuffer cb(vk, rw.get()->commandPool());
+	// CommandBuffer cb(vk, rw.get()->commandPool());
+	auto& frame = rw.get()->getAvailableCommandBuffer();
+	frame.reset();
+	CommandBuffer& cb = frame.commandBuffer;
 
 	cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -413,7 +455,7 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 	barrier.subresourceRange.layerCount = 1;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
 	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	cb.copyImageToBuffer(image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -424,15 +466,18 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 	barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 	barrier.dstAccessMask = 0;
 	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
+	                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, barrier);
 
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
+	if (vk.queueSubmit(vk.graphicsQueue(), cb.get(), frame.fence) !=
+	    VK_SUCCESS)
 		throw std::runtime_error("failed to submit upload command buffer");
 
-	vk.wait(vk.graphicsQueue());
+	// vk.wait(vk.graphicsQueue());
+	vk.wait(frame.fence);
+	frame.reset();
 
 	// return tmpBuffer.download();
 	return tmpBuffer;

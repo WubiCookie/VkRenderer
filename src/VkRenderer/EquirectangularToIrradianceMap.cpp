@@ -38,7 +38,7 @@ EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
 {
 	auto& vk = rw.get().device();
 
-	vk.setLogActive();
+	LogRRID log(vk);
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
@@ -493,7 +493,7 @@ EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
 #pragma endregion
 }
 
-EquirectangularToIrradianceMap::~EquirectangularToIrradianceMap() {}
+EquirectangularToIrradianceMap::~EquirectangularToIrradianceMap() = default;
 
 Cubemap EquirectangularToIrradianceMap::computeCubemap(
     Texture2D& equirectangularTexture)
@@ -589,75 +589,138 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 		abort();
 	}
 
-	std::array framebuffers{ std::ref(framebuffer0), std::ref(framebuffer1),
-		                     std::ref(framebuffer2), std::ref(framebuffer3),
-		                     std::ref(framebuffer4), std::ref(framebuffer5) };
+	std::array framebuffers{ framebuffer0.get(), framebuffer1.get(),
+		                     framebuffer2.get(), framebuffer3.get(),
+		                     framebuffer4.get(), framebuffer5.get() };
 #pragma endregion
 
-	vk.wait(vk.graphicsQueue());
-
-	CommandBuffer cb(vk, rw.get().oneTimeCommandPool());
-	cb.begin();
-	cb.debugMarkerBegin("render cubemap", 0.2f, 0.4f, 1.0f);
+	auto& frame = rw.get().getAvailableCommandBuffer();
+	auto& cb = frame.commandBuffer;
+	frame.reset();
 
 	matrix4 proj = matrix4::perspective(90_deg, 1.0f, 0.1f, 10.0f);
 
-	std::array views{
-		matrix4::look_at({ 0, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }),
-		matrix4::look_at({ 0, 0, 0 }, { -1, 0, 0 }, { 0, -1, 0 }),
-		matrix4::look_at({ 0, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }),
-		matrix4::look_at({ 0, 0, 0 }, { 0, -1, 0 }, { 0, 0, -1 }),
-		matrix4::look_at({ 0, 0, 0 }, { 0, 0, 1 }, { 0, -1, 0 }),
-		matrix4::look_at({ 0, 0, 0 }, { 0, 0, -1 }, { 0, -1, 0 })
+	//std::array views{
+	//	matrix4::look_at({ 0, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }),
+	//	matrix4::look_at({ 0, 0, 0 }, { -1, 0, 0 }, { 0, -1, 0 }),
+	//	matrix4::look_at({ 0, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }),
+	//	matrix4::look_at({ 0, 0, 0 }, { 0, -1, 0 }, { 0, 0, -1 }),
+	//	matrix4::look_at({ 0, 0, 0 }, { 0, 0, 1 }, { 0, -1, 0 }),
+	//	matrix4::look_at({ 0, 0, 0 }, { 0, 0, -1 }, { 0, -1, 0 })
+	//};
+	std::array mvps{
+		(proj * matrix4::look_at({ 0, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }) ).get_transposed(),
+		(proj * matrix4::look_at({ 0, 0, 0 }, { -1, 0, 0 }, { 0, -1, 0 })).get_transposed(),
+		(proj * matrix4::look_at({ 0, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 })  ).get_transposed(),
+		(proj * matrix4::look_at({ 0, 0, 0 }, { 0, -1, 0 }, { 0, 0, -1 })).get_transposed(),
+		(proj * matrix4::look_at({ 0, 0, 0 }, { 0, 0, 1 }, { 0, -1, 0 }) ).get_transposed(),
+		(proj * matrix4::look_at({ 0, 0, 0 }, { 0, 0, -1 }, { 0, -1, 0 })).get_transposed()
 	};
 
-	EquirectangularToIrradianceMapPushConstant pc;
-
-	VkClearValue clearColor{};
-
-	std::array clearValues = { clearColor };
-
-	vk::RenderPassBeginInfo rpInfo;
-	rpInfo.renderPass = m_renderPass;
-	rpInfo.renderArea.extent.width = m_resolution;
-	rpInfo.renderArea.extent.height = m_resolution;
-	rpInfo.clearValueCount = uint32_t(clearValues.size());
-	rpInfo.pClearValues = clearValues.data();
-
-	vk::SubpassBeginInfo subpassBeginInfo;
-	subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
-
-	vk::SubpassEndInfo subpassEndInfo;
-
-	for (uint32_t i = 0; i < 6; i++)
+	constexpr size_t RowCount = 4;
+	constexpr size_t ColumnCount = 4;
+	std::vector<vk::Rect2D> scissors(RowCount * ColumnCount);
+	for (size_t y = 0; y < RowCount; y++)
 	{
-		rpInfo.framebuffer = framebuffers[i].get();
+		vk::Rect2D scissor;
+		scissor.extent.width = m_resolution / ColumnCount;
+		scissor.extent.height = m_resolution / RowCount;
+		scissor.offset.y = y * scissor.extent.height;
 
-		cb.beginRenderPass2(rpInfo, subpassBeginInfo);
+		for (size_t x = 0; x < ColumnCount; x++)
+		{
+			scissor.offset.x = x * scissor.extent.width;
+
+			scissors[x + ColumnCount * y] = scissor;
+		}
+	}
+
+	//vk::SubpassBeginInfo subpassBeginInfo;
+	//subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
+
+	//vk::SubpassEndInfo subpassEndInfo;
+
+
+	for (const auto& scissor : scissors)
+	for (uint32_t i = 0; i < 6; i++)
+	//for (uint32_t i = 0; i < 1; i++)
+	{
+		std::cout << i << std::endl;
+
+		EquirectangularToIrradianceMapPushConstant pc;
+
+		VkClearValue clearColor{};
+
+		std::array clearValues = { clearColor };
+
+		vk::RenderPassBeginInfo rpInfo;
+		rpInfo.renderPass = m_renderPass;
+		//rpInfo.renderArea.extent.width = m_resolution;
+		//rpInfo.renderArea.extent.height = m_resolution;
+		rpInfo.renderArea = scissor;
+		rpInfo.clearValueCount = uint32_t(clearValues.size());
+		rpInfo.pClearValues = clearValues.data();
+		rpInfo.framebuffer = framebuffers[i];
+		//rpInfo.framebuffer = framebuffers[3];
+
+		cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+		cb.debugMarkerBegin("render cubemap", 0.2f, 0.4f, 1.0f);
+
+		//cb.beginRenderPass2(rpInfo, subpassBeginInfo);
+		cb.beginRenderPass(rpInfo);
 
 		cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 		cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
 		                     0, m_descriptorSet);
 		cb.bindVertexBuffer(m_vertexBuffer);
 
-		pc.matrix = proj * views[i];
-		pc.matrix.transpose();
+		//pc.matrix = proj * views[i];
+		//pc.matrix.transpose();
+		pc.matrix = mvps[i];
+		//pc.matrix = mvps[0];
 
 		cb.pushConstants(m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, &pc);
 		cb.draw(36);
 
-		cb.endRenderPass2(subpassEndInfo);
+		//cb.endRenderPass2(subpassEndInfo);
+		cb.endRenderPass();
+
+		cb.debugMarkerEnd();
+		cb.end();
+
+		if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+		{
+			std::cerr << "error: failed to submit imgui command buffer"
+			          << std::endl;
+			abort();
+		}
+		vk.wait(frame.fence);
+		frame.reset();
 	}
 
-	cb.debugMarkerEnd();
-	cb.end();
-	if (vk.queueSubmit(vk.graphicsQueue(), cb) != VK_SUCCESS)
-	{
-		std::cerr << "error: failed to submit imgui command buffer"
-		          << std::endl;
-		abort();
-	}
-	vk.wait(vk.graphicsQueue());
+	//vk::ImageMemoryBarrier barrier;
+	//barrier.image = cubemap.image();
+	//barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	//barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	//barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	//barrier.subresourceRange.baseMipLevel = 0;
+	//barrier.subresourceRange.levelCount = cubemap.mipLevels();
+	//barrier.subresourceRange.baseArrayLayer = 0;
+	//barrier.subresourceRange.layerCount = 6;
+	//barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	//barrier.dstAccessMask = 0;
+	//cb.pipelineBarrier(//VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+	//	VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	//                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	//                             //VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
+	//                             0,
+	//	//VK_DEPENDENCY_BY_REGION_BIT,
+	//	barrier);
+
+	
+	//frame.reset();
 
 	cubemap.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

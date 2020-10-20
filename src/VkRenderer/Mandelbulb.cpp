@@ -470,7 +470,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 {
 	auto& vk = rw.get().device();
 
-	vk.setLogActive();
+	LogRRID log(vk);
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
@@ -1237,8 +1237,6 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 		abort();
 	}
 #pragma endregion
-
-	vk.setLogInactive();
 }
 
 Mandelbulb::~Mandelbulb() {}

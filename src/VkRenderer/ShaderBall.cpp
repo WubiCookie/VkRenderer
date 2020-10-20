@@ -428,15 +428,15 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 {
 	auto& vk = rw.get().device();
 
-	vk.setLogActive();
+	LogRRID log(vk);
 
 	Assimp::Importer importer;
 
 #pragma region bunny mesh
 	const aiScene* bunnyScene = importer.ReadFile(
-	    "../resources/bunny.obj",
-	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
-	        aiProcess_CalcTangentSpace);
+	    "../resources/bunny.obj", aiProcess_Triangulate | aiProcess_FlipUVs |
+	                                  aiProcess_GenNormals |
+	                                  aiProcess_CalcTangentSpace);
 
 	if (!bunnyScene || bunnyScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
 	    !bunnyScene->mRootNode)
@@ -527,9 +527,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
-	// colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	 colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	//colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -538,8 +538,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	VkAttachmentDescription objectIDAttachment = {};
 	objectIDAttachment.format = VK_FORMAT_R32_UINT;
 	objectIDAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
-	objectIDAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	objectIDAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	 objectIDAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	//objectIDAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	objectIDAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	objectIDAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	objectIDAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	objectIDAttachment.initialLayout =
@@ -1000,14 +1001,11 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region equirectangularHDR
 	int w, h, c;
-	float* imageData = stbi_loadf(
-	    "../resources/PaperMill_Ruins_E/"
-	    "PaperMill_E_3k.hdr",
-	    //"../resources/Milkyway/"
-	    //"Milkyway_small.hdr",
-	    //"../resources/UV-Testgrid/"
-	    //"testgrid.jpg",
-	    &w, &h, &c, 4);
+	float* imageData =
+	    stbi_loadf("../resources/PaperMill_Ruins_E/PaperMill_E_3k.hdr",
+	               //"../resources/Milkyway/Milkyway_small.hdr",
+	               //"../resources/UV-Testgrid/testgrid.jpg",
+	               &w, &h, &c, 4);
 
 	if (!imageData)
 		throw std::runtime_error("could not load equirectangular map");
@@ -1052,13 +1050,13 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region cubemaps
 	{
-		EquirectangularToCubemap e2c(rw, 1024);
+		EquirectangularToCubemap e2c(rw, 2048);
 		m_environmentMap = e2c.computeCubemap(m_equirectangularTexture);
 
 		if (m_environmentMap.get() == nullptr)
 			throw std::runtime_error("could not create environmentMap");
 
-		m_irradianceMap = IrradianceMap(rw, 512, m_equirectangularTexture,
+		m_irradianceMap = IrradianceMap(rw, 2048, m_equirectangularTexture,
 		                                "PaperMill_E_irradiance.hdr");
 
 		if (m_irradianceMap.get() == nullptr)
@@ -1079,7 +1077,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		irradianceMapTextureWrite.dstSet = m_descriptorSet;
 		irradianceMapTextureWrite.pImageInfo = &irradianceMapImageInfo;
 
-		m_prefilteredMap = PrefilteredCubemap(rw, 1024, -1, m_environmentMap,
+		m_prefilteredMap = PrefilteredCubemap(rw, 2048, -1, m_environmentMap,
 		                                      "PaperMill_E_prefiltered.hdr");
 
 		if (m_prefilteredMap.get().get() == nullptr)
@@ -1100,7 +1098,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		prefilteredMapTextureWrite.dstSet = m_descriptorSet;
 		prefilteredMapTextureWrite.pImageInfo = &prefilteredMapImageInfo;
 
-		m_brdfLut = BrdfLut(rw, 128);
+		m_brdfLut = BrdfLut(rw, 1024);
 
 		if (m_brdfLut.get() == nullptr)
 			throw std::runtime_error("could not create brdfLut");
@@ -1410,9 +1408,10 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 
 		m_skybox->render(cb);
 
-		cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-		cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
-		                     0, m_descriptorSet);
+		// cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+		// cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
+		// m_pipelineLayout,
+		//                     0, m_descriptorSet);
 
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
@@ -1432,9 +1431,11 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		// m_bunnyPipeline.bindDescriptorSet(cb);
 		// m_bunnyPipeline.draw(cb);
 
-		m_bunnySceneObject->draw(cb, m_renderPass, viewport, scissor);
-		m_bunnySceneObject2->draw(cb, m_renderPass, viewport, scissor);
-		m_bunnySceneObject3->draw(cb, m_renderPass, viewport, scissor);
+		m_scene.draw(cb, m_renderPass, viewport, scissor);
+
+		// m_bunnySceneObject->draw(cb, m_renderPass, viewport, scissor);
+		// m_bunnySceneObject2->draw(cb, m_renderPass, viewport, scissor);
+		// m_bunnySceneObject3->draw(cb, m_renderPass, viewport, scissor);
 
 		cb.endRenderPass2(subpassEndInfo);
 	}
@@ -1615,8 +1616,10 @@ void ShaderBall::imgui(CommandBuffer& cb)
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+	                        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+	                        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 	                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
 	                   barrier);
@@ -1645,8 +1648,12 @@ void ShaderBall::imgui(CommandBuffer& cb)
 
 	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 	barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
+	cb.pipelineBarrier(
+		//VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+	                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 	                   barrier);
 }
 
