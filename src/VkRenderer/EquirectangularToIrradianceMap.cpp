@@ -1,6 +1,7 @@
 #include "EquirectangularToIrradianceMap.hpp"
 
 #include "CommandBuffer.hpp"
+#include "CommandBufferPool.hpp"
 #include "StagingBuffer.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>
@@ -594,10 +595,8 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 		                     framebuffer4.get(), framebuffer5.get() };
 #pragma endregion
 
-	auto& frame = rw.get().getAvailableCommandBuffer();
-	auto& cb = frame.commandBuffer;
-	frame.reset();
-
+	auto pool = CommandBufferPool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	
 	matrix4 proj = matrix4::perspective(90_deg, 1.0f, 0.1f, 10.0f);
 
 	//std::array views{
@@ -663,6 +662,9 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 		rpInfo.framebuffer = framebuffers[i];
 		//rpInfo.framebuffer = framebuffers[3];
 
+		auto& frame = pool.getAvailableCommandBuffer();
+		auto& cb = frame.commandBuffer;
+
 		cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 		cb.debugMarkerBegin("render cubemap", 0.2f, 0.4f, 1.0f);
 
@@ -688,14 +690,15 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 		cb.debugMarkerEnd();
 		cb.end();
 
-		if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+		//if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+		if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		{
 			std::cerr << "error: failed to submit imgui command buffer"
 			          << std::endl;
 			abort();
 		}
-		vk.wait(frame.fence);
-		frame.reset();
+		//vk.wait(frame.fence);
+		//frame.reset();
 	}
 
 	//vk::ImageMemoryBarrier barrier;
@@ -721,6 +724,8 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 
 	
 	//frame.reset();
+
+	pool.waitForAllCommandBuffers();
 
 	cubemap.transitionLayoutImmediate(
 	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

@@ -152,17 +152,6 @@ private:
 	bool outdated() const;
 	void recreate();
 };
-
-struct FrameCommandBuffer
-{
-	CommandBuffer commandBuffer;
-	UniqueFence fence;
-	UniqueSemaphore semaphore;
-	bool submitted = false;
-
-	void reset();
-	bool isAvailable();
-};
 }  // namespace cdm
 
 #include "CommandBuffer.inl"

@@ -2,6 +2,7 @@
 
 #include "Buffer.hpp"
 #include "CommandBuffer.hpp"
+#include "CommandBufferPool.hpp"
 #include "RenderWindow.hpp"
 #include "StagingBuffer.hpp"
 
@@ -174,7 +175,8 @@ void Cubemap::transitionLayoutImmediate(VkImageLayout oldLayout,
 	auto& vk = rw.get()->device();
 
 	// CommandBuffer transitionCB(vk, rw.get()->commandPool());
-	auto& frame = rw.get()->getAvailableCommandBuffer();
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
 	frame.reset();
 	CommandBuffer& transitionCB = frame.commandBuffer;
 
@@ -325,13 +327,13 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 	if (mipmapCB.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record mipmap command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), mipmapCB.get(), frame.fence) !=
-	    VK_SUCCESS)
+	//if (vk.queueSubmit(vk.graphicsQueue(), mipmapCB.get(), frame.fence) != VK_SUCCESS)
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit mipmap command buffer");
 
 	// vk.wait(vk.graphicsQueue());
-	vk.wait(frame.fence);
-	frame.reset();
+	//vk.wait(frame.fence);
+	//frame.reset();
 }
 
 void Cubemap::uploadDataImmediate(const void* texels, size_t size,

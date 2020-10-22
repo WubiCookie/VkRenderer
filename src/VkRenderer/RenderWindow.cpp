@@ -1,5 +1,6 @@
 #include "RenderWindow.hpp"
 #include "CommandBuffer.hpp"
+#include "CommandBufferPool.hpp"
 #include "Image.hpp"
 #include "ImageView.hpp"
 #include "Texture2D.hpp"
@@ -151,9 +152,9 @@ struct RenderWindowPrivate
 //	exit(1);
 //}
 
-static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice,
-                                            VkSurfaceKHR surface,
-                                            const VulkanDevice& vk)
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice,
+                                     VkSurfaceKHR surface,
+                                     const VulkanDevice& vk)
 {
 	QueueFamilyIndices indices;
 
@@ -192,9 +193,9 @@ static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice,
 	return indices;
 }
 
-static SwapChainSupportDetails querySwapChainSupport(
-    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
-    const VulkanDevice& vk)
+SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice physicalDevice,
+                                              VkSurfaceKHR surface,
+                                              const VulkanDevice& vk)
 {
 	SwapChainSupportDetails details;
 
@@ -230,7 +231,7 @@ static SwapChainSupportDetails querySwapChainSupport(
 	return details;
 }
 
-static VkSurfaceFormatKHR chooseSwapSurfaceFormat(
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(
     const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
 	for (const auto& availableFormat : availableFormats)
@@ -247,7 +248,7 @@ static VkSurfaceFormatKHR chooseSwapSurfaceFormat(
 	return availableFormats[0];
 }
 
-static VkPresentModeKHR chooseSwapPresentMode(
+VkPresentModeKHR chooseSwapPresentMode(
     const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
 	for (const auto& availablePresentMode : availablePresentModes)
@@ -262,9 +263,8 @@ static VkPresentModeKHR chooseSwapPresentMode(
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-static VkExtent2D chooseSwapExtent(
-    const VkSurfaceCapabilitiesKHR& capabilities, uint32_t width,
-    uint32_t height)
+VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities,
+                            uint32_t width, uint32_t height)
 {
 	if (capabilities.currentExtent.width !=
 	    std::numeric_limits<uint32_t>::max())
@@ -286,7 +286,7 @@ static VkExtent2D chooseSwapExtent(
 	}
 }
 
-static void check_vk_result(VkResult err)
+void check_vk_result(VkResult err)
 {
 	if (err == 0)
 		return;
@@ -295,10 +295,10 @@ static void check_vk_result(VkResult err)
 		abort();
 }
 
-static VkFormat findSupportedFormat(const VulkanDevice& vk,
-                                    const std::vector<VkFormat>& candidates,
-                                    VkImageTiling tiling,
-                                    VkFormatFeatureFlags features)
+VkFormat findSupportedFormat(const VulkanDevice& vk,
+                             const std::vector<VkFormat>& candidates,
+                             VkImageTiling tiling,
+                             VkFormatFeatureFlags features)
 {
 	for (VkFormat format : candidates)
 	{
@@ -320,7 +320,7 @@ static VkFormat findSupportedFormat(const VulkanDevice& vk,
 	throw std::runtime_error("failed to find supported format");
 }
 
-static VkFormat findDepthFormat(const VulkanDevice& vk)
+VkFormat findDepthFormat(const VulkanDevice& vk)
 {
 	return findSupportedFormat(
 	    vk,
@@ -330,7 +330,7 @@ static VkFormat findDepthFormat(const VulkanDevice& vk)
 	    VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
-static bool hasStencilComponent(VkFormat format)
+bool hasStencilComponent(VkFormat format)
 {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
 	       format == VK_FORMAT_D24_UNORM_S8_UINT;
@@ -455,8 +455,9 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	//colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	//colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// colorAttachment.initialLayout =
+	// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; colorAttachment.finalLayout =
+	// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 

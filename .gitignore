@@ -3,6 +3,7 @@ build-shaderc/
 assimp-build/
 glfw-build/
 bin/
+runtime_cache/
 
 *.exe
 *.log

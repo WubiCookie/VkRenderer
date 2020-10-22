@@ -557,6 +557,7 @@ public:
 	VkResult wait(VkQueue queue) const;
 
 	PFN_vkResetCommandPool ResetCommandPool;
+	VkResult resetCommandPool(VkCommandPool pool, VkCommandPoolResetFlags flags) const;
 	PFN_vkResetDescriptorPool ResetDescriptorPool;
 	PFN_vkResetEvent ResetEvent;
 

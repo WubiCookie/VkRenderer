@@ -1,6 +1,7 @@
 #include "BrdfLutGenerator.hpp"
 
 #include "CommandBuffer.hpp"
+#include "CommandBufferPool.hpp"
 #include "StagingBuffer.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>
@@ -533,7 +534,7 @@ BrdfLutGenerator::BrdfLutGenerator(RenderWindow& renderWindow,
 #pragma endregion
 }
 
-BrdfLutGenerator::~BrdfLutGenerator() {}
+BrdfLutGenerator::~BrdfLutGenerator() = default;
 
 Texture2D BrdfLutGenerator::computeBrdfLut()
 {
@@ -574,10 +575,8 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 	vk.wait(vk.graphicsQueue());
 
 	//CommandBuffer cb(vk, rw.get().oneTimeCommandPool());
-	auto& frame = rw.get().getAvailableCommandBuffer();
-	frame.reset();
-	CommandBuffer& cb = frame.commandBuffer;
-
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	
 	VkClearValue clearColor{};
 
 	std::array clearValues = { clearColor };
@@ -615,6 +614,10 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 
 	for (const auto& scissor : scissors)
 	{
+		auto& frame = pool.getAvailableCommandBuffer();
+		frame.reset();
+		CommandBuffer& cb = frame.commandBuffer;
+
 		cb.begin();
 		cb.debugMarkerBegin("generate BRDF LUT", 0.2f, 0.8f, 0.8f);
 		rpInfo.renderArea = scissor;
@@ -631,15 +634,19 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 
 		cb.debugMarkerEnd();
 		cb.end();
-		if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+
+		//if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+		if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		{
 			std::cerr << "error: failed to submit imgui command buffer"
 			          << std::endl;
 			abort();
 		}
-		vk.wait(frame.fence);
-		frame.reset();
+		//vk.wait(frame.fence);
+		//frame.reset();
 	}
+
+	pool.waitForAllCommandBuffers();
 
 	lut.transitionLayoutImmediate(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

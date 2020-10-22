@@ -1,6 +1,7 @@
 #include "PrefilterCubemap.hpp"
 
 #include "CommandBuffer.hpp"
+#include "CommandBufferPool.hpp"
 #include "StagingBuffer.hpp"
 
 #include "CompilerSpirV/compileSpirV.hpp"
@@ -695,11 +696,9 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 	}
 #pragma endregion
 
-	vk.wait(vk.graphicsQueue());
+	//vk.wait(vk.graphicsQueue());
 
-	auto& frame = rw.get().getAvailableCommandBuffer();
-	frame.reset();
-	CommandBuffer& cb = frame.commandBuffer;
+	auto pool = CommandBufferPool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 
 	matrix4 proj = matrix4::perspective(90_deg, 1.0f, 0.1f, 10.0f);
 
@@ -777,6 +776,10 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 
 		for (const auto& scissor : scissors)
 		{
+			auto& frame = pool.getAvailableCommandBuffer();
+			frame.reset();
+			CommandBuffer& cb = frame.commandBuffer;
+
 			cb.begin();
 			cb.debugMarkerBegin("prefilter cubemap", 0.8f, 0.8f, 0.2f);
 
@@ -824,17 +827,20 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 			cb.debugMarkerEnd();
 			cb.end();
 
-			if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) !=
+			//if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) !=
+			if (frame.submit(vk.graphicsQueue()) !=
 			    VK_SUCCESS)
 			{
 				std::cerr << "error: failed to submit imgui command buffer"
 				          << std::endl;
 				abort();
 			}
-			vk.wait(frame.fence);
-			frame.reset();
+			//vk.wait(frame.fence);
+			//frame.reset();
 		}
 	}
+
+	pool.waitForAllCommandBuffers();
 
 	// cb.debugMarkerEnd();
 	// cb.end();

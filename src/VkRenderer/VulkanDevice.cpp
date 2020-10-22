@@ -1447,6 +1447,12 @@ VkResult VulkanDeviceDestroyer::waitForFences(uint32_t fenceCount,
 	return WaitForFences(vkDevice(), fenceCount, pFences, waitAll, timeout);
 }
 
+VkResult VulkanDeviceDestroyer::resetCommandPool(
+    VkCommandPool pool, VkCommandPoolResetFlags flags) const
+{
+	return ResetCommandPool(vkDevice(), pool, flags);
+}
+
 VkResult VulkanDeviceDestroyer::resetFences(uint32_t fenceCount,
                                             const VkFence* fences) const
 {

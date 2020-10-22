@@ -1,4 +1,5 @@
 #include "ShaderBall.hpp"
+#include "CommandBufferPool.hpp"
 
 #include "EquirectangularToCubemap.hpp"
 //#include "EquirectangularToIrradianceMap.hpp"
@@ -1056,7 +1057,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		if (m_environmentMap.get() == nullptr)
 			throw std::runtime_error("could not create environmentMap");
 
-		m_irradianceMap = IrradianceMap(rw, 2048, m_equirectangularTexture,
+		m_irradianceMap = IrradianceMap(rw, 512, m_equirectangularTexture,
 		                                "PaperMill_E_irradiance.hdr");
 
 		if (m_irradianceMap.get() == nullptr)
@@ -1077,7 +1078,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		irradianceMapTextureWrite.dstSet = m_descriptorSet;
 		irradianceMapTextureWrite.pImageInfo = &irradianceMapImageInfo;
 
-		m_prefilteredMap = PrefilteredCubemap(rw, 2048, -1, m_environmentMap,
+		m_prefilteredMap = PrefilteredCubemap(rw, 512, -1, m_environmentMap,
 		                                      "PaperMill_E_prefiltered.hdr");
 
 		if (m_prefilteredMap.get().get() == nullptr)
@@ -1098,7 +1099,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		prefilteredMapTextureWrite.dstSet = m_descriptorSet;
 		prefilteredMapTextureWrite.pImageInfo = &prefilteredMapImageInfo;
 
-		m_brdfLut = BrdfLut(rw, 1024);
+		m_brdfLut = BrdfLut(rw, 512);
 
 		if (m_brdfLut.get() == nullptr)
 			throw std::runtime_error("could not create brdfLut");
@@ -1769,8 +1770,7 @@ void ShaderBall::standaloneDraw()
 	////if (vk.queueSubmit(vk.graphicsQueue(), imguiCB) != VK_SUCCESS)
 	// if (vk.queueSubmit(vk.graphicsQueue(), drawSubmit) != VK_SUCCESS)
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.semaphore, frame.fence) !=
-	    VK_SUCCESS)
+	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.semaphore, frame.fence) != VK_SUCCESS)
 	{
 		std::cerr << "error: failed to submit ShaderBall command buffer"
 		          << std::endl;

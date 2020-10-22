@@ -1,4 +1,5 @@
 #include "LightTransport.hpp"
+#include "CommandBufferPool.hpp"
 #include "cdm_maths.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>

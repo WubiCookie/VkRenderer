@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <iostream>
 
 namespace cdm
 {
@@ -22,7 +23,7 @@ PrefilteredCubemap::PrefilteredCubemap(RenderWindow& renderWindow,
 	namespace fs = std::filesystem;
 
 	fs::path path = filePath;
-	fs::path cacheDirPath = fs::temp_directory_path() / "VkRenderer";
+	fs::path cacheDirPath = "../runtime_cache";
 	fs::path cacheFilePath = cacheDirPath / path.filename();
 	fs::path cacheInfoFilePath =
 	    cacheDirPath / (path.filename().string() + ".info"s);
@@ -85,6 +86,9 @@ PrefilteredCubemap::PrefilteredCubemap(RenderWindow& renderWindow,
 			return;
 		}
 	}
+
+	std::cout << "prefiltered cubemap not found in \"" << cacheFilePath
+	          << "\". Generating it, please wait..." << std::endl;
 
 	PrefilterCubemap pcm(renderWindow, resolution, mipLevels);
 	m_prefilteredCubemap = pcm.computeCubemap(cubemap);

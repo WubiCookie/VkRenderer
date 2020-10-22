@@ -6,6 +6,7 @@
 #include "stb_image_write.h"
 
 #include <filesystem>
+#include <iostream>
 
 namespace cdm
 {
@@ -19,7 +20,7 @@ BrdfLut::BrdfLut(RenderWindow& renderWindow, uint32_t resolution,
 	namespace fs = std::filesystem;
 
 	fs::path path = filePath;
-	fs::path cacheDirPath = fs::temp_directory_path() / "VkRenderer";
+	fs::path cacheDirPath = "../runtime_cache";
 	fs::path cacheFilePath = cacheDirPath / path.filename();
 
 	if (fs::exists(cacheFilePath))
@@ -57,6 +58,9 @@ BrdfLut::BrdfLut(RenderWindow& renderWindow, uint32_t resolution,
 			return;
 		}
 	}
+
+	std::cout << "brdfLut not found in \"" << cacheFilePath
+	          << "\". Generating it, please wait..." << std::endl;
 
 	BrdfLutGenerator blg(renderWindow, resolution);
 	m_brdfLut = blg.computeBrdfLut();

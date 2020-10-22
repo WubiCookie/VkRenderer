@@ -159,6 +159,8 @@ set(SOURCE_FILES
     src/VkRenderer/CommandBuffer.cpp
     src/VkRenderer/CommandBuffer.hpp
     src/VkRenderer/CommandBuffer.inl
+    src/VkRenderer/CommandBufferPool.cpp
+    src/VkRenderer/CommandBufferPool.hpp
     src/VkRenderer/CommandPool.cpp
     src/VkRenderer/CommandPool.hpp
     src/VkRenderer/Cubemap.cpp

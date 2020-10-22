@@ -1114,20 +1114,4 @@ VkResult CommandBuffer::reset(VkCommandBufferResetFlags flags)
 bool CommandBuffer::outdated() const { return false; }
 
 void CommandBuffer::recreate() {}
-
-void FrameCommandBuffer::reset()
-{
-	const auto& vk = commandBuffer.device();
-
-	commandBuffer.reset();
-	vk.resetFence(fence);
-	submitted = false;
-}
-
-bool FrameCommandBuffer::isAvailable()
-{
-	const auto& vk = commandBuffer.device();
-
-	return submitted == false || (submitted == true && vk.getFenceStatus(fence) == VK_SUCCESS);
-}
 }  // namespace cdm

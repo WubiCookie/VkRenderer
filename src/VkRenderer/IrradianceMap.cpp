@@ -22,7 +22,7 @@ IrradianceMap::IrradianceMap(RenderWindow& renderWindow, uint32_t resolution,
 	namespace fs = std::filesystem;
 
 	fs::path path = filePath;
-	fs::path cacheDirPath = fs::temp_directory_path() / "VkRenderer";
+	fs::path cacheDirPath = "../runtime_cache";
 	fs::path cacheFilePath = cacheDirPath / path.filename();
 	fs::path cacheInfoFilePath =
 	    cacheDirPath / (path.filename().string() + ".info"s);
@@ -79,6 +79,9 @@ IrradianceMap::IrradianceMap(RenderWindow& renderWindow, uint32_t resolution,
 			return;
 		}
 	}
+
+	std::cout << "irradianceMap not found in \"" << cacheFilePath
+	          << "\". Generating it, please wait..." << std::endl;
 
 	EquirectangularToIrradianceMap e2i(renderWindow, resolution);
 	m_irradianceMap = e2i.computeCubemap(equirectangularTexture);

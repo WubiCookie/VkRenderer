@@ -1,6 +1,7 @@
 #include "EquirectangularToCubemap.hpp"
 
 #include "CommandBuffer.hpp"
+#include "CommandBufferPool.hpp"
 #include "StagingBuffer.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>
@@ -557,10 +558,10 @@ Cubemap EquirectangularToCubemap::computeCubemap(
 		                     std::ref(framebuffer4), std::ref(framebuffer5) };
 #pragma endregion
 
-	vk.wait(vk.graphicsQueue());
+	//vk.wait(vk.graphicsQueue());
 
-	auto& frame = rw.get().getAvailableCommandBuffer();
-	frame.reset();
+	auto pool = CommandBufferPool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
 	CommandBuffer& cb = frame.commandBuffer;
 
 	cb.begin();
@@ -615,20 +616,43 @@ Cubemap EquirectangularToCubemap::computeCubemap(
 		cb.endRenderPass2(subpassEndInfo);
 	}
 
+	vk::ImageMemoryBarrier barrier;
+	barrier.image = cubemap.image();
+	barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = cubemap.mipLevels();
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 6;
+	barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barrier.dstAccessMask = 0;
+	cb.pipelineBarrier(  // VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                               // VK_PIPELINE_STAGE_TRANSFER_BIT,
+	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	    // VK_DEPENDENCY_DEVICE_GROUP_BIT, barrier);
+	    0,
+	    // VK_DEPENDENCY_BY_REGION_BIT,
+	    barrier);
+
 	cb.debugMarkerEnd();
 	cb.end();
-	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+	//if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.fence) != VK_SUCCESS)
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 	{
 		std::cerr << "error: failed to submit imgui command buffer"
 		          << std::endl;
 		abort();
 	}
-	vk.wait(frame.fence);
-	frame.reset();
+	
+	pool.waitForAllCommandBuffers();
 
-	cubemap.transitionLayoutImmediate(
-	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	//cubemap.transitionLayoutImmediate(
+	//    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	//    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	return cubemap;
 }
