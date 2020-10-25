@@ -516,11 +516,11 @@ void LightTransport::createShaderModules()
 					"uv9", uv + vec2(1.0_f, 1.0_f) * textureStep);
 
 				writer.returnStmt<Vec4>(
-					(texture(HDRImage, uv1) + texture(HDRImage, uv2) +
-					 texture(HDRImage, uv3) + texture(HDRImage, uv4) +
-					 texture(HDRImage, uv5) * 1.0_f + texture(HDRImage, uv6) +
-					 texture(HDRImage, uv7) + texture(HDRImage, uv8) +
-					 texture(HDRImage, uv9)) *
+			        (HDRImage.sample(uv1) + HDRImage.sample(uv2) +
+			         HDRImage.sample(uv3) + HDRImage.sample(uv4) +
+			         HDRImage.sample(uv5) * 1.0_f + HDRImage.sample(uv6) +
+			         HDRImage.sample(uv7) + HDRImage.sample(uv8) +
+					 HDRImage.sample(uv9)) *
 					Float(1.0f / 9.0f));
 
 				// fragColor = texture(HDRImage, inUV);
@@ -532,7 +532,7 @@ void LightTransport::createShaderModules()
 		pcb.end();
 
 		writer.implementMain([&]() {
-			fragColor = texture(HDRImage, inUV);
+			fragColor = HDRImage.sample(inUV);
 			 //fragColor = boxFilter(inUV);
 
 			fragColor =

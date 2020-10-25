@@ -16,6 +16,18 @@ struct FrameCommandBuffer
 	bool submitted = false;
 
 	VkResult wait(uint64_t timeout = UINT64_MAX);
+	bool isAvailable();
+	VkResult submit(VkQueue queue);
+};
+
+struct ResettableFrameCommandBuffer
+{
+	CommandBuffer commandBuffer;
+	UniqueFence fence;
+	UniqueSemaphore semaphore;
+	bool submitted = false;
+
+	VkResult wait(uint64_t timeout = UINT64_MAX);
 	void reset();
 	bool isAvailable();
 	VkResult submit(VkQueue queue);
@@ -24,6 +36,7 @@ struct FrameCommandBuffer
 class CommandBufferPool final
 {
 	std::reference_wrapper<const VulkanDevice> m_device;
+	VkCommandPoolCreateFlags m_flags = VkCommandPoolCreateFlags();
 	UniqueCommandPool m_commandPool;
 
 	std::vector<FrameCommandBuffer> m_frameCommandBuffers;
@@ -42,6 +55,36 @@ public:
 	const VulkanDevice& device() const { return m_device.get(); }
 
 	FrameCommandBuffer& getAvailableCommandBuffer();
+	void waitForAllCommandBuffers();
+
+	void reset();
+};
+
+class ResettableCommandBufferPool final
+{
+	std::reference_wrapper<const VulkanDevice> m_device;
+	VkCommandPoolCreateFlags m_flags = VkCommandPoolCreateFlags();
+	UniqueCommandPool m_commandPool;
+
+	std::vector<ResettableFrameCommandBuffer> m_frameCommandBuffers;
+
+public:
+	ResettableCommandBufferPool(
+	    const VulkanDevice& vulkanDevice,
+	    VkCommandPoolCreateFlags flags = VkCommandPoolCreateFlags());
+	ResettableCommandBufferPool(const ResettableCommandBufferPool&) = default;
+	ResettableCommandBufferPool(ResettableCommandBufferPool&&) = default;
+	~ResettableCommandBufferPool();
+
+	ResettableCommandBufferPool& operator=(
+	    const ResettableCommandBufferPool&) = default;
+	ResettableCommandBufferPool& operator=(ResettableCommandBufferPool&&) =
+	    default;
+
+	const VkCommandPool& commandPool() const { return m_commandPool.get(); }
+	const VulkanDevice& device() const { return m_device.get(); }
+
+	ResettableFrameCommandBuffer& getAvailableCommandBuffer();
 	void waitForAllCommandBuffers();
 
 	void reset();

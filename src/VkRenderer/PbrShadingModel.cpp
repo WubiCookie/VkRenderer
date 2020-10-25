@@ -265,15 +265,17 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(R, reflect(-V, wsNormal));
 
-		    Locale(irradiance, texture(*buildData->irradianceMap, wsNormal));
+		    Locale(irradiance, buildData->irradianceMap->sample(wsNormal));
 		    Locale(diffuse, irradiance * albedo);
 
-		    Locale(MAX_REFLECTION_LOD, writer.cast<Float>(textureQueryLevels(
-		                                   *buildData->prefilteredMap)));
+		    Locale(MAX_REFLECTION_LOD,
+		           writer.cast<Float>(buildData->prefilteredMap->getLevels()));
 		    Locale(prefilteredColor,
-		           textureLod(*buildData->prefilteredMap, R,
+		        buildData->prefilteredMap->lod(R,
 		                      roughness * MAX_REFLECTION_LOD));
-		    Locale(brdf, texture(*buildData->brdfLut,
+		    Locale(brdf,
+		           buildData
+		               ->brdfLut->sample(
 		                         vec2(max(dot(wsNormal, V), 0.0_f), roughness))
 		                     .rg());
 		    specular = prefilteredColor * (F * brdf.x() + brdf.y());

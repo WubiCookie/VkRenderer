@@ -166,7 +166,7 @@ EquirectangularToCubemap::EquirectangularToCubemap(RenderWindow& renderWindow,
 		writer.implementMain([&]() {
 			Locale(uv, SampleSphericalMap(normalize(fragPosition)));
 
-			fragColor = texture(equirectangularMap, uv);
+			fragColor = equirectangularMap.sample(uv);
 
 			fragColor.a() = 1.0_f;
 		});
@@ -647,7 +647,7 @@ Cubemap EquirectangularToCubemap::computeCubemap(
 		          << std::endl;
 		abort();
 	}
-	
+
 	pool.waitForAllCommandBuffers();
 
 	//cubemap.transitionLayoutImmediate(

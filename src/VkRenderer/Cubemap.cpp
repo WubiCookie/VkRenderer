@@ -177,7 +177,6 @@ void Cubemap::transitionLayoutImmediate(VkImageLayout oldLayout,
 	// CommandBuffer transitionCB(vk, rw.get()->commandPool());
 	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 	auto& frame = pool.getAvailableCommandBuffer();
-	frame.reset();
 	CommandBuffer& transitionCB = frame.commandBuffer;
 
 	transitionCB.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -205,16 +204,14 @@ void Cubemap::transitionLayoutImmediate(VkImageLayout oldLayout,
 	if (transitionCB.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record transition command buffer");
 
-	VkResult submitRes =
-	    vk.queueSubmit(vk.graphicsQueue(), transitionCB.get(), frame.fence);
+	VkResult submitRes = frame.submit(vk.graphicsQueue());
 	if (submitRes != VK_SUCCESS)
 		throw std::runtime_error(
 		    std::string("failed to submit transition command buffer ") +
 		    std::string(vk::result_to_string(submitRes)));
 
 	// vk.wait(vk.graphicsQueue());
-	vk.wait(frame.fence);
-	frame.reset();
+	// vk.wait(frame.fence);
 }
 
 void Cubemap::generateMipmapsImmediate(VkImageLayout currentLayout)
@@ -233,8 +230,12 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 	auto& vk = rw.get()->device();
 
 	// CommandBuffer mipmapCB(vk, rw.get()->commandPool());
-	auto& frame = rw.get()->getAvailableCommandBuffer();
-	frame.reset();
+	// auto& frame = rw.get()->getAvailableCommandBuffer();
+	// frame.reset();
+	// CommandBuffer& mipmapCB = frame.commandBuffer;
+
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
 	CommandBuffer& mipmapCB = frame.commandBuffer;
 
 	mipmapCB.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -327,13 +328,14 @@ void Cubemap::generateMipmapsImmediate(VkImageLayout initialLayout,
 	if (mipmapCB.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record mipmap command buffer");
 
-	//if (vk.queueSubmit(vk.graphicsQueue(), mipmapCB.get(), frame.fence) != VK_SUCCESS)
+	// if (vk.queueSubmit(vk.graphicsQueue(), mipmapCB.get(), frame.fence) !=
+	// VK_SUCCESS)
 	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit mipmap command buffer");
 
 	// vk.wait(vk.graphicsQueue());
-	//vk.wait(frame.fence);
-	//frame.reset();
+	// vk.wait(frame.fence);
+	// frame.reset();
 }
 
 void Cubemap::uploadDataImmediate(const void* texels, size_t size,
@@ -356,8 +358,8 @@ void Cubemap::uploadDataImmediate(const void* texels, size_t size,
 
 	StagingBuffer stagingBuffer(*(rw.get()), texels, size);
 
-	auto& frame = rw.get()->getAvailableCommandBuffer();
-	frame.reset();
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
 	CommandBuffer& cb = frame.commandBuffer;
 
 	cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -391,13 +393,14 @@ void Cubemap::uploadDataImmediate(const void* texels, size_t size,
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb.get(), frame.fence) !=
-	    VK_SUCCESS)
+	// if (vk.queueSubmit(vk.graphicsQueue(), cb.get(), frame.fence) !=
+	// VK_SUCCESS)
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit upload command buffer");
 
 	// vk.wait(vk.graphicsQueue());
-	vk.wait(frame.fence);
-	frame.reset();
+	// vk.wait(frame.fence);
+	// frame.reset();
 }
 
 Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
@@ -438,8 +441,12 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 	copy.imageSubresource.mipLevel = mipLevel;
 
 	// CommandBuffer cb(vk, rw.get()->commandPool());
-	auto& frame = rw.get()->getAvailableCommandBuffer();
-	frame.reset();
+	// auto& frame = rw.get()->getAvailableCommandBuffer();
+	// frame.reset();
+	// CommandBuffer& cb = frame.commandBuffer;
+
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
 	CommandBuffer& cb = frame.commandBuffer;
 
 	cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -473,13 +480,12 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb.get(), frame.fence) !=
-	    VK_SUCCESS)
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit upload command buffer");
 
 	// vk.wait(vk.graphicsQueue());
-	vk.wait(frame.fence);
-	frame.reset();
+	// vk.wait(frame.fence);
+	// frame.reset();
 
 	// return tmpBuffer.download();
 	return tmpBuffer;

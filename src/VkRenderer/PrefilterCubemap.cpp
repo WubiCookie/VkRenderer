@@ -284,7 +284,7 @@ PrefilterCubemap::PrefilterCubemap(RenderWindow& renderWindow,
 					            0.5_f * log2(saSample / saTexel));
 
 					prefilteredColor +=
-					    textureLod(environmentMap, L, mipLevel).rgb() * NdotL;
+					    environmentMap.lod(L, mipLevel).rgb() * NdotL;
 					totalWeight += NdotL;
 				}
 				FI;
@@ -777,7 +777,6 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 		for (const auto& scissor : scissors)
 		{
 			auto& frame = pool.getAvailableCommandBuffer();
-			frame.reset();
 			CommandBuffer& cb = frame.commandBuffer;
 
 			cb.begin();

@@ -190,7 +190,8 @@ EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
 					                      vec3(tangentSample.y()) * up +
 					                      vec3(tangentSample.z()) * N);
 
-					irradiance += texture(equirectangularMap,
+					irradiance +=
+					    equirectangularMap.sample(
 					                      SampleSphericalMap(sampleVec))
 					                  .rgb() *
 					              cos(theta) * sin(theta);
@@ -596,7 +597,7 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 #pragma endregion
 
 	auto pool = CommandBufferPool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-	
+
 	matrix4 proj = matrix4::perspective(90_deg, 1.0f, 0.1f, 10.0f);
 
 	//std::array views{
@@ -722,7 +723,7 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 	//	//VK_DEPENDENCY_BY_REGION_BIT,
 	//	barrier);
 
-	
+
 	//frame.reset();
 
 	pool.waitForAllCommandBuffers();

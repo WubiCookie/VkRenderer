@@ -58,7 +58,7 @@ struct RenderWindowPrivate
 	VkCommandPool commandPool = nullptr;
 	VkCommandPool oneTimeCommandPool = nullptr;
 
-	std::forward_list<FrameCommandBuffer> frameCommandBuffers;
+	std::forward_list<ResettableFrameCommandBuffer> frameCommandBuffers;
 
 	UniqueDescriptorPool imguiDescriptorPool;
 	UniqueRenderPass imguiRenderPass;
@@ -259,7 +259,7 @@ VkPresentModeKHR chooseSwapPresentMode(
 		}
 	}
 
-	return VK_PRESENT_MODE_IMMEDIATE_KHR;
+	//return VK_PRESENT_MODE_IMMEDIATE_KHR;
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
@@ -562,7 +562,7 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 	init_info.PipelineCache = nullptr;
 	init_info.DescriptorPool = imguiDescriptorPool.get();
 	init_info.Allocator = nullptr;
-	init_info.MinImageCount = 3;
+	init_info.MinImageCount = 2;
 	init_info.ImageCount = uint32_t(swapchainImages.size());
 	init_info.CheckVkResultFn = check_vk_result;
 	init_info.vk = &vulkanDevice;
@@ -1435,7 +1435,7 @@ RenderWindow::swapchainImageViews() const
 
 VkCommandPool RenderWindow::commandPool() const { return p->commandPool; }
 
-FrameCommandBuffer& RenderWindow::getAvailableCommandBuffer()
+ResettableFrameCommandBuffer& RenderWindow::getAvailableCommandBuffer()
 {
 	const auto& vk = device();
 
@@ -1469,7 +1469,7 @@ FrameCommandBuffer& RenderWindow::getAvailableCommandBuffer()
 			abort();
 	}
 
-	p->frameCommandBuffers.emplace_front(FrameCommandBuffer{
+	p->frameCommandBuffers.emplace_front(ResettableFrameCommandBuffer{
 	    CommandBuffer(vk, commandPool()),
 	    vk.createFence(VK_FENCE_CREATE_SIGNALED_BIT), vk.createSemaphore() });
 

@@ -117,7 +117,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 		ubo.end();
 
 		writer.implementMain([&]() {
-			Locale(envColor, textureLod(environmentMap, fragPosition, 0.0_f));
+			Locale(envColor, environmentMap.lod(fragPosition, 0.0_f));
 
 			envColor = envColor / (envColor + vec4(1.0_f));
 			envColor = pow(envColor, vec4(1.0_f / 2.2_f));

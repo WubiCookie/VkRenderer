@@ -18,7 +18,7 @@ class CommandBuffer;
 class ImageView;
 class Texture2D;
 
-struct FrameCommandBuffer;
+struct ResettableFrameCommandBuffer;
 
 struct RenderWindowPrivate;
 
@@ -262,7 +262,7 @@ public:
 	VkCommandPool commandPool() const;
 	VkCommandPool oneTimeCommandPool() const;
 
-	FrameCommandBuffer& getAvailableCommandBuffer();
+	ResettableFrameCommandBuffer& getAvailableCommandBuffer();
 	void waitForAllCommandBuffers();
 
 	VkRenderPass imguiRenderPass() const;

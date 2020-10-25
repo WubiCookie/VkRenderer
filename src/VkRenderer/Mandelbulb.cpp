@@ -188,7 +188,7 @@ public:
 			    auto Power =
 			        declLocale("Power", ubo.getMember<Float>("power"));
 
-				auto Iterations = 
+				auto Iterations =
 			        declLocale("Iteration", ubo.getMember<Int>("iterations"));
 
 			    //FOR(*this, Int, i, 0_i, i < 8_i, ++i)
@@ -225,7 +225,7 @@ public:
 				    IF(*this, r > SceneRadius) { loopBreakStmt(); }
 				    FI;
 				    orbitTrap = min(abs(z) * 1.2_f, orbitTrap);
-				    
+
 				    theta = atan2(z.x(), z.z());
 				    phi = asin(z.z() / r);
 
@@ -640,8 +640,8 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			    {
 				    FOR(writer, Int, x, -1_i, x <= 1_i, ++x)
 				    {
-					    bloomV3 += sdw::textureLod(
-					                   kernelImage,
+					    bloomV3 += kernelImage.lod(
+
 					                   (fragCoord + vec2(x, y) * vec2(scale)) /
 					                       vec2(writer.Width, writer.Height),
 					                   logScale)
@@ -662,8 +662,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			auto uv = writer.declLocale(
 			    "uv", in.fragCoord.xy() / vec2(1280.0_f, 720.0_f));
 
-			auto col =
-			    writer.declLocale("col", sdw::texture(kernelImage, uv).rgb());
+			auto col = writer.declLocale("col", kernelImage.sample(uv).rgb());
 
 			auto bloomAscale1 = writer.declLocale(
 			    "BloomAscale1", writer.ubo.getMember<Float>("bloomAscale1"));
@@ -744,8 +743,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			    "iuv",
 			    ivec2(writer.cast<Int>(xy.x()), writer.cast<Int>(xy.y())));
 
-			Vec4 previousColor = writer.declLocale(
-			    "previousColor", imageLoad(kernelImage, iuv));
+			Vec4 previousColor = writer.declLocale("previousColor", kernelImage.load(iuv));
 
 			Float samples = writer.declLocale(
 			    "samples", writer.ubo.getMember<Float>("samples"));
@@ -753,7 +751,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 			IF(writer, samples == -1.0_f)
 			{
-				imageStore(kernelImage, iuv, vec4(0.0_f));
+				kernelImage.store(iuv, vec4(0.0_f));
 			}
 			ELSE
 			{
@@ -808,7 +806,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 				Vec4 mixedColor4 = writer.declLocale("mixedColor4", vec4(mixedColor, samples + 1.0_f));
 				// clang-format on
 
-				imageStore(kernelImage, iuv, mixedColor4);
+				kernelImage.store(iuv, mixedColor4);
 				// imageStore(kernelImage, iuv, vec4(uv, 0.0_f, 1.0_f));
 				// imageStore(kernelImage, iuv, vec4(0.0_f, fragCoord.y(),
 				// 0.0_f, 1.0_f)); imageStore(kernelImage, iuv,

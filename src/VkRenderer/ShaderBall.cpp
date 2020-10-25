@@ -1,7 +1,7 @@
 #include "ShaderBall.hpp"
-#include "CommandBufferPool.hpp"
 
 #include "EquirectangularToCubemap.hpp"
+#include "CommandBufferPool.hpp"
 //#include "EquirectangularToIrradianceMap.hpp"
 //#include "PrefilterCubemap.hpp"
 
@@ -120,6 +120,12 @@ public:
 		auto prefilteredMap =
 		    declSampledImage<FImgCubeRgba32>("prefilteredMap", 7, 0);
 		auto brdfLut = declSampledImage<FImg2DRg32>("brdfLut", 8, 0);
+
+#undef Locale
+#undef FLOAT
+#undef VEC2
+#undef VEC3
+#undef Constant
 
 #define Locale(name, value) auto name = declLocale(#name, value);
 #define FLOAT(name) auto name = declLocale<Float>(#name);
@@ -245,16 +251,16 @@ public:
 
 			    Locale(R, reflect(TBN * -V, TBN * N));
 
-			    Locale(irradiance, texture(irradianceMap, TBN * N));
+			    Locale(irradiance, irradianceMap.sample(TBN * N));
 			    Locale(diffuse, irradiance * albedo);
 
 			    Locale(MAX_REFLECTION_LOD,
-			           cast<Float>(textureQueryLevels(prefilteredMap)));
+			           cast<Float>(prefilteredMap.getLevels()));
 			    Locale(prefilteredColor,
-			           textureLod(prefilteredMap, R,
+                       prefilteredMap.lod(R,
 			                      roughness * MAX_REFLECTION_LOD));
 			    Locale(brdf,
-			           texture(brdfLut, vec2(max(dot(N, V), 0.0_f), roughness))
+                       brdfLut.sample(vec2(max(dot(N, V), 0.0_f), roughness))
 			               .rg());
 			    specular = prefilteredColor * (F * brdf.x() + brdf.y());
 
@@ -1051,7 +1057,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region cubemaps
 	{
-		EquirectangularToCubemap e2c(rw, 2048);
+		EquirectangularToCubemap e2c(rw, 512);
 		m_environmentMap = e2c.computeCubemap(m_equirectangularTexture);
 
 		if (m_environmentMap.get() == nullptr)
@@ -1099,7 +1105,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		prefilteredMapTextureWrite.dstSet = m_descriptorSet;
 		prefilteredMapTextureWrite.pImageInfo = &prefilteredMapImageInfo;
 
-		m_brdfLut = BrdfLut(rw, 512);
+		m_brdfLut = BrdfLut(rw, 128);
 
 		if (m_brdfLut.get() == nullptr)
 			throw std::runtime_error("could not create brdfLut");
@@ -1432,7 +1438,8 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		// m_bunnyPipeline.bindDescriptorSet(cb);
 		// m_bunnyPipeline.draw(cb);
 
-		m_scene.draw(cb, m_renderPass, viewport, scissor);
+		m_scene.draw(cb, m_renderPass, std::make_optional(viewport),
+		             std::make_optional(scissor));
 
 		// m_bunnySceneObject->draw(cb, m_renderPass, viewport, scissor);
 		// m_bunnySceneObject2->draw(cb, m_renderPass, viewport, scissor);
@@ -1770,7 +1777,8 @@ void ShaderBall::standaloneDraw()
 	////if (vk.queueSubmit(vk.graphicsQueue(), imguiCB) != VK_SUCCESS)
 	// if (vk.queueSubmit(vk.graphicsQueue(), drawSubmit) != VK_SUCCESS)
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.semaphore, frame.fence) != VK_SUCCESS)
+	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.semaphore, frame.fence) !=
+	    VK_SUCCESS)
 	{
 		std::cerr << "error: failed to submit ShaderBall command buffer"
 		          << std::endl;
@@ -2176,23 +2184,23 @@ void ShaderBall::rebuild()
 			//              .xyz());
 
 			Locale(albedo,
-			       pow(texture(albedos[pc.getMember<UInt>("albedoIndex")],
+			       pow(albedos[pc.getMember<UInt>("albedoIndex")].sample(
 			                   scaledUV),
 			           vec4(2.2_f)));
 			Locale(metalness,
-			       texture(metalnesses[pc.getMember<UInt>("metalnessIndex")],
+                   metalnesses[pc.getMember<UInt>("metalnessIndex")].sample(
 			               scaledUV)
 			                   .r() *
 			               pc.getMember<Float>("metalnessScale") +
 			           pc.getMember<Float>("metalnessShift"));
 			Locale(roughness,
-			       texture(roughnesses[pc.getMember<UInt>("roughnessIndex")],
+                   roughnesses[pc.getMember<UInt>("roughnessIndex")].sample(
 			               scaledUV)
 			                   .r() *
 			               pc.getMember<Float>("roughnessScale") +
 			           pc.getMember<Float>("roughnessShift"));
 
-			Locale(N, texture(normals[pc.getMember<UInt>("normalIndex")],
+			Locale(N, normals[pc.getMember<UInt>("normalIndex")].sample(
 			                  scaledUV)
 			              .xyz());
 			N = normalize((N * vec3(2.0_f) - vec3(1.0_f)));
@@ -2477,8 +2485,8 @@ void ShaderBall::rebuild()
 			Locale(uv, in.fragCoord.xy() /
 			               vec2(Float(rw.get().swapchainExtent().width),
 			                    Float(rw.get().swapchainExtent().height)));
-			Locale(sceneColor, texture(sceneColorTexture, uv));
-			Locale(sceneID, texture(sceneIDTexture, uv));
+			Locale(sceneColor, sceneColorTexture.sample(uv));
+			Locale(sceneID, sceneIDTexture.sample(uv));
 
 			Locale(id, pc.getMember<UInt>("id"));
 

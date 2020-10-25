@@ -576,7 +576,7 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 
 	//CommandBuffer cb(vk, rw.get().oneTimeCommandPool());
 	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-	
+
 	VkClearValue clearColor{};
 
 	std::array clearValues = { clearColor };
@@ -615,7 +615,6 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 	for (const auto& scissor : scissors)
 	{
 		auto& frame = pool.getAvailableCommandBuffer();
-		frame.reset();
 		CommandBuffer& cb = frame.commandBuffer;
 
 		cb.begin();
