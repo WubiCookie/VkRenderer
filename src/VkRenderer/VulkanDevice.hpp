@@ -795,16 +795,16 @@ public:
 	PFN_vkCmdBeginConditionalRenderingEXT CmdBeginConditionalRenderingEXT = nullptr;
 	PFN_vkCmdEndConditionalRenderingEXT CmdEndConditionalRenderingEXT = nullptr;
 
-	PFN_vkCmdProcessCommandsNVX CmdProcessCommandsNVX = nullptr;
-	PFN_vkCmdReserveSpaceForCommandsNVX CmdReserveSpaceForCommandsNVX = nullptr;
-	PFN_vkCreateIndirectCommandsLayoutNVX CreateIndirectCommandsLayoutNVX = nullptr;
-	PFN_vkCreateObjectTableNVX CreateObjectTableNVX = nullptr;
-	PFN_vkDestroyIndirectCommandsLayoutNVX DestroyIndirectCommandsLayoutNVX = nullptr;
-	PFN_vkDestroyObjectTableNVX DestroyObjectTableNVX = nullptr;
-	// PFN_vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX
-	// GetPhysicalDeviceGeneratedCommandsPropertiesNVX = nullptr;
-	PFN_vkRegisterObjectsNVX RegisterObjectsNVX = nullptr;
-	PFN_vkUnregisterObjectsNVX UnregisterObjectsNVX = nullptr;
+	//PFN_vkCmdProcessCommandsNVX CmdProcessCommandsNVX = nullptr;
+	//PFN_vkCmdReserveSpaceForCommandsNVX CmdReserveSpaceForCommandsNVX = nullptr;
+	//PFN_vkCreateIndirectCommandsLayoutNVX CreateIndirectCommandsLayoutNVX = nullptr;
+	//PFN_vkCreateObjectTableNVX CreateObjectTableNVX = nullptr;
+	//PFN_vkDestroyIndirectCommandsLayoutNVX DestroyIndirectCommandsLayoutNVX = nullptr;
+	//PFN_vkDestroyObjectTableNVX DestroyObjectTableNVX = nullptr;
+	//// PFN_vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX
+	//// GetPhysicalDeviceGeneratedCommandsPropertiesNVX = nullptr;
+	//PFN_vkRegisterObjectsNVX RegisterObjectsNVX = nullptr;
+	//PFN_vkUnregisterObjectsNVX UnregisterObjectsNVX = nullptr;
 
 	PFN_vkCmdSetViewportWScalingNV CmdSetViewportWScalingNV = nullptr;
 

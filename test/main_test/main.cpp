@@ -238,9 +238,9 @@ int main()
 		rw.acquireNextImage(fence.get());
 		rw.present();
 
-		// Mandelbulb mandelbulb(rw);
+		 Mandelbulb mandelbulb(rw);
 		// ShaderBall shaderBall(rw);
-		VolumeScene volumeScene(rw);
+		//VolumeScene volumeScene(rw);
 
 		auto start = std::chrono::steady_clock::now();
 		auto end = std::chrono::steady_clock::now();
@@ -395,9 +395,9 @@ int main()
 			vk.wait(fence.get());
 			vk.resetFence(fence.get());
 
-			// mandelbulb.standaloneDraw();
+			 mandelbulb.standaloneDraw();
 			// shaderBall.standaloneDraw();
-			volumeScene.standaloneDraw();
+			//volumeScene.standaloneDraw();
 
 			rw.acquireNextImage(fence.get());
 

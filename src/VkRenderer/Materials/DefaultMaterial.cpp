@@ -301,20 +301,20 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    IF(writer, inMaterialInstanceIndex == 0_u)
 		    {
 			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color0");
-			    inOutMetalness = buildData->ubo->getMember<Vec4>("metalness0");
-			    inOutRoughness = buildData->ubo->getMember<Vec4>("roughness0");
+			    inOutMetalness = buildData->ubo->getMember<Float>("metalness0");
+			    inOutRoughness = buildData->ubo->getMember<Float>("roughness0");
 		    }
 		    ELSEIF(inMaterialInstanceIndex == 1_u)
 		    {
 			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color1");
-			    inOutMetalness = buildData->ubo->getMember<Vec4>("metalness1");
-			    inOutRoughness = buildData->ubo->getMember<Vec4>("roughness1");
+			    inOutMetalness = buildData->ubo->getMember<Float>("metalness1");
+			    inOutRoughness = buildData->ubo->getMember<Float>("roughness1");
 		    }
 		    ELSE
 		    {
 			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color2");
-			    inOutMetalness = buildData->ubo->getMember<Vec4>("metalness2");
-			    inOutRoughness = buildData->ubo->getMember<Vec4>("roughness2");
+			    inOutMetalness = buildData->ubo->getMember<Float>("metalness2");
+			    inOutRoughness = buildData->ubo->getMember<Float>("roughness2");
 		    }
 		    FI;
 
