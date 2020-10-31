@@ -107,6 +107,9 @@ public:
 	// binding,
 	//        uint32_t set);
 
+	void uploadTransformMatrices(const transform3d& cameraTr,
+	                             const matrix4& proj);
+
 	Buffer& sceneUniformBuffer() noexcept { return m_sceneUniformBuffer; }
 	Buffer& modelUniformBuffer() noexcept { return m_modelUniformBuffer; }
 };

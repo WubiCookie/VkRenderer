@@ -72,11 +72,11 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 {
 	auto& vk = renderWindow.device();
 
-	m_uniformBuffer = Buffer(
-	    vk, sizeof(UBOStruct) * (size_t(instancePoolSize) + 1),
-	    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY,
-	    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-	        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	m_uniformBuffer =
+	    Buffer(vk, sizeof(UBOStruct) * (size_t(instancePoolSize) + 1),
+	           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY,
+	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+	               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	m_uniformBuffer.setName("DefaultMaterial UBO");
 
 	UBOStruct uboStruct;
@@ -268,8 +268,8 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	// buildData->uboStruct->declMember<Float>("roughness");
 	// buildData->uboStruct->end();
 
-	buildData->ubo = std::make_unique<sdw::Ubo>(sdw::Ubo(
-	    writer, "DefaultMaterialUBO", 0, 2));
+	buildData->ubo = std::make_unique<sdw::Ubo>(
+	    sdw::Ubo(writer, "DefaultMaterialUBO", 0, 2));
 	// buildData->ubo->declMember<DefaultMaterialUBOStruct>(
 	//    "materials", instancePoolSize() + 1);
 	buildData->ubo->declMember<Vec4>("color0");
@@ -281,6 +281,9 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	buildData->ubo->declMember<Vec4>("color2");
 	buildData->ubo->declMember<Float>("metalness2");
 	buildData->ubo->declMember<Float>("roughness2");
+	buildData->ubo->declMember<Vec4>("color3");
+	buildData->ubo->declMember<Float>("metalness3");
+	buildData->ubo->declMember<Float>("roughness3");
 	buildData->ubo->end();
 
 	MaterialFragmentFunction res = writer.implementFunction<Float>(
@@ -300,20 +303,34 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    IF(writer, inMaterialInstanceIndex == 0_u)
 		    {
 			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color0");
-			    inOutMetalness = buildData->ubo->getMember<Float>("metalness0");
-			    inOutRoughness = buildData->ubo->getMember<Float>("roughness0");
+			    inOutMetalness =
+			        buildData->ubo->getMember<Float>("metalness0");
+			    inOutRoughness =
+			        buildData->ubo->getMember<Float>("roughness0");
 		    }
 		    ELSEIF(inMaterialInstanceIndex == 1_u)
 		    {
 			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color1");
-			    inOutMetalness = buildData->ubo->getMember<Float>("metalness1");
-			    inOutRoughness = buildData->ubo->getMember<Float>("roughness1");
+			    inOutMetalness =
+			        buildData->ubo->getMember<Float>("metalness1");
+			    inOutRoughness =
+			        buildData->ubo->getMember<Float>("roughness1");
+		    }
+		    ELSEIF(inMaterialInstanceIndex == 2_u)
+		    {
+			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color2");
+			    inOutMetalness =
+			        buildData->ubo->getMember<Float>("metalness2");
+			    inOutRoughness =
+			        buildData->ubo->getMember<Float>("roughness2");
 		    }
 		    ELSE
 		    {
-			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color2");
-			    inOutMetalness = buildData->ubo->getMember<Float>("metalness2");
-			    inOutRoughness = buildData->ubo->getMember<Float>("roughness2");
+			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color3");
+			    inOutMetalness =
+			        buildData->ubo->getMember<Float>("metalness3");
+			    inOutRoughness =
+			        buildData->ubo->getMember<Float>("roughness3");
 		    }
 		    FI;
 

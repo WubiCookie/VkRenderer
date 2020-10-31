@@ -97,7 +97,9 @@ class ShaderBall final
 	DefaultMaterial m_defaultMaterial;
 	MaterialInstance* m_materialInstance1;
 	MaterialInstance* m_materialInstance2;
+	MaterialInstance* m_materialInstance3;
 	StandardMesh m_bunnyMesh;
+	std::vector<StandardMesh> m_sponzaMeshes;
 	//Model m_bunnyModel;
 	//Pipeline m_bunnyPipeline;
 
@@ -105,6 +107,7 @@ class ShaderBall final
 	SceneObject* m_bunnySceneObject;
 	SceneObject* m_bunnySceneObject2;
 	SceneObject* m_bunnySceneObject3;
+	std::vector<SceneObject*> m_sponzaSceneObjects;
 
 	// Buffer m_vertexBuffer;
 	// Buffer m_indexBuffer;

@@ -146,7 +146,42 @@ void Scene::draw(CommandBuffer& cb, VkRenderPass renderPass,
 	}
 }
 
-// sdw::Ubo Scene::buildSceneUbo(sdw::ShaderWriter& writer, uint32_t binding,
+void Scene::uploadTransformMatrices(const transform3d& cameraTr, const matrix4& proj)
+{
+	struct alignas(16) SceneUboStruct
+	{
+		matrix4 view;
+		matrix4 proj;
+		vector3 viewPos;
+		vector3 lightPos;
+	};
+
+	struct alignas(16) ModelUboStruct
+	{
+		std::array<matrix4, Scene::MaxSceneObjectCountPerPool> model;
+	};
+
+	SceneUboStruct* sceneUBOPtr =
+	    sceneUniformBuffer().map<SceneUboStruct>();
+	sceneUBOPtr->lightPos = { 0, 0, 0 };
+	sceneUBOPtr->view = matrix4(cameraTr).get_transposed().get_inversed();
+	sceneUBOPtr->proj = proj;
+	sceneUBOPtr->viewPos = cameraTr.position;
+	sceneUniformBuffer().unmap();
+
+	ModelUboStruct* modelUBOPtr =
+	    modelUniformBuffer().map<ModelUboStruct>();
+
+	for (size_t i = 0; i < m_sceneObjects.size(); i++)
+	{
+		modelUBOPtr->model[i] =
+		    matrix4(m_sceneObjects[i]->transform).get_transposed();
+	}
+
+	modelUniformBuffer().unmap();
+}
+
+    // sdw::Ubo Scene::buildSceneUbo(sdw::ShaderWriter& writer, uint32_t binding,
 //                              uint32_t set)
 //{
 //	sdw::Ubo ubo(writer, "SceneUBO", binding, set);

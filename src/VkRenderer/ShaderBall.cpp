@@ -428,7 +428,7 @@ static void processNode(RenderWindow& rw, aiNode* node, const aiScene* scene,
 ShaderBall::ShaderBall(RenderWindow& renderWindow)
     : rw(renderWindow),
       m_shadingModel(rw),
-      m_defaultMaterial(rw, m_shadingModel, 2),
+      m_defaultMaterial(rw, m_shadingModel, 3),
       m_scene(renderWindow),
       imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
       copyHDRCB(
@@ -442,14 +442,18 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region bunny mesh
 	const aiScene* bunnyScene = importer.ReadFile(
-	    "../resources/bunny.obj", aiProcess_Triangulate | aiProcess_FlipUVs |
+	    "../resources/illumination_assets/bunny.obj", aiProcess_Triangulate | aiProcess_FlipUVs |
 	                                  aiProcess_GenNormals |
 	                                  aiProcess_CalcTangentSpace);
 
 	if (!bunnyScene || bunnyScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
 	    !bunnyScene->mRootNode)
+	{
+		std::cerr << "assimp error: " << importer.GetErrorString()
+		          << std::endl;
 		throw std::runtime_error(std::string("assimp error: ") +
 		                         importer.GetErrorString());
+	}
 
 	assert(bunnyScene->mNumMeshes == 1);
 
@@ -507,6 +511,79 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 		m_bunnyMesh =
 		    StandardMesh(rw, std::move(vertices), std::move(indices));
+	}
+#pragma endregion
+
+#pragma region sponza mesh
+	const aiScene* sponzaScene = importer.ReadFile(
+	    "../resources/illumination_assets/Sponza/glTF/Sponza.gltf",
+	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
+	        aiProcess_CalcTangentSpace);
+
+	if (!sponzaScene || sponzaScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
+	    !sponzaScene->mRootNode)
+	{
+		std::cerr << "assimp error: " << importer.GetErrorString()
+		          << std::endl;
+		throw std::runtime_error(std::string("assimp error: ") +
+		                         importer.GetErrorString());
+	}
+
+	for (size_t i = 0; i < sponzaScene->mNumMeshes; i++)
+	{
+		auto& mesh = sponzaScene->mMeshes[i];
+		std::vector<StandardMesh::Vertex> vertices;
+		vertices.reserve(mesh->mNumVertices);
+		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+		{
+			StandardMesh::Vertex vertex;
+			vertex.position.x = mesh->mVertices[i].x;
+			vertex.position.y = mesh->mVertices[i].y;
+			vertex.position.z = mesh->mVertices[i].z;
+			if (mesh->HasNormals())
+			{
+				vertex.normal.x = mesh->mNormals[i].x;
+				vertex.normal.y = mesh->mNormals[i].y;
+				vertex.normal.z = mesh->mNormals[i].z;
+			}
+			else
+			{
+				vertex.normal = { 1, 0, 0 };
+			}
+			if (mesh->mTextureCoords[0])
+			{
+				vertex.uv.x = mesh->mTextureCoords[0][i].x;
+				vertex.uv.y = mesh->mTextureCoords[0][i].y;
+			}
+			else
+			{
+				vertex.uv = {};
+			}
+			if (mesh->HasTangentsAndBitangents())
+			{
+				vertex.tangent.x = mesh->mTangents[i].x;
+				vertex.tangent.y = mesh->mTangents[i].y;
+				vertex.tangent.z = mesh->mTangents[i].z;
+			}
+			else
+			{
+				vertex.tangent = { 0, 1, 0 };
+			}
+
+			vertices.push_back(vertex);
+		}
+
+		std::vector<uint32_t> indices;
+		indices.reserve(mesh->mNumFaces * 3);
+		for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+		{
+			const aiFace& face = mesh->mFaces[i];
+			for (unsigned int j = 0; j < face.mNumIndices; j++)
+				indices.push_back(face.mIndices[j]);
+		}
+
+		m_sponzaMeshes.emplace_back(
+		    StandardMesh(rw, std::move(vertices), std::move(indices)));
 	}
 #pragma endregion
 
@@ -1012,9 +1089,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma region equirectangularHDR
 	int w, h, c;
 	float* imageData =
-	    stbi_loadf("../resources/PaperMill_Ruins_E/PaperMill_E_3k.hdr",
-	               //"../resources/Milkyway/Milkyway_small.hdr",
-	               //"../resources/UV-Testgrid/testgrid.jpg",
+	    stbi_loadf("../resources/illumination_assets/PaperMill_Ruins_E/PaperMill_E_3k.hdr",
+	               //"../resources/illumination_assets/Milkyway/Milkyway_small.hdr",
+	               //"../resources/illumination_assets/UV-Testgrid/testgrid.jpg",
 	               &w, &h, &c, 4);
 
 	if (!imageData)
@@ -1277,7 +1354,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		}
 	};
 
-	std::string resourcePath = "../resources/";
+	std::string resourcePath = "../resources/illumination_assets/";
 	// resourcePath += "Metal007_4K-JPG/";
 	// resourcePath += "Marble009_8K-JPG/";
 	resourcePath += "Leather011_8K-JPG/";
@@ -1296,15 +1373,15 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	updateTextureDescriptor(resourcePath + "/Roughness.jpg", m_roughnesses, 1);
 
 	updateTextureDescriptor(
-	    "../resources/MathieuMaurel ShaderBall "
+	    "../resources/illumination_assets/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_INBALL.png",
 	    m_albedos, 2);
 	updateTextureDescriptor(
-	    "../resources/MathieuMaurel ShaderBall "
+	    "../resources/illumination_assets/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_REPERE.png",
 	    m_albedos, 8);
 	updateTextureDescriptor(
-	    "../resources/MathieuMaurel ShaderBall "
+	    "../resources/illumination_assets/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_CYCLO.png",
 	    m_albedos, 9);
 	// m_meshes[9].materialData.uScale = 20.0f;
@@ -1389,9 +1466,24 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		                          brdfLutTextureWrite });
 	}
 #pragma endregion
+
+#pragma region sponza
+	m_materialInstance3 = m_defaultMaterial.instanciate();
+	m_materialInstance3->setFloatParameter("roughness", 1.0f);
+	m_materialInstance3->setFloatParameter("metalness", 0.0f);
+	m_materialInstance3->setVec4Parameter("color", vector4(0.5, 0.5, 0.5, 0.5));
+
+	for (auto& mesh : m_sponzaMeshes)
+	{
+		auto* sponzaSceneObject = &m_scene.instantiateSceneObject();
+		sponzaSceneObject->setMesh(mesh);
+		sponzaSceneObject->setMaterial(*m_materialInstance3);
+		m_sponzaSceneObjects.push_back(sponzaSceneObject);
+	}
+#pragma endregion
 }
 
-ShaderBall::~ShaderBall() {}
+ShaderBall::~ShaderBall() = default;
 
 void ShaderBall::renderOpaque(CommandBuffer& cb)
 {
@@ -1722,7 +1814,7 @@ void ShaderBall::standaloneDraw()
 	    matrix4::perspective(90_deg,
 	                         float(rw.get().swapchainExtent().width) /
 	                             float(rw.get().swapchainExtent().height),
-	                         0.01f, 100.0f)
+	                         0.01f, 1000.0f)
 	        .get_transposed();
 	m_config.viewPos = cameraTr.position;
 
@@ -1736,36 +1828,10 @@ void ShaderBall::standaloneDraw()
 	m_bunnySceneObject3->transform.position = { -20, 0, -20 };
 	m_bunnySceneObject3->transform.scale = { 6, 6, 6 };
 
-	struct alignas(16) SceneUboStruct
-	{
-		matrix4 view;
-		matrix4 proj;
-		vector3 viewPos;
-		vector3 lightPos;
-	};
+	for (auto& obj : m_sponzaSceneObjects)
+		obj->transform.scale = { 0.1f, 0.1f, 0.1f };
 
-	struct alignas(16) ModelUboStruct
-	{
-		std::array<matrix4, Scene::MaxSceneObjectCountPerPool> model;
-	};
-
-	SceneUboStruct* sceneUBOPtr =
-	    m_scene.sceneUniformBuffer().map<SceneUboStruct>();
-	sceneUBOPtr->lightPos = { 0, 0, 0 };
-	sceneUBOPtr->view = matrix4(cameraTr).get_transposed().get_inversed();
-	sceneUBOPtr->proj = m_config.proj;
-	sceneUBOPtr->viewPos = cameraTr.position;
-	m_scene.sceneUniformBuffer().unmap();
-
-	ModelUboStruct* modelUBOPtr =
-	    m_scene.modelUniformBuffer().map<ModelUboStruct>();
-	modelUBOPtr->model[0] =
-	    matrix4(m_bunnySceneObject->transform).get_transposed();
-	modelUBOPtr->model[1] =
-	    matrix4(m_bunnySceneObject2->transform).get_transposed();
-	modelUBOPtr->model[2] =
-	    matrix4(m_bunnySceneObject3->transform).get_transposed();
-	m_scene.modelUniformBuffer().unmap();
+	m_scene.uploadTransformMatrices(cameraTr, m_config.proj);
 
 	m_skybox->setMatrices(m_config.proj, m_config.view);
 
