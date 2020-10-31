@@ -4,8 +4,6 @@
 
 namespace cdm
 {
-class RenderWindow;
-
 class TextureInterface
 {
 public:

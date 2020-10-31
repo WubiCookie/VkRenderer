@@ -13,14 +13,14 @@ Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
 	auto& vk = renderWindow.device();
 
 	m_sceneUniformBuffer =
-	    Buffer(renderWindow, sizeof(SceneUboStruct),
+	    Buffer(vk, sizeof(SceneUboStruct),
 	           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 	               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	m_sceneUniformBuffer.setName("Scene UBO");
 
 	m_modelUniformBuffer =
-	    Buffer(rw, sizeof(ModelUboStruct), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	    Buffer(vk, sizeof(ModelUboStruct), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	           VMA_MEMORY_USAGE_CPU_ONLY,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 	               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);

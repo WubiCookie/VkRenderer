@@ -175,8 +175,8 @@ set(SOURCE_FILES
     src/VkRenderer/Framebuffer.hpp
     src/VkRenderer/Image.cpp
     src/VkRenderer/Image.hpp
-    src/VkRenderer/ImageFactory.cpp
-    src/VkRenderer/ImageFactory.hpp
+    src/VkRenderer/TextureFactory.cpp
+    src/VkRenderer/TextureFactory.hpp
     src/VkRenderer/ImageView.cpp
     src/VkRenderer/ImageView.hpp
     src/VkRenderer/IrradianceMap.cpp

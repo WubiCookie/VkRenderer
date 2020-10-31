@@ -1,4 +1,7 @@
 #include "LightTransport.hpp"
+
+#include "TextureFactory.hpp"
+
 #include "cdm_maths.hpp"
 
 #include <array>
@@ -21,12 +24,17 @@ void LightTransport::createImages()
 {
 	auto& vk = rw.get().device();
 
+	TextureFactory f(vk);
+
 #pragma region outputImage
-	m_outputImage = Texture2D(
-		rw, width, height, VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	f.setWidth(width);
+	f.setHeight(height);
+	f.setFormat(VK_FORMAT_B8G8R8A8_UNORM);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+	           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+
+	m_outputImage = f.createTexture2D();
 
 	vk.debugMarkerSetObjectName(m_outputImage.get(), "outputImage");
 
@@ -35,13 +43,15 @@ void LightTransport::createImages()
 #pragma endregion
 
 #pragma region outputImageHDR
-	m_outputImageHDR = Texture2D(
-		rw, width * HDR_SCALE, height * HDR_SCALE, VK_FORMAT_R32G32B32A32_SFLOAT,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
-			VK_IMAGE_USAGE_SAMPLED_BIT,
-		VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	f.setWidth(width * HDR_SCALE);
+	f.setHeight(height * HDR_SCALE);
+	f.setFormat(VK_FORMAT_R32G32B32A32_SFLOAT);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+	           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+	           VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+	m_outputImageHDR = f.createTexture2D();
 
 	vk.debugMarkerSetObjectName(m_outputImageHDR.get(), "outputImageHDR");
 

@@ -10,7 +10,7 @@ class RenderWindow;
 
 class Buffer
 {
-	Movable<RenderWindow*> rw;
+	Movable<const VulkanDevice*> m_vulkanDevice;
 
 	Movable<VmaAllocation> m_allocation;
 	Movable<VkBuffer> m_buffer;
@@ -19,7 +19,7 @@ class Buffer
 
 public:
 	Buffer() = default;
-	Buffer(RenderWindow& renderWindow, VkDeviceSize bufferSize,
+	Buffer(const VulkanDevice& vulkanDevice, VkDeviceSize bufferSize,
 	       VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
 	       VkMemoryPropertyFlags requiredFlags);
 	Buffer(const Buffer&) = delete;

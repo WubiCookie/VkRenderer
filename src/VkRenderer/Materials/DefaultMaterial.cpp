@@ -73,7 +73,7 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 	auto& vk = renderWindow.device();
 
 	m_uniformBuffer = Buffer(
-	    renderWindow, sizeof(UBOStruct) * (size_t(instancePoolSize) + 1),
+	    vk, sizeof(UBOStruct) * (size_t(instancePoolSize) + 1),
 	    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY,
 	    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 	        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);

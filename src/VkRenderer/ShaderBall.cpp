@@ -2,6 +2,7 @@
 
 #include "EquirectangularToCubemap.hpp"
 #include "CommandBufferPool.hpp"
+#include "TextureFactory.hpp"
 //#include "EquirectangularToIrradianceMap.hpp"
 //#include "PrefilterCubemap.hpp"
 
@@ -283,12 +284,12 @@ void ShaderBallMesh::init()
 
 #pragma region vertexBuffer
 	auto vertexStagingBuffer =
-	    Buffer(*rw.get(), sizeof(ShaderBallVertex) * vertices.size(),
+	    Buffer(vk, sizeof(ShaderBallVertex) * vertices.size(),
 	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	vertexBuffer = Buffer(
-	    *rw.get(), sizeof(ShaderBallVertex) * vertices.size(),
+	    vk, sizeof(ShaderBallVertex) * vertices.size(),
 	    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -309,12 +310,12 @@ void ShaderBallMesh::init()
 
 #pragma region indexBuffer
 	auto indexStagingBuffer =
-	    Buffer(*rw.get(), sizeof(uint32_t) * indices.size(),
+	    Buffer(vk, sizeof(uint32_t) * indices.size(),
 	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	indexBuffer = Buffer(
-	    *rw.get(), sizeof(uint32_t) * indices.size(),
+	    vk, sizeof(uint32_t) * indices.size(),
 	    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -1006,6 +1007,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	//*/
 #pragma endregion
 
+	TextureFactory f(vk);
+
 #pragma region equirectangularHDR
 	int w, h, c;
 	float* imageData =
@@ -1017,10 +1020,17 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	if (!imageData)
 		throw std::runtime_error("could not load equirectangular map");
 
-	m_equirectangularTexture = Texture2D(
-	    rw, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	f.setWidth(w);
+	f.setHeight(h);
+	f.setFormat(VK_FORMAT_R32G32B32A32_SFLOAT);
+	f.setUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+	m_equirectangularTexture = f.createTexture2D();
+
+	//m_equirectangularTexture = Texture2D(
+	//    rw, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL,
+	//    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+	//    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	VkBufferImageCopy copy{};
 	copy.bufferRowLength = w;
@@ -1132,10 +1142,12 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region textures
-	m_defaultTexture = Texture2D(
-	    rw, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	f.setWidth(1);
+	f.setHeight(1);
+	f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
+	f.setUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+	m_defaultTexture = f.createTexture2D();
 
 	union U
 	{
@@ -1216,12 +1228,15 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 		if (imageData)
 		{
-			arr[element] = Texture2D(
-			    rw, w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-			    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-			        VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-			    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			    -1);
+			f.setWidth(w);
+			f.setHeight(h);
+			f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
+			f.setUsage(VK_IMAGE_USAGE_SAMPLED_BIT |
+			           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+			           VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+			f.setMipLevels(-1);
+
+			arr[element] = f.createTexture2D();
 
 			VkBufferImageCopy copy{};
 			copy.bufferImageHeight = h;
@@ -1805,16 +1820,18 @@ void ShaderBall::rebuild()
 {
 	auto& vk = rw.get().device();
 
+	TextureFactory f(vk);
+
 #pragma region color attachment texture
-	m_colorAttachmentTexture = Texture2D(
-	    rw, rw.get().swapchainExtent().width,
-	    rw.get().swapchainExtent().height, VK_FORMAT_B8G8R8A8_UNORM,
-	    VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
-	    VK_FILTER_LINEAR, VK_SAMPLE_COUNT_4_BIT);
+	f.setExtent(rw.get().swapchainExtent());
+	f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	           // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	f.setFilters(VK_FILTER_LINEAR, VK_FILTER_LINEAR);
+	f.setSamples(VK_SAMPLE_COUNT_4_BIT);
+
+	m_colorAttachmentTexture = f.createTexture2D();
 
 	vk.debugMarkerSetObjectName(m_colorAttachmentTexture.image(),
 	                            "colorAttachmentTexture");
@@ -1842,14 +1859,15 @@ void ShaderBall::rebuild()
 #pragma endregion
 
 #pragma region highlight color attachment texture
-	m_highlightColorAttachmentTexture = Texture2D(
-	    rw, rw.get().swapchainExtent().width,
-	    rw.get().swapchainExtent().height, VK_FORMAT_B8G8R8A8_UNORM,
-	    VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	f.setExtent(rw.get().swapchainExtent());
+	f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+	           // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	f.setFilters(VK_FILTER_LINEAR, VK_FILTER_LINEAR);
+	f.setSamples(VK_SAMPLE_COUNT_1_BIT);
+
+	m_highlightColorAttachmentTexture = f.createTexture2D();
 
 	vk.debugMarkerSetObjectName(m_highlightColorAttachmentTexture.image(),
 	                            "highlightColorAttachmentTexture");
@@ -1859,15 +1877,15 @@ void ShaderBall::rebuild()
 #pragma endregion
 
 #pragma region object ID attachment texture
-	m_objectIDAttachmentTexture = Texture2D(
-	    rw, rw.get().swapchainExtent().width,
-	    rw.get().swapchainExtent().height, VK_FORMAT_R32_UINT,
-	    VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
-	    VK_FILTER_NEAREST, VK_SAMPLE_COUNT_4_BIT);
+	f.setExtent(rw.get().swapchainExtent());
+	f.setFormat(VK_FORMAT_R32_UINT);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	           // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	f.setFilters(VK_FILTER_NEAREST, VK_FILTER_NEAREST);
+	f.setSamples(VK_SAMPLE_COUNT_4_BIT);
+
+	m_objectIDAttachmentTexture = f.createTexture2D();
 
 	vk.debugMarkerSetObjectName(m_objectIDAttachmentTexture.image(),
 	                            "objectIDAttachmentTexture");
@@ -1895,15 +1913,15 @@ void ShaderBall::rebuild()
 #pragma endregion
 
 #pragma region object ID resolve texture
-	m_objectIDResolveTexture = Texture2D(
-	    rw, rw.get().swapchainExtent().width,
-	    rw.get().swapchainExtent().height, VK_FORMAT_R32_UINT,
-	    VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
-	    VK_FILTER_NEAREST, VK_SAMPLE_COUNT_1_BIT);
+	f.setExtent(rw.get().swapchainExtent());
+	f.setFormat(VK_FORMAT_R32_UINT);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	           // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	f.setFilters(VK_FILTER_NEAREST, VK_FILTER_NEAREST);
+	f.setSamples(VK_SAMPLE_COUNT_1_BIT);
+
+	m_objectIDResolveTexture = f.createTexture2D();
 
 	vk.debugMarkerSetObjectName(m_objectIDResolveTexture.image(),
 	                            "objectIDResolveTexture");
@@ -1946,15 +1964,15 @@ void ShaderBall::rebuild()
 #pragma endregion
 
 #pragma region color resolve texture
-	m_colorResolveTexture = Texture2D(
-	    rw, rw.get().swapchainExtent().width,
-	    rw.get().swapchainExtent().height, VK_FORMAT_B8G8R8A8_UNORM,
-	    VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-	        // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1,
-	    VK_FILTER_LINEAR, VK_SAMPLE_COUNT_1_BIT);
+	f.setExtent(rw.get().swapchainExtent());
+	f.setFormat(VK_FORMAT_B8G8R8A8_UNORM);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	           // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	f.setFilters(VK_FILTER_LINEAR, VK_FILTER_LINEAR);
+	f.setSamples(VK_SAMPLE_COUNT_1_BIT);
+
+	m_colorResolveTexture = f.createTexture2D();
 
 	vk.debugMarkerSetObjectName(m_colorResolveTexture.image(),
 	                            "colorResolveTexture");

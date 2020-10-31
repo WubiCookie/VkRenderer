@@ -1,6 +1,7 @@
 #include "BrdfLut.hpp"
 
 #include "BrdfLutGenerator.hpp"
+#include "TextureFactory.hpp"
 
 #include "stb_image.h"
 #include "stb_image_write.h"
@@ -31,12 +32,15 @@ BrdfLut::BrdfLut(RenderWindow& renderWindow, uint32_t resolution,
 
 		if (imageData && w == h)
 		{
-			m_brdfLut = Texture2D(
-			    renderWindow, w, h, VK_FORMAT_R32G32_SFLOAT,
-			    VK_IMAGE_TILING_OPTIMAL,
-			    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-			    VMA_MEMORY_USAGE_GPU_ONLY,
-			    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			TextureFactory f(vk);
+
+			f.setWidth(w);
+			f.setHeight(h);
+			f.setFormat(VK_FORMAT_R32G32_SFLOAT);
+			f.setUsage(VK_IMAGE_USAGE_SAMPLED_BIT |
+			           VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+			m_brdfLut = f.createTexture2D();
 
 			VkBufferImageCopy copy{};
 			copy.bufferRowLength = w;

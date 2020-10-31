@@ -270,11 +270,11 @@ EquirectangularToIrradianceMap::EquirectangularToIrradianceMap(
 	};
 
 	m_vertexBuffer = Buffer(
-	    rw, vertices.size() * sizeof(*vertices.data()),
+	    vk, vertices.size() * sizeof(*vertices.data()),
 	    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	StagingBuffer verticesStagingBuffer(rw, vertices.data(), vertices.size());
+	StagingBuffer verticesStagingBuffer(vk, vertices.data(), vertices.size());
 
 	CommandBuffer copyCB(vk, rw.get().oneTimeCommandPool());
 	copyCB.begin();

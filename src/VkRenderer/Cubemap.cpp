@@ -356,7 +356,7 @@ void Cubemap::uploadDataImmediate(const void* texels, size_t size,
 
 	auto& vk = rw.get()->device();
 
-	StagingBuffer stagingBuffer(*(rw.get()), texels, size);
+	StagingBuffer stagingBuffer(vk, texels, size);
 
 	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 	auto& frame = pool.getAvailableCommandBuffer();
@@ -425,7 +425,7 @@ Buffer Cubemap::downloadDataToBufferImmediate(uint32_t layer,
 
 	VkDeviceSize dataSize = size();
 
-	Buffer tmpBuffer(*(rw.get()), dataSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	Buffer tmpBuffer(vk, dataSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 	                 VMA_MEMORY_USAGE_GPU_TO_CPU,
 	                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 

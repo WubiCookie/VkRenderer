@@ -7,11 +7,9 @@
 
 namespace cdm
 {
-class RenderWindow;
-
 class Texture2D final : public TextureInterface
 {
-	Movable<RenderWindow*> rw;
+	Movable<const VulkanDevice*> m_vulkanDevice;
 
 	Movable<VmaAllocation> m_allocation;
 	Movable<VkImage> m_image;
@@ -31,13 +29,10 @@ class Texture2D final : public TextureInterface
 
 public:
 	Texture2D() = default;
-	Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
-	          uint32_t imageHeight, VkFormat imageFormat,
-	          VkImageTiling imageTiling, VkImageUsageFlags usage,
-	          VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags requiredFlags,
-	          uint32_t mipLevels = 1, VkFilter filter = VK_FILTER_LINEAR,
-	          VkSampleCountFlagBits samples =
-	              VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT);
+	Texture2D(const VulkanDevice& vulkanDevice, vk::ImageCreateInfo imageInfo,
+	          VmaAllocationCreateInfo alloceInfo,
+	          vk::ImageViewCreateInfo viewInfo,
+	          vk::SamplerCreateInfo samplerInfo);
 	Texture2D(const Texture2D&) = delete;
 	Texture2D(Texture2D&& texture) = default;
 	~Texture2D();

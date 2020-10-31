@@ -2,6 +2,7 @@
 
 #include "CommandBuffer.hpp"
 #include "CommandBufferPool.hpp"
+#include "TextureFactory.hpp"
 #include "StagingBuffer.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>
@@ -307,11 +308,11 @@ BrdfLutGenerator::BrdfLutGenerator(RenderWindow& renderWindow,
 	};
 
 	m_vertexBuffer = Buffer(
-	    rw, vertices.size() * sizeof(*vertices.data()),
+	    vk, vertices.size() * sizeof(*vertices.data()),
 	    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	StagingBuffer verticesStagingBuffer(rw, vertices.data(), vertices.size());
+	StagingBuffer verticesStagingBuffer(vk, vertices.data(), vertices.size());
 
 	CommandBuffer copyCB(vk, rw.get().oneTimeCommandPool());
 	copyCB.begin();
@@ -540,13 +541,24 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 {
 	auto& vk = rw.get().device();
 
+	TextureFactory f(vk);
+
 #pragma region lut
-	Texture2D lut(
-	    rw, m_resolution, m_resolution, VK_FORMAT_R32G32_SFLOAT,
-	    VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-	        VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	f.setWidth(m_resolution);
+	f.setHeight(m_resolution);
+	f.setFormat(VK_FORMAT_R32G32_SFLOAT);
+	f.setUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+	           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+	// f.setMipLevels(-1);
+
+	Texture2D lut = f.createTexture2D();
+
+	//Texture2D lut(
+	//    rw, m_resolution, m_resolution, VK_FORMAT_R32G32_SFLOAT,
+	//    VK_IMAGE_TILING_OPTIMAL,
+	//    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	//        VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+	//    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	vk.debugMarkerSetObjectName(
 	    lut.image(), VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "BRDF LUT");

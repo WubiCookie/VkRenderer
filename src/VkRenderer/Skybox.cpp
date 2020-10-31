@@ -190,11 +190,11 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 	};
 
 	m_vertexBuffer = Buffer(
-	    rw, vertices.size() * sizeof(*vertices.data()),
+	    vk, vertices.size() * sizeof(*vertices.data()),
 	    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	StagingBuffer verticesStagingBuffer(rw, vertices.data(), vertices.size());
+	StagingBuffer verticesStagingBuffer(vk, vertices.data(), vertices.size());
 
 	CommandBuffer copyCB(vk, rw.get().oneTimeCommandPool());
 	copyCB.begin();
@@ -463,7 +463,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 #pragma endregion
 
 #pragma region UBO
-	m_ubo = Buffer(rw, sizeof(m_config), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	m_ubo = Buffer(vk, sizeof(m_config), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	               VMA_MEMORY_USAGE_CPU_TO_GPU,
 	               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 

@@ -6,12 +6,12 @@
 
 namespace cdm
 {
-Buffer::Buffer(RenderWindow& renderWindow, VkDeviceSize bufferSize,
+Buffer::Buffer(const VulkanDevice& vulkanDevice, VkDeviceSize bufferSize,
                VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
                VkMemoryPropertyFlags requiredFlags)
-    : rw(&renderWindow)
+    : m_vulkanDevice(&vulkanDevice)
 {
-	auto& vk = rw.get()->device();
+	auto& vk = *m_vulkanDevice.get();
 
 	vk::BufferCreateInfo info;
 	info.size = bufferSize;
@@ -32,9 +32,9 @@ Buffer::Buffer(RenderWindow& renderWindow, VkDeviceSize bufferSize,
 
 Buffer::~Buffer()
 {
-	if (rw.get())
+	if (m_vulkanDevice)
 	{
-		auto& vk = rw.get()->device();
+		auto& vk = *m_vulkanDevice.get();
 
 		if (m_buffer)
 			vmaDestroyBuffer(vk.allocator(), m_buffer.get(),
@@ -46,7 +46,7 @@ void Buffer::setName(std::string_view name)
 {
 	if (get())
 	{
-		auto& vk = rw.get()->device();
+		auto& vk = *m_vulkanDevice.get();
 		vk.debugMarkerSetObjectName(
 		    get(), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, name);
 	}
@@ -54,7 +54,7 @@ void Buffer::setName(std::string_view name)
 
 void* Buffer::map()
 {
-	auto& vk = rw.get()->device();
+	auto& vk = *m_vulkanDevice.get();
 	void* data;
 	vmaMapMemory(vk.allocator(), m_allocation.get(), &data);
 	return data;
@@ -62,7 +62,7 @@ void* Buffer::map()
 
 void Buffer::unmap()
 {
-	auto& vk = rw.get()->device();
+	auto& vk = *m_vulkanDevice.get();
 	vmaUnmapMemory(vk.allocator(), m_allocation.get());
 }
 

@@ -1,7 +1,5 @@
 #pragma once
 
-//#include "VulkanFunctions.hpp"
-
 #define NOCOMM
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -217,7 +215,7 @@ public:
 	PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesNV GetPhysicalDeviceCooperativeMatrixPropertiesNV;
 	PFN_vkGetPhysicalDeviceExternalImageFormatPropertiesNV GetPhysicalDeviceExternalImageFormatPropertiesNV;
 	PFN_vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV;
-	
+
 	PFN_vkCmdSetCheckpointNV CmdSetCheckpointNV;
 	PFN_vkGetQueueCheckpointDataNV GetQueueCheckpointDataNV;
 

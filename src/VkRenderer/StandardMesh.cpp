@@ -20,12 +20,12 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 
 #pragma region vertexBuffer
 	auto vertexStagingBuffer =
-	    Buffer(*rw.get(), sizeof(Vertex) * m_vertices.size(),
+	    Buffer(vk, sizeof(Vertex) * m_vertices.size(),
 	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	m_vertexBuffer = Buffer(
-	    *rw.get(), sizeof(Vertex) * m_vertices.size(),
+	    vk, sizeof(Vertex) * m_vertices.size(),
 	    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -46,12 +46,12 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 
 #pragma region indexBuffer
 	auto indexStagingBuffer =
-	    Buffer(*rw.get(), sizeof(uint32_t) * m_indices.size(),
+	    Buffer(vk, sizeof(uint32_t) * m_indices.size(),
 	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	m_indexBuffer = Buffer(
-	    *rw.get(), sizeof(uint32_t) * m_indices.size(),
+	    vk, sizeof(uint32_t) * m_indices.size(),
 	    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 

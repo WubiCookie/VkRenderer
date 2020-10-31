@@ -2,12 +2,12 @@
 
 namespace cdm
 {
-UniformBuffer::UniformBuffer(RenderWindow& renderWindow,
+UniformBuffer::UniformBuffer(const VulkanDevice& vulkanDevice,
                              VkDeviceSize bufferSize, VkBufferUsageFlags usage,
                              VmaMemoryUsage memoryUsage,
                              VkMemoryPropertyFlags requiredFlags,
                              UboBuilder uboBuilder)
-    : Buffer(renderWindow, bufferSize,
+    : Buffer(vulkanDevice, bufferSize,
              usage | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryUsage,
              requiredFlags),
       m_uboBuilder(uboBuilder)

@@ -1,5 +1,7 @@
 #include "MandelBulb.hpp"
 
+#include "TextureFactory.hpp"
+
 #include <CompilerSpirV/compileSpirV.hpp>
 #include <ShaderWriter/Intrinsics/Intrinsics.hpp>
 #include <ShaderWriter/Source.hpp>
@@ -1126,7 +1128,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	std::vector<Vertex> vertices{ { -1, -1 }, { 3, -1 }, { -1, 3 } };
 
 	m_vertexBuffer = Buffer(
-	    rw, sizeof(Vertex) * vertices.size(),
+	    vk, sizeof(Vertex) * vertices.size(),
 	    VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
@@ -1137,7 +1139,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 #pragma region compute UBO
 	m_computeUbo = Buffer(
-	    rw, sizeof(m_config), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	    vk, sizeof(m_config), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	m_config.copyTo(m_computeUbo.map());
@@ -1163,25 +1165,48 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	vk.updateDescriptorSets(uboWrite);
 #pragma endregion
 
+	TextureFactory f(vk);
+
 #pragma region outputImage
-	m_outputImage = Texture2D(
-	    rw, width, height, VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	f.setWidth(width);
+	f.setHeight(height);
+	f.setFormat(VK_FORMAT_B8G8R8A8_UNORM);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+	           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	//f.setMipLevels(-1);
+
+	m_outputImage = f.createTexture2D();
+
+	//m_outputImage = Texture2D(
+	//    rw, width, height, VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+	//    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	//        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	//    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	m_outputImage.transitionLayoutImmediate(VK_IMAGE_LAYOUT_UNDEFINED,
 	                                        VK_IMAGE_LAYOUT_GENERAL);
 #pragma endregion
 
 #pragma region outputImageHDR
-	m_outputImageHDR = Texture2D(
-	    rw, width, height, VK_FORMAT_R32G32B32A32_SFLOAT,
-	    VK_IMAGE_TILING_OPTIMAL,
-	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
-	        VK_IMAGE_USAGE_SAMPLED_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, -1);
+	//f.setWidth(width);
+	//f.setHeight(height);
+	f.setFormat(VK_FORMAT_R32G32B32A32_SFLOAT);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+	           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+	           VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+	f.setMipLevels(-1);
+
+	m_outputImageHDR = f.createTexture2D();
+
+	//m_outputImageHDR = Texture2D(
+	//    rw, width, height, VK_FORMAT_R32G32B32A32_SFLOAT,
+	//    VK_IMAGE_TILING_OPTIMAL,
+	//    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	//        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
+	//        VK_IMAGE_USAGE_SAMPLED_BIT,
+	//    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, -1);
 
 	m_outputImageHDR.transitionLayoutImmediate(VK_IMAGE_LAYOUT_UNDEFINED,
 	                                           VK_IMAGE_LAYOUT_GENERAL);

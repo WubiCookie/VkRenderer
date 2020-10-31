@@ -7,8 +7,6 @@
 
 namespace cdm
 {
-class RenderWindow;
-
 // sdw::Ubo uboBuilder(sdw::ShaderWriter& writer,
 //                     uint32_t binding,
 //                     uint32_t set);
@@ -21,7 +19,7 @@ class UniformBuffer : public Buffer
 
 public:
 	UniformBuffer() = default;
-	UniformBuffer(RenderWindow& renderWindow, VkDeviceSize bufferSize,
+	UniformBuffer(const VulkanDevice& vulkanDevice, VkDeviceSize bufferSize,
 	              VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
 	              VkMemoryPropertyFlags requiredFlags, UboBuilder uboBuilder);
 	UniformBuffer(const UniformBuffer&) = delete;

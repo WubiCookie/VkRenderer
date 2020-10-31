@@ -1,6 +1,7 @@
 #include "Texture2D.hpp"
 
 #include "CommandBuffer.hpp"
+#include "CommandBufferPool.hpp"
 #include "RenderWindow.hpp"
 #include "StagingBuffer.hpp"
 
@@ -10,103 +11,62 @@
 
 namespace cdm
 {
-Texture2D::Texture2D(RenderWindow& renderWindow, uint32_t imageWidth,
-                     uint32_t imageHeight, VkFormat imageFormat,
-                     VkImageTiling imageTiling, VkImageUsageFlags usage,
-                     VmaMemoryUsage memoryUsage,
-                     VkMemoryPropertyFlags requiredFlags, uint32_t mipLevels,
-                     VkFilter filter, VkSampleCountFlagBits samples)
-    : rw(&renderWindow)
+Texture2D::Texture2D(const VulkanDevice& vulkanDevice,
+                     vk::ImageCreateInfo imageInfo,
+                     VmaAllocationCreateInfo alloceInfo,
+                     vk::ImageViewCreateInfo viewInfo,
+                     vk::SamplerCreateInfo samplerInfo)
+    : m_vulkanDevice(&vulkanDevice)
 {
-	auto& vk = rw.get()->device();
+	auto& vk = *m_vulkanDevice.get();
 
-#pragma region image
-	mipLevels = std::min(mipLevels, static_cast<uint32_t>(std::floor(std::log2(
-	                                    std::max(imageWidth, imageHeight)))) +
-	                                    1);
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.depth = 1;
+	imageInfo.arrayLayers = 1;
 
-	vk::ImageCreateInfo info;
-	info.imageType = VK_IMAGE_TYPE_2D;
-	info.extent.width = imageWidth;
-	info.extent.height = imageHeight;
-	info.extent.depth = 1;
-	info.mipLevels = mipLevels;
-	info.arrayLayers = 1;
-	info.format = imageFormat;
-	info.tiling = imageTiling;
-	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	info.usage = usage;
-	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	info.samples = samples;
-	info.flags = 0;
-	
-	VmaAllocationCreateInfo imageAllocCreateInfo = {};
-	imageAllocCreateInfo.usage = memoryUsage;
-	imageAllocCreateInfo.requiredFlags = requiredFlags;
+	imageInfo.mipLevels =
+	    std::min(imageInfo.mipLevels,
+	             static_cast<uint32_t>(std::floor(std::log2(std::max(
+	                 imageInfo.extent.width, imageInfo.extent.height)))) +
+	                 1);
 
 	VmaAllocationInfo allocInfo{};
 
-	VkResult res =
-	    vmaCreateImage(vk.allocator(), &info, &imageAllocCreateInfo,
-	                   &m_image.get(), &m_allocation.get(), &allocInfo);
+	vmaCreateImage(vk.allocator(), &imageInfo, &alloceInfo, &m_image.get(),
+	               &m_allocation.get(), &allocInfo);
 
 	if (m_image == false)
 		throw std::runtime_error("could not create image");
-#pragma endregion
 
-	m_width = imageWidth;
-	m_height = imageHeight;
+	m_width = imageInfo.extent.width;
+	m_height = imageInfo.extent.height;
 	m_deviceMemory = allocInfo.deviceMemory;
 	m_offset = allocInfo.offset;
 	m_size = allocInfo.size;
-	m_mipLevels = mipLevels;
-	m_samples = samples;
-	m_format = imageFormat;
+	m_mipLevels = imageInfo.mipLevels;
+	m_samples = imageInfo.samples;
+	m_format = imageInfo.format;
 
-#pragma region view
-	vk::ImageViewCreateInfo viewInfo;
 	viewInfo.image = m_image.get();
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = imageFormat;
-	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = mipLevels;
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
 	m_imageView = vk.create(viewInfo);
 	if (!m_imageView)
 		throw std::runtime_error("could not create image view");
-#pragma endregion
-
-#pragma region sampler
-	vk::SamplerCreateInfo samplerInfo;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.minFilter = filter;
-	samplerInfo.magFilter = filter;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = (float)info.mipLevels;
 
 	m_sampler = vk.create(samplerInfo);
 	if (!m_sampler)
 		throw std::runtime_error("could not create sampler");
-#pragma endregion
 }
 
 Texture2D::~Texture2D()
 {
-	if (rw.get())
+	if (m_vulkanDevice)
 	{
-		auto& vk = rw.get()->device();
+		auto& vk = *m_vulkanDevice.get();
 
 		if (m_imageView)
 			m_imageView.reset();
@@ -118,12 +78,11 @@ Texture2D::~Texture2D()
 void Texture2D::transitionLayoutImmediate(VkImageLayout oldLayout,
                                           VkImageLayout newLayout)
 {
-	if (rw.get() == nullptr)
-		return;
+	auto& vk = *m_vulkanDevice.get();
 
-	auto& vk = rw.get()->device();
-
-	CommandBuffer transitionCB(vk, rw.get()->commandPool());
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
+	CommandBuffer& transitionCB = frame.commandBuffer;
 
 	transitionCB.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	vk::ImageMemoryBarrier barrier;
@@ -145,22 +104,22 @@ void Texture2D::transitionLayoutImmediate(VkImageLayout oldLayout,
 	if (transitionCB.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record transition command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), transitionCB.get()) != VK_SUCCESS)
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit transition command buffer");
 
-	vk.wait(vk.graphicsQueue());
+	pool.waitForAllCommandBuffers();
 }
 
 void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 {
-	if (rw.get() == nullptr)
-		return;
 	if (m_mipLevels <= 1)
 		return;
 
-	auto& vk = rw.get()->device();
+	auto& vk = *m_vulkanDevice.get();
 
-	CommandBuffer mipmapCB(vk, rw.get()->commandPool());
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
+	CommandBuffer& mipmapCB = frame.commandBuffer;
 
 	mipmapCB.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	mipmapCB.debugMarkerBegin("mipmap generation");
@@ -240,10 +199,10 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 	if (mipmapCB.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record mipmap command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), mipmapCB.get()) != VK_SUCCESS)
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit mipmap command buffer");
 
-	vk.wait(vk.graphicsQueue());
+	pool.waitForAllCommandBuffers();
 }
 
 void Texture2D::uploadDataImmediate(const void* texels, size_t size,
@@ -258,14 +217,14 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
                                     VkImageLayout initialLayout,
                                     VkImageLayout finalLayout)
 {
-	if (rw.get() == nullptr)
-		return;
+	auto& vk = *m_vulkanDevice.get();
 
-	auto& vk = rw.get()->device();
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 
-	StagingBuffer stagingBuffer(*(rw.get()), texels, size);
+	StagingBuffer stagingBuffer(vk, texels, size);
 
-	CommandBuffer cb(vk, rw.get()->commandPool());
+	auto& frame = pool.getAvailableCommandBuffer();
+	CommandBuffer& cb = frame.commandBuffer;
 
 	cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -298,10 +257,10 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit upload command buffer");
 
-	vk.wait(vk.graphicsQueue());
+	pool.waitForAllCommandBuffers();
 }
 
 Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout currentLayout)
@@ -312,14 +271,14 @@ Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout currentLayout)
 Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
                                                 VkImageLayout finalLayout)
 {
-	if (rw.get() == nullptr || m_image.get() == nullptr)
+	if (m_image.get() == nullptr)
 		return {};
 
-	auto& vk = rw.get()->device();
+	auto& vk = *m_vulkanDevice.get();
 
 	VkDeviceSize dataSize = size();
 
-	Buffer tmpBuffer(*(rw.get()), dataSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	Buffer tmpBuffer(vk, dataSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 	                 VMA_MEMORY_USAGE_GPU_TO_CPU,
 	                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
@@ -330,7 +289,9 @@ Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
 	copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	copy.imageSubresource.layerCount = 1;
 
-	CommandBuffer cb(vk, rw.get()->commandPool());
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
+	CommandBuffer& cb = frame.commandBuffer;
 
 	cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -363,10 +324,10 @@ Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
 	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb.get()) != VK_SUCCESS)
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit upload command buffer");
 
-	vk.wait(vk.graphicsQueue());
+	pool.waitForAllCommandBuffers();
 
 	// return tmpBuffer.download();
 	return tmpBuffer;
