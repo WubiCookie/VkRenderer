@@ -33,7 +33,7 @@ TextureFactory::TextureFactory(const VulkanDevice& vulkanDevice)
 	m_viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 	m_viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 	m_viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	m_viewInfo.subresourceRange.aspectMask = 0;
+	m_viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	m_viewInfo.subresourceRange.baseMipLevel = 0;
 	m_viewInfo.subresourceRange.levelCount = 1;
 	m_viewInfo.subresourceRange.baseArrayLayer = 0;
@@ -118,6 +118,11 @@ void TextureFactory::setSamples(VkSampleCountFlagBits samples)
 void TextureFactory::setSharingMode(VkSharingMode sharingMode)
 {
 	m_imageInfo.sharingMode = sharingMode;
+}
+
+void TextureFactory::setAspectMask(VkImageAspectFlags aspectMask)
+{
+	m_viewInfo.subresourceRange.aspectMask = aspectMask;
 }
 
 void TextureFactory::setViewComponents(const VkComponentMapping& components)

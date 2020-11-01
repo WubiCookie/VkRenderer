@@ -1,5 +1,6 @@
 #include "Scene.hpp"
 
+#include "TextureFactory.hpp"
 #include "RenderWindow.hpp"
 #include "SceneObject.hpp"
 //#include "CommandBuffer.hpp"
@@ -26,9 +27,19 @@ Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
 	               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	m_modelUniformBuffer.setName("Models UBO");
 
+	TextureFactory f(vk);
+
+	f.setFormat(VK_FORMAT_D32_SFLOAT);
+	f.setAspectMask(VK_IMAGE_ASPECT_DEPTH_BIT);
+	f.setUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+	           VK_IMAGE_USAGE_SAMPLED_BIT);
+
+	m_shadowmap = f.createTexture2D();
+
 #pragma region descriptor pool
 	std::array poolSizes{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
 	};
 
 	vk::DescriptorPoolCreateInfo poolInfo;
@@ -59,9 +70,17 @@ Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
 	layoutBindingModelUbo.stageFlags =
 	    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
+	VkDescriptorSetLayoutBinding layoutBindingShadowMap{};
+	layoutBindingShadowMap.binding = 2;
+	layoutBindingShadowMap.descriptorCount = 1;
+	layoutBindingShadowMap.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingShadowMap.stageFlags =
+	    VK_SHADER_STAGE_FRAGMENT_BIT;
+
 	std::array layoutBindings{
 		layoutBindingSceneUbo,
 		layoutBindingModelUbo,
+		                       layoutBindingShadowMap,
 	};
 
 	vk::DescriptorSetLayoutCreateInfo setLayoutInfo;

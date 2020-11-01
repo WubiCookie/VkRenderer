@@ -427,7 +427,7 @@ static void processNode(RenderWindow& rw, aiNode* node, const aiScene* scene,
 
 ShaderBall::ShaderBall(RenderWindow& renderWindow)
     : rw(renderWindow),
-      m_shadingModel(rw.get().device(), 1),
+      m_shadingModel(rw.get().device(), 1, 1),
       m_defaultMaterial(rw, m_shadingModel, 3),
       m_scene(renderWindow),
       imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
@@ -516,7 +516,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region sponza mesh
 	const aiScene* sponzaScene = importer.ReadFile(
-	    "../resources/illumination_assets/Sponza/glTF/Sponza.gltf",
+	    "../resources/Vulkan-Samples-Assets/scenes/sponza/Sponza01.gltf",
 	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
 	        aiProcess_CalcTangentSpace);
 
@@ -1122,7 +1122,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	copy.imageSubresource.mipLevel = 0;
 
 	m_equirectangularTexture.uploadDataImmediate(
-	    imageData, w * h * 4 * sizeof(float), copy, VK_IMAGE_LAYOUT_UNDEFINED,
+	    imageData, size_t(w) * size_t(h) * 4 * sizeof(float), copy,
+	    VK_IMAGE_LAYOUT_UNDEFINED,
 	    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	stbi_image_free(imageData);
@@ -1145,7 +1146,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region cubemaps
 	{
-		EquirectangularToCubemap e2c(rw, 512);
+		EquirectangularToCubemap e2c(rw, 1024);
 		m_environmentMap = e2c.computeCubemap(m_equirectangularTexture);
 
 		if (m_environmentMap.get() == nullptr)
@@ -1405,7 +1406,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 	m_materialInstance2 = m_defaultMaterial.instanciate();
 	m_materialInstance2->setFloatParameter("roughness", 0.001f);
-	m_materialInstance2->setFloatParameter("metalness", 1.0f);
+	m_materialInstance2->setFloatParameter("metalness", 0.999f);
 	m_materialInstance2->setVec4Parameter("color", vector4(0, 0, 1, 1));
 
 	m_bunnySceneObject2 = &m_scene.instantiateSceneObject();
@@ -1632,6 +1633,13 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 	}
 }
 
+vector3 lightDir{ 0, -1, 0 };
+bool directionalEnabled = true;
+
+vector3 lightPos{ 0, 0, 0 };
+bool pointEnabled = false;
+bool pointAtCameraEnabled = false;
+
 void ShaderBall::imgui(CommandBuffer& cb)
 {
 	ImGui_ImplVulkan_NewFrame();
@@ -1641,6 +1649,55 @@ void ShaderBall::imgui(CommandBuffer& cb)
 	{
 		static float f = 0.0f;
 		static int counter = 0;
+
+		ImGui::Begin("Lights");
+
+		ImGui::Checkbox("directional", &directionalEnabled);
+
+		if (directionalEnabled)
+		{
+			ImGui::DragFloat3("direction", &lightDir.x, 0.01f);
+		}
+
+		ImGui::Checkbox("point", &pointEnabled);
+
+		if (pointEnabled)
+		{
+			ImGui::Checkbox("at camera", &pointAtCameraEnabled);
+			if (!pointAtCameraEnabled)
+				ImGui::DragFloat3("position", &lightPos.x, 0.01f);
+		}
+
+
+
+		// changed |= ImGui::SliderFloat("CamFocalDistance",
+		//	&m_config.camFocalDistance, 0.1f, 30.0f);
+		// changed |= ImGui::SliderFloat("CamFocalLength",
+		//	&m_config.camFocalLength, 0.0f, 20.0f);
+		// changed |= ImGui::SliderFloat("CamAperture",
+		// &m_config.camAperture, 	0.0f, 5.0f);
+
+		// changed |= ImGui::DragFloat3("rotation", &m_config.camRot.x,
+		// 0.01f); changed |= ImGui::DragFloat3("lightDir",
+		// &m_config.lightDir.x, 0.01f);
+
+		// changed |= ImGui::SliderFloat("scene radius",
+		// &m_config.sceneRadius, 	0.0f, 10.0f);
+
+		// ImGui::SliderFloat("BloomAscale1", &m_config.bloomAscale1,
+		// 0.0f, 1.0f); ImGui::SliderFloat("BloomAscale2",
+		// &m_config.bloomAscale2, 0.0f, 1.0f);
+		// ImGui::SliderFloat("BloomBscale1", &m_config.bloomBscale1,
+		// 0.0f, 1.0f); ImGui::SliderFloat("BloomBscale2",
+		// &m_config.bloomBscale2, 0.0f, 1.0f);
+
+		// if (changed)
+		//	applyImguiParameters();
+
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+		            1000.0f / ImGui::GetIO().Framerate,
+		            ImGui::GetIO().Framerate);
+		ImGui::End();
 
 		/*
 		if (m_lastSelectedHighlightID < m_meshes.size() &&
@@ -1830,7 +1887,10 @@ void ShaderBall::standaloneDraw()
 	m_bunnySceneObject3->transform.scale = { 6, 6, 6 };
 
 	for (auto& obj : m_sponzaSceneObjects)
+	{
 		obj->transform.scale = { 0.1f, 0.1f, 0.1f };
+		obj->transform.rotation = quaternion(vector3(1, 0, 0), 90.0_deg);
+	}
 
 	m_scene.uploadTransformMatrices(cameraTr, m_config.proj);
 
@@ -1838,15 +1898,33 @@ void ShaderBall::standaloneDraw()
 
 	//static float x = 0.0f;
 
+	auto* shadingModelData =
+	    m_shadingModel.m_shadingModelStaging
+	        .map<PbrShadingModel::ShadingModelUboStruct>();
+	shadingModelData->pointLightsCount = pointEnabled;
+	shadingModelData->directionalLightsCount = directionalEnabled;
+		m_shadingModel.m_shadingModelStaging.unmap();
+	m_shadingModel.uploadShadingModelDataStaging();
+
 	auto* pointLights = m_shadingModel.m_pointLightsStaging
 	    .map<PbrShadingModel::PointLightUboStruct>();
 	pointLights->color = vector4(1.0f, 1.0f, 1.0f, 1.0f) * 80.f;
 	pointLights->intensity = 1.0f;
-	pointLights->position = cameraTr.position;
-	//pointLights->position = vector3(0, 10, 0);
+	if (pointAtCameraEnabled)
+		lightPos = cameraTr.position;
 
+	pointLights->position = lightPos;
 	m_shadingModel.m_pointLightsStaging.unmap();
-	m_shadingModel.uploadPointLightsStagin();
+	m_shadingModel.uploadPointLightsStaging();
+
+	auto* directionalLights = m_shadingModel.m_directionalLightsStaging
+	    .map<PbrShadingModel::DirectionalLightUboStruct>();
+	directionalLights->color = vector4(1.0f, 1.0f, 1.0f, 1.0f) * 2.0f;
+	directionalLights->intensity = 1.0f;
+	directionalLights->direction = lightDir;
+	//pointLights->position = vector3(0, 10, 0);
+	m_shadingModel.m_directionalLightsStaging.unmap();
+	m_shadingModel.uploadDirectionalLightsStaging();
 
 	auto& frame = rw.get().getAvailableCommandBuffer();
 	frame.reset();

@@ -6,21 +6,61 @@
 
 #include <iostream>
 
+using namespace sdw;
+
 namespace shader
 {
-struct PointLights : public sdw::StructInstance
+struct ShadingModelData : public StructInstance
+{
+	ShadingModelData(ast::Shader* shader, ast::expr::ExprPtr expr)
+	    : StructInstance{ shader, std::move(expr) },
+	      pointLightsCount{ getMember<UInt>("pointLightsCount") },
+	      directionalLightsCount{ getMember<UInt>("directionalLightsCount") }
+	{
+	}
+
+	ShadingModelData& operator=(ShadingModelData const& rhs)
+	{
+		StructInstance::operator=(rhs);
+		return *this;
+	}
+
+	static ast::type::StructPtr makeType(ast::type::TypesCache& cache)
+	{
+		auto result =
+		    cache.getStruct(ast::type::MemoryLayout::eStd140, "PointLights");
+
+		if (result->empty())
+		{
+			result->declMember("pointLightsCount", ast::type::Kind::eUInt);
+			result->declMember("directionalLightsCount",
+			                   ast::type::Kind::eUInt);
+		}
+
+		return result;
+	}
+
+	UInt pointLightsCount;
+	UInt directionalLightsCount;
+
+private:
+	using StructInstance::getMember;
+	using StructInstance::getMemberArray;
+};
+
+struct PointLights : public StructInstance
 {
 	PointLights(ast::Shader* shader, ast::expr::ExprPtr expr)
 	    : StructInstance{ shader, std::move(expr) },
-	      position{ getMember<sdw::Vec3>("position") },
-	      color{ getMember<sdw::Vec4>("color") },
-	      intensity{ getMember<sdw::Float>("intensity") }
+	      position{ getMember<Vec3>("position") },
+	      color{ getMember<Vec4>("color") },
+	      intensity{ getMember<Float>("intensity") }
 	{
 	}
 
 	PointLights& operator=(PointLights const& rhs)
 	{
-		sdw::StructInstance::operator=(rhs);
+		StructInstance::operator=(rhs);
 		return *this;
 	}
 
@@ -39,56 +79,110 @@ struct PointLights : public sdw::StructInstance
 		return result;
 	}
 
-	sdw::Vec3 position;
-	sdw::Vec4 color;
-	sdw::Float intensity;
+	Vec3 position;
+	Vec4 color;
+	Float intensity;
 
 private:
-	using sdw::StructInstance::getMember;
-	using sdw::StructInstance::getMemberArray;
+	using StructInstance::getMember;
+	using StructInstance::getMemberArray;
 };
 
+struct DirectionalLights : public StructInstance
+{
+	DirectionalLights(ast::Shader* shader, ast::expr::ExprPtr expr)
+	    : StructInstance{ shader, std::move(expr) },
+	      direction{ getMember<Vec3>("direction") },
+	      color{ getMember<Vec4>("color") },
+	      intensity{ getMember<Float>("intensity") }
+	{
+	}
+
+	DirectionalLights& operator=(DirectionalLights const& rhs)
+	{
+		StructInstance::operator=(rhs);
+		return *this;
+	}
+
+	static ast::type::StructPtr makeType(ast::type::TypesCache& cache)
+	{
+		auto result = cache.getStruct(ast::type::MemoryLayout::eStd140,
+		                              "DirectionalLights");
+
+		if (result->empty())
+		{
+			result->declMember("direction", ast::type::Kind::eVec3F);
+			result->declMember("color", ast::type::Kind::eVec4F);
+			result->declMember("intensity", ast::type::Kind::eFloat);
+		}
+
+		return result;
+	}
+
+	Vec3 direction;
+	Vec4 color;
+	Float intensity;
+
+private:
+	using StructInstance::getMember;
+	using StructInstance::getMemberArray;
+};
+
+Writer_Parameter(ShadingModelData);
 Writer_Parameter(PointLights);
+Writer_Parameter(DirectionalLights);
 
 enum class TypeName
 {
-	ePointLights = 100,
+	eShadingModelData = 100,
+	ePointLights,
+	eDirectionalLights,
 };
 }  // namespace shader
 
 namespace sdw
 {
 template <>
+struct TypeTraits<shader::ShadingModelData>
+{
+	static ast::type::Kind constexpr TypeEnum =
+	    ast::type::Kind(shader::TypeName::eShadingModelData);
+};
+template <>
 struct TypeTraits<shader::PointLights>
 {
 	static ast::type::Kind constexpr TypeEnum =
 	    ast::type::Kind(shader::TypeName::ePointLights);
 };
+template <>
+struct TypeTraits<shader::DirectionalLights>
+{
+	static ast::type::Kind constexpr TypeEnum =
+	    ast::type::Kind(shader::TypeName::eDirectionalLights);
+};
 }  // namespace sdw
 
 namespace cdm
 {
-using DistributionGGX_Signature =
-    sdw::Function<sdw::Float, sdw::InVec3, sdw::InVec3, sdw::InFloat>;
-using GeometrySchlickGGX_Signature =
-    sdw::Function<sdw::Float, sdw::InFloat, sdw::InFloat>;
+using DistributionGGX_Signature = Function<Float, InVec3, InVec3, InFloat>;
+using GeometrySchlickGGX_Signature = Function<Float, InFloat, InFloat>;
 using GeometrySmith_Signature =
-    sdw::Function<sdw::Float, sdw::InVec3, sdw::InVec3, sdw::InVec3,
-                  sdw::InFloat>;
-using fresnelSchlick_Signature =
-    sdw::Function<sdw::Vec4, sdw::InFloat, sdw::InVec4>;
+    Function<Float, InVec3, InVec3, InVec3, InFloat>;
+using fresnelSchlick_Signature = Function<Vec4, InFloat, InVec4>;
 using fresnelSchlickRoughness_Signature =
-    sdw::Function<sdw::Vec4, sdw::InFloat, sdw::InVec4, sdw::InFloat>;
+    Function<Vec4, InFloat, InVec4, InFloat>;
 
 struct FragmentShaderBuildData : PbrShadingModel::FragmentShaderBuildDataBase
 {
-	std::unique_ptr<sdw::SampledImageCubeRgba32> irradianceMap;
-	std::unique_ptr<sdw::SampledImageCubeRgba32> prefilteredMap;
-	std::unique_ptr<sdw::SampledImage2DRg32> brdfLut;
+	std::unique_ptr<SampledImageCubeRgba32> irradianceMap;
+	std::unique_ptr<SampledImageCubeRgba32> prefilteredMap;
+	std::unique_ptr<SampledImage2DRg32> brdfLut;
 
-	std::unique_ptr<sdw::ArraySsboT<shader::PointLights>> pointLights;
+	std::unique_ptr<sdw::Ubo> shadingModelData;
+	std::unique_ptr<ArraySsboT<shader::PointLights>> pointLights;
+	std::unique_ptr<ArraySsboT<shader::DirectionalLights>> directionalLights;
 
-	std::unique_ptr<sdw::Float> PI;
+	std::unique_ptr<Float> PI;
 
 	DistributionGGX_Signature DistributionGGX;
 	GeometrySchlickGGX_Signature GeometrySchlickGGX;
@@ -98,16 +192,18 @@ struct FragmentShaderBuildData : PbrShadingModel::FragmentShaderBuildDataBase
 };
 
 PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
-                                 uint32_t maxPointLights)
+                                 uint32_t maxPointLights,
+                                 uint32_t maxDirectionalLights)
     : m_vulkanDevice(&vulkanDevice),
-      m_maxPointLights(maxPointLights)
+      m_maxPointLights(maxPointLights),
+      m_maxDirectionalLights(maxDirectionalLights)
 {
 	auto& vk = *m_vulkanDevice.get();
 
 #pragma region descriptor pool
 	std::array poolSizes{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
 	};
 
 	vk::DescriptorPoolCreateInfo poolInfo;
@@ -148,26 +244,36 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 		    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		layoutBindingBrdfLutImages.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		// VkDescriptorSetLayoutBinding layoutBindingShadingModelBuffer{};
-		// layoutBindingShadingModelBuffer.binding = 3;
-		// layoutBindingShadingModelBuffer.descriptorCount = 1;
-		// layoutBindingShadingModelBuffer.descriptorType =
-		// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		// layoutBindingShadingModelBuffer.stageFlags =
-		// VK_SHADER_STAGE_FRAGMENT_BIT;
-
-		VkDescriptorSetLayoutBinding layoutBindingLightsBuffer{};
-		layoutBindingLightsBuffer.binding = 4;
-		layoutBindingLightsBuffer.descriptorCount = 1;
-		layoutBindingLightsBuffer.descriptorType =
+		VkDescriptorSetLayoutBinding layoutBindingShadingModelBuffer{};
+		layoutBindingShadingModelBuffer.binding = 3;
+		layoutBindingShadingModelBuffer.descriptorCount = 1;
+		layoutBindingShadingModelBuffer.descriptorType =
 		    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		layoutBindingLightsBuffer.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		layoutBindingShadingModelBuffer.stageFlags =
+		    VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutBinding layoutBindingPointLightsBuffer{};
+		layoutBindingPointLightsBuffer.binding = 4;
+		layoutBindingPointLightsBuffer.descriptorCount = 1;
+		layoutBindingPointLightsBuffer.descriptorType =
+		    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		layoutBindingPointLightsBuffer.stageFlags =
+		    VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutBinding layoutBindingDirectionalLightsBuffer{};
+		layoutBindingDirectionalLightsBuffer.binding = 5;
+		layoutBindingDirectionalLightsBuffer.descriptorCount = 1;
+		layoutBindingDirectionalLightsBuffer.descriptorType =
+		    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		layoutBindingDirectionalLightsBuffer.stageFlags =
+		    VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		std::array layoutBindings{ layoutBindingIrradianceMapImages,
 			                       layoutBindingPrefilteredMapImages,
 			                       layoutBindingBrdfLutImages,
-			                       // layoutBindingShadingModelBuffer,
-			                       layoutBindingLightsBuffer };
+			                       layoutBindingShadingModelBuffer,
+			                       layoutBindingPointLightsBuffer,
+			                       layoutBindingDirectionalLightsBuffer };
 
 		vk::DescriptorSetLayoutCreateInfo setLayoutInfo;
 		setLayoutInfo.bindingCount = uint32_t(layoutBindings.size());
@@ -211,9 +317,12 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 	shadingModelUboWrite.dstBinding = 3;
 	shadingModelUboWrite.dstSet = m_descriptorSet;
 	shadingModelUboWrite.pBufferInfo = &shadingModelUboInfo;
+
+	m_shadingModelStaging =
+	    StagingBuffer(vk, sizeof(sizeof(ShadingModelUboStruct)));
 #pragma endregion
 
-#pragma region lights buffer
+#pragma region point lights buffer
 	m_pointLightsUbo = Buffer(
 	    vk, sizeof(PointLightUboStruct) * m_maxPointLights,
 	    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -236,11 +345,56 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 	    StagingBuffer(vk, sizeof(PointLightUboStruct) * m_maxPointLights);
 #pragma endregion
 
-	// vk.updateDescriptorSets({ shadingModelUboWrite, pointLightsUboWrite });
-	vk.updateDescriptorSets({ pointLightsUboWrite });
+#pragma region directioanl lights buffer
+	m_directionalLightsUbo = Buffer(
+	    vk, sizeof(DirectionalLightUboStruct) * m_maxDirectionalLights,
+	    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	VkDescriptorBufferInfo directionalLightsUboInfo = {};
+	directionalLightsUboInfo.buffer = m_directionalLightsUbo;
+	directionalLightsUboInfo.offset = 0;
+	directionalLightsUboInfo.range =
+	    sizeof(DirectionalLightUboStruct) * m_maxDirectionalLights;
+
+	vk::WriteDescriptorSet directionalLightsUboWrite;
+	directionalLightsUboWrite.descriptorCount = 1;
+	directionalLightsUboWrite.descriptorType =
+	    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	directionalLightsUboWrite.dstArrayElement = 0;
+	directionalLightsUboWrite.dstBinding = 5;
+	directionalLightsUboWrite.dstSet = m_descriptorSet;
+	directionalLightsUboWrite.pBufferInfo = &directionalLightsUboInfo;
+
+	m_directionalLightsStaging = StagingBuffer(
+	    vk, sizeof(DirectionalLightUboStruct) * m_maxDirectionalLights);
+#pragma endregion
+
+	vk.updateDescriptorSets({ shadingModelUboWrite, pointLightsUboWrite,
+	                          directionalLightsUboWrite });
 }
 
-void PbrShadingModel::uploadPointLightsStagin()
+void PbrShadingModel::uploadShadingModelDataStaging()
+{
+	auto& vk = *m_vulkanDevice.get();
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
+	CommandBuffer& cb = frame.commandBuffer;
+
+	VkBufferCopy region = {};
+	region.size = sizeof(ShadingModelUboStruct);
+
+	cb.begin();
+	cb.copyBuffer(m_shadingModelStaging, m_shadingModelUbo, region);
+	cb.end();
+
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
+		throw std::runtime_error("failed to submit copy command buffer");
+
+	pool.waitForAllCommandBuffers();
+}
+
+void PbrShadingModel::uploadPointLightsStaging()
 {
 	auto& vk = *m_vulkanDevice.get();
 	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
@@ -260,6 +414,26 @@ void PbrShadingModel::uploadPointLightsStagin()
 	pool.waitForAllCommandBuffers();
 }
 
+void PbrShadingModel::uploadDirectionalLightsStaging()
+{
+	auto& vk = *m_vulkanDevice.get();
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
+	CommandBuffer& cb = frame.commandBuffer;
+
+	VkBufferCopy region = {};
+	region.size = sizeof(DirectionalLightUboStruct) * m_maxDirectionalLights;
+
+	cb.begin();
+	cb.copyBuffer(m_directionalLightsStaging, m_directionalLightsUbo, region);
+	cb.end();
+
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
+		throw std::runtime_error("failed to submit copy command buffer");
+
+	pool.waitForAllCommandBuffers();
+}
+
 CombinedMaterialShadingFragmentFunction
 PbrShadingModel::combinedMaterialFragmentFunction(
     sdw::FragmentWriter& writer, MaterialFragmentFunction& materialFunction,
@@ -270,24 +444,32 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	if (buildData == nullptr)
 		throw std::runtime_error("invalid shaderBuildData type");
 
-	using namespace sdw;
-
-	buildData->irradianceMap = std::make_unique<sdw::SampledImageCubeRgba32>(
+	buildData->irradianceMap = std::make_unique<SampledImageCubeRgba32>(
 	    writer.declSampledImage<FImgCubeRgba32>("irradianceMap", 0, 1));
 
-	buildData->prefilteredMap = std::make_unique<sdw::SampledImageCubeRgba32>(
+	buildData->prefilteredMap = std::make_unique<SampledImageCubeRgba32>(
 	    writer.declSampledImage<FImgCubeRgba32>("prefilteredMap", 1, 1));
 
-	buildData->brdfLut = std::make_unique<sdw::SampledImage2DRg32>(
+	buildData->brdfLut = std::make_unique<SampledImage2DRg32>(
 	    writer.declSampledImage<FImg2DRg32>("brdfLut", 2, 1));
 
-	buildData->pointLights =
-	    std::make_unique<sdw::ArraySsboT<shader::PointLights>>(
-	        writer.declArrayShaderStorageBuffer<shader::PointLights>(
-	            "pointLights", 4, 1));
+	buildData->shadingModelData = std::make_unique<sdw::Ubo>(
+	    writer.declUniformBuffer<sdw::Ubo>("shadingModelData", 3, 1));
+	buildData->shadingModelData->declMember<UInt>("pointLightsCount");
+	buildData->shadingModelData->declMember<UInt>("directionalLightsCount");
+	buildData->shadingModelData->end();
 
-	buildData->PI = std::make_unique<sdw::Float>(
-	    writer.declConstant("PI", 3.14159265359_f));
+	buildData->pointLights = std::make_unique<ArraySsboT<shader::PointLights>>(
+	    writer.declArrayShaderStorageBuffer<shader::PointLights>("pointLights",
+	                                                             4, 1));
+
+	buildData->directionalLights =
+	    std::make_unique<ArraySsboT<shader::DirectionalLights>>(
+	        writer.declArrayShaderStorageBuffer<shader::DirectionalLights>(
+	            "directionalLights", 5, 1));
+
+	buildData->PI =
+	    std::make_unique<Float>(writer.declConstant("PI", 3.14159265359_f));
 
 	buildData->DistributionGGX = writer.implementFunction<Float>(
 	    "DistributionGGX",
@@ -336,11 +518,13 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	    "fresnelSchlick",
 	    [&writer, buildData](const Float& cosTheta, const Vec4& F0) {
 		    Locale(oneMinusCosTheta, 1.0_f - cosTheta);
-		    Locale(oneMinusCosThetaPowFive,
-		           oneMinusCosTheta * oneMinusCosTheta * oneMinusCosTheta *
-		               oneMinusCosTheta * oneMinusCosTheta);
+		    Locale(oneMinusCosThetaPowTwo,
+		           oneMinusCosTheta * oneMinusCosTheta);
+		    Locale(oneMinusCosThetaPowFive, oneMinusCosThetaPowTwo *
+		                                        oneMinusCosThetaPowTwo *
+		                                        oneMinusCosTheta);
 		    writer.returnStmt(F0 + (vec4(1.0_f) - F0) *
-		                               vec4(pow(1.0_f - cosTheta, 5.0_f)));
+		                               vec4(oneMinusCosThetaPowFive));
 	    },
 	    InFloat{ writer, "cosTheta" }, InVec4{ writer, "F0" });
 
@@ -348,8 +532,14 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	    "fresnelSchlickRoughness",
 	    [&writer, buildData](const Float& cosTheta, const Vec4& F0,
 	                         const Float& roughness) {
+		    Locale(oneMinusCosTheta, 1.0_f - cosTheta);
+		    Locale(oneMinusCosThetaPowTwo,
+		           oneMinusCosTheta * oneMinusCosTheta);
+		    Locale(oneMinusCosThetaPowFive, oneMinusCosThetaPowTwo *
+		                                        oneMinusCosThetaPowTwo *
+		                                        oneMinusCosTheta);
 		    writer.returnStmt(F0 + (max(vec4(1.0_f - roughness), F0) - F0) *
-		                               vec4(pow(1.0_f - cosTheta, 5.0_f)));
+		                               vec4(oneMinusCosThetaPowFive));
 	    },
 	    InFloat{ writer, "cosTheta" }, InVec4{ writer, "F0" },
 	    InFloat{ writer, "roughness" });
@@ -361,6 +551,12 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	        const Vec3& wsNormal_arg, const Vec3& wsTangent_arg,
 	        const Vec3& wsViewPosition_arg) {
 		    Locale(pi, *buildData->PI);
+		    Locale(pointLightsCount,
+		           buildData->shadingModelData->getMember<UInt>(
+		               "pointLightsCount"));
+		    Locale(directionalLightsCount,
+		           buildData->shadingModelData->getMember<UInt>(
+		               "directionalLightsCount"));
 		    Locale(albedo, vec4(0.0_f));
 		    Locale(wsPosition, wsPosition_arg);
 		    Locale(wsNormal, wsNormal_arg);
@@ -387,63 +583,69 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    Locale(kD, vec4(0.0_f));
 		    Locale(specular, vec4(0.0_f));
 
-		    // ========================================================
-		    Locale(wsLightPos,
-		           buildData->pointLights->operator[](0_u).position);
-		    Locale(wsLightColor,
-		           buildData->pointLights->operator[](0_u).color);
-		    Locale(L, normalize(wsLightPos - wsPosition));
-		    Locale(H, normalize(V + L));
-		    Locale(distance, length(wsLightPos - wsPosition));
-		    Locale(attenuation, 1.0_f / (distance * distance));
-		    Locale(radiance, wsLightColor * vec4(attenuation));
+		    FOR(writer, UInt, i, 0_u, i < pointLightsCount, ++i)
+		    {
+			    Locale(wsLightPos,
+			           buildData->pointLights->operator[](i).position);
+			    Locale(lightColor,
+			           buildData->pointLights->operator[](i).color);
+			    Locale(L, normalize(wsLightPos - wsPosition));
+			    Locale(H, normalize(V + L));
+			    Locale(distance, length(wsLightPos - wsPosition));
+			    Locale(attenuation, 1.0_f / (distance * distance));
+			    Locale(radiance, lightColor * vec4(attenuation));
 
-		    Locale(NDF, buildData->DistributionGGX(wsNormal, H, roughness));
-		    Locale(G, buildData->GeometrySmith(wsNormal, V, L, roughness));
-		    F = buildData->fresnelSchlick(max(dot(H, V), 0.0_f), F0);
+			    Locale(NDF,
+			           buildData->DistributionGGX(wsNormal, H, roughness));
+			    Locale(G, buildData->GeometrySmith(wsNormal, V, L, roughness));
+			    F = buildData->fresnelSchlick(max(dot(H, V), 0.0_f), F0);
 
-		    kS = F;
-		    kD = vec4(1.0_f) - kS;
-		    kD = kD * vec4(1.0_f - metalness);
+			    kS = F;
+			    kD = vec4(1.0_f) - kS;
+			    kD = kD * vec4(1.0_f - metalness);
 
-		    Locale(nominator, NDF * G * F);
-		    Locale(denominator, 4.0_f * max(dot(wsNormal, V), 0.0_f) *
-		                            max(dot(wsNormal, L), 0.0_f));
-		    Locale(loopSpecular, nominator / vec4(max(denominator, 0.001_f)));
+			    Locale(nominator, NDF * G * F);
+			    Locale(denominator, 4.0_f * max(dot(wsNormal, V), 0.0_f) *
+			                            max(dot(wsNormal, L), 0.0_f));
+			    Locale(loopSpecular,
+			           nominator / vec4(max(denominator, 0.001_f)));
 
-		    Locale(NdotL, max(dot(wsNormal, L), 0.0_f));
+			    Locale(NdotL, max(dot(wsNormal, L), 0.0_f));
 
-		    Lo += (kD * albedo / vec4(pi) + loopSpecular) * radiance *
-		          vec4(NdotL);
-		    // ========================================================
+			    Lo += (kD * albedo / vec4(pi) + loopSpecular) * radiance *
+			          vec4(NdotL);
+		    }
+		    ROF;
+		    FOR(writer, UInt, i, 0_u, i < directionalLightsCount, ++i)
+		    {
+			    Locale(radiance,
+			           buildData->directionalLights->operator[](i).color);
+			    Locale(L,
+			           normalize(-buildData->directionalLights->operator[](i)
+			                          .direction));
+			    Locale(H, normalize(V + L));
 
-		    // FOR
-		    // Locale(L, normalize(fragTanLightPos - fragTanFragPos));
-		    // Locale(H, normalize(V + L));
-		    // Locale(distance, length(fragTanLightPos - fragTanFragPos));
-		    // Locale(attenuation, 1.0_f / (distance * distance));
-		    // Locale(radiance, vec4(attenuation));
-		    //
-		    // Locale(NDF, DistributionGGX(N, H, roughness));
-		    // Locale(G, GeometrySmith(N, V, L, roughness));
-		    // F = fresnelSchlick(max(dot(H, V), 0.0_f), F0);
-		    //
-		    // Locale(nominator, NDF * G * F);
-		    // Locale(denominator,
-		    //       4.0_f * max(dot(N, V), 0.0_f) * max(dot(N, L), 0.0_f)
-		    //       +
-		    //           0.001_f);
-		    // Locale(specular, nominator / vec4(denominator));
-		    //
-		    // kS = F;
-		    // kD = vec4(1.0_f) - kS;
-		    // kD = kD * vec4(1.0_f - metalness);
-		    //
-		    // Locale(NdotL, max(dot(N, L), 0.0_f));
-		    //
-		    // Lo += (kD * albedo / vec4(PI) + specular) * radiance *
-		    // vec4(NdotL);
-		    // ROF
+			    Locale(NDF,
+			           buildData->DistributionGGX(wsNormal, H, roughness));
+			    Locale(G, buildData->GeometrySmith(wsNormal, V, L, roughness));
+			    F = buildData->fresnelSchlick(max(dot(H, V), 0.0_f), F0);
+
+			    kS = F;
+			    kD = vec4(1.0_f) - kS;
+			    kD = kD * vec4(1.0_f - metalness);
+
+			    Locale(nominator, NDF * G * F);
+			    Locale(denominator, 4.0_f * max(dot(wsNormal, V), 0.0_f) *
+			                            max(dot(wsNormal, L), 0.0_f));
+			    Locale(loopSpecular,
+			           nominator / vec4(max(denominator, 0.001_f)));
+
+			    Locale(NdotL, max(dot(wsNormal, L), 0.0_f));
+
+			    Lo += (kD * albedo / vec4(pi) + loopSpecular) * radiance *
+			          vec4(NdotL);
+		    }
+		    ROF;
 
 		    F = buildData->fresnelSchlickRoughness(
 		        max(dot(wsNormal, V), 0.0_f), F0, roughness);
@@ -472,7 +674,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    Locale(color, ambient + Lo);
 
 		    writer.returnStmt(color);
-		    //writer.returnStmt(wsLightPos);
+		    // writer.returnStmt(wsLightPos);
 	    },
 	    InUInt{ writer, "inMaterialInstanceIndex" },
 	    InVec3{ writer, "wsPosition_arg" }, InVec3{ writer, "wsNormal_arg" },

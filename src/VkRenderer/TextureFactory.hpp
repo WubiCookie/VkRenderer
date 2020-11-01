@@ -42,6 +42,7 @@ public:
 	void setMipLevels(uint32_t mipLevels);
 	void setSamples(VkSampleCountFlagBits samples);
 	void setSharingMode(VkSharingMode sharingMode);
+	void setAspectMask(VkImageAspectFlags aspectMask);
 
 	void setViewComponents(const VkComponentMapping& components);
 	void setViewSubresourceRange(const VkImageSubresourceRange& range);

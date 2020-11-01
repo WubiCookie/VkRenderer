@@ -86,6 +86,11 @@ public:
 	Ubo(ComputeWriter& writer, std::string const& name, uint32_t bind,
 	    uint32_t set,
 	    ast::type::MemoryLayout layout = ast::type::MemoryLayout::eStd140);
+
+	Ubo(const Ubo&) = default;
+	Ubo(Ubo&&) = default;
+	Ubo& operator=(const Ubo&) = default;
+	Ubo& operator=(Ubo&&) = default;
 };
 
 class VertexWriter : public sdw::VertexWriter

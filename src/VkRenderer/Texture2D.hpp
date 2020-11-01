@@ -26,6 +26,7 @@ class Texture2D final : public TextureInterface
 	VkFormat m_format = VK_FORMAT_UNDEFINED;
 	uint32_t m_mipLevels = 0;
 	VkSampleCountFlagBits m_samples = VK_SAMPLE_COUNT_1_BIT;
+	VkImageAspectFlags m_aspectMask = 0;
 
 public:
 	Texture2D() = default;

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Buffer.hpp"
+#include "Texture2D.hpp"
 #include "MyShaderWriter.hpp"
-
 #include "cdm_maths.hpp"
 
 #include <array>
@@ -30,6 +30,7 @@ private:
 		matrix4 proj;
 		vector3 viewPos;
 		vector3 lightPos;
+		matrix4 shadowTransform;
 	};
 
 	struct alignas(16) ModelUboStruct
@@ -46,6 +47,8 @@ private:
 	UniqueDescriptorPool m_descriptorPool;
 	UniqueDescriptorSetLayout m_descriptorSetLayout;
 	Movable<VkDescriptorSet> m_descriptorSet;
+
+	Texture2D m_shadowmap;
 
 	/// TODO: `RenderQueue`s
 

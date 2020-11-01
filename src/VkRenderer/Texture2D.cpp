@@ -46,10 +46,10 @@ Texture2D::Texture2D(const VulkanDevice& vulkanDevice,
 	m_mipLevels = imageInfo.mipLevels;
 	m_samples = imageInfo.samples;
 	m_format = imageInfo.format;
+	m_aspectMask = viewInfo.subresourceRange.aspectMask;
 
 	viewInfo.image = m_image.get();
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
@@ -91,7 +91,7 @@ void Texture2D::transitionLayoutImmediate(VkImageLayout oldLayout,
 	barrier.newLayout = newLayout;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.aspectMask = m_aspectMask;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = m_mipLevels;
 	barrier.subresourceRange.baseArrayLayer = 0;
@@ -129,7 +129,7 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.aspectMask = m_aspectMask;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.baseArrayLayer = 0;
@@ -155,7 +155,7 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 		VkImageBlit blit{};
 		blit.srcOffsets[0] = { 0, 0, 0 };
 		blit.srcOffsets[1] = { int32_t(m_width), int32_t(m_height), 1 };
-		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.aspectMask = m_aspectMask;
 		blit.srcSubresource.mipLevel = 0;
 		blit.srcSubresource.baseArrayLayer = 0;
 		blit.srcSubresource.layerCount = 1;
@@ -163,7 +163,7 @@ void Texture2D::generateMipmapsImmediate(VkImageLayout currentLayout)
 		blit.dstOffsets[0] = { 0, 0, 0 };
 		blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1,
 			                   mipHeight > 1 ? mipHeight / 2 : 1, 1 };
-		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.dstSubresource.aspectMask = m_aspectMask;
 		blit.dstSubresource.mipLevel = i;
 		blit.dstSubresource.baseArrayLayer = 0;
 		blit.dstSubresource.layerCount = 1;
@@ -234,7 +234,7 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.image = image();
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.aspectMask = m_aspectMask;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = mipLevels();
 	barrier.subresourceRange.baseArrayLayer = 0;
@@ -286,7 +286,7 @@ Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
 	copy.bufferRowLength = width();
 	copy.bufferImageHeight = height();
 	copy.imageExtent = extent3D();
-	copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copy.imageSubresource.aspectMask = m_aspectMask;
 	copy.imageSubresource.layerCount = 1;
 
 	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
@@ -301,7 +301,7 @@ Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.image = image();
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.aspectMask = m_aspectMask;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = mipLevels();
 	barrier.subresourceRange.baseArrayLayer = 0;
