@@ -3,8 +3,6 @@
 #include "EquirectangularToCubemap.hpp"
 #include "CommandBufferPool.hpp"
 #include "TextureFactory.hpp"
-//#include "EquirectangularToIrradianceMap.hpp"
-//#include "PrefilterCubemap.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>
 #include <ShaderWriter/Intrinsics/Intrinsics.hpp>
@@ -13,6 +11,8 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
+
+#include <Texas/Texas.hpp>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -427,7 +427,7 @@ static void processNode(RenderWindow& rw, aiNode* node, const aiScene* scene,
 
 ShaderBall::ShaderBall(RenderWindow& renderWindow)
     : rw(renderWindow),
-      m_shadingModel(rw),
+      m_shadingModel(rw.get().device(), 1),
       m_defaultMaterial(rw, m_shadingModel, 3),
       m_scene(renderWindow),
       imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
@@ -1089,8 +1089,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma region equirectangularHDR
 	int w, h, c;
 	float* imageData =
-	    stbi_loadf("../resources/illumination_assets/PaperMill_Ruins_E/PaperMill_E_3k.hdr",
-	               //"../resources/illumination_assets/Milkyway/Milkyway_small.hdr",
+	    stbi_loadf(
+			//"../resources/illumination_assets/PaperMill_Ruins_E/PaperMill_E_3k.hdr",
+	               "../resources/illumination_assets/Milkyway/Milkyway_small.hdr",
 	               //"../resources/illumination_assets/UV-Testgrid/testgrid.jpg",
 	               &w, &h, &c, 4);
 
@@ -1151,7 +1152,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			throw std::runtime_error("could not create environmentMap");
 
 		m_irradianceMap = IrradianceMap(rw, 512, m_equirectangularTexture,
-		                                "PaperMill_E_irradiance.hdr");
+		                                "Milkyway_small_irradiance.hdr");
 
 		if (m_irradianceMap.get() == nullptr)
 			throw std::runtime_error("could not create irradianceMap");
@@ -1172,7 +1173,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		irradianceMapTextureWrite.pImageInfo = &irradianceMapImageInfo;
 
 		m_prefilteredMap = PrefilteredCubemap(rw, 512, -1, m_environmentMap,
-		                                      "PaperMill_E_prefiltered.hdr");
+		                                      "Milkyway_small_prefiltered.hdr");
 
 		if (m_prefilteredMap.get().get() == nullptr)
 			throw std::runtime_error("could not create prefilteredMap");
@@ -1834,6 +1835,18 @@ void ShaderBall::standaloneDraw()
 	m_scene.uploadTransformMatrices(cameraTr, m_config.proj);
 
 	m_skybox->setMatrices(m_config.proj, m_config.view);
+
+	//static float x = 0.0f;
+
+	auto* pointLights = m_shadingModel.m_pointLightsStaging
+	    .map<PbrShadingModel::PointLightUboStruct>();
+	pointLights->color = vector4(1.0f, 1.0f, 1.0f, 1.0f) * 80.f;
+	pointLights->intensity = 1.0f;
+	pointLights->position = cameraTr.position;
+	//pointLights->position = vector3(0, 10, 0);
+
+	m_shadingModel.m_pointLightsStaging.unmap();
+	m_shadingModel.uploadPointLightsStagin();
 
 	auto& frame = rw.get().getAvailableCommandBuffer();
 	frame.reset();

@@ -13,3 +13,9 @@
 [submodule "external/ShaderWriter"]
     path = external/ShaderWriter
     url = https://github.com/DragonJoker/ShaderWriter.git
+[submodule "external/Texas"]
+	path = external/Texas
+	url = https://github.com/Didgy74/Texas.git
+[submodule "resources/Vulkan-Samples-Assets"]
+	path = resources/Vulkan-Samples-Assets
+	url = https://github.com/KhronosGroup/Vulkan-Samples-Assets.git

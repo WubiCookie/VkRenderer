@@ -25,6 +25,8 @@ set(SDW_BUILD_STATIC_SDW ON CACHE BOOL "")
 set(SDW_BUILD_TESTS OFF CACHE BOOL "")
 set(SDW_BUILD_VULKAN_LAYER OFF CACHE BOOL "")
 set(SDW_GENERATE_SOURCE ON CACHE BOOL "")
+set(TEXAS_ENABLE_KTX_SAVE OFF CACHE BOOL "")
+set(TEXAS_ENABLE_PNG_READ OFF CACHE BOOL "")
 
 message("==============================================")
 message("                     GLFW                     ")
@@ -37,6 +39,12 @@ message("                    Assimp                    ")
 message("==============================================")
 set(ASSIMP_DIR "external/assimp")
 add_subdirectory(${ASSIMP_DIR})
+
+message("==============================================")
+message("                    Texas                     ")
+message("==============================================")
+set(TEXAS_DIR "external/Texas")
+add_subdirectory(${TEXAS_DIR})
 
 message("==============================================")
 message("                 ShaderWriter                 ")
@@ -138,6 +146,8 @@ set_target_properties(IrrXML PROPERTIES FOLDER "Third Party")
 set_target_properties(uninstall PROPERTIES FOLDER "Third Party")
 set_target_properties(UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER "Third Party")
 set_target_properties(zlibstatic PROPERTIES FOLDER "Third Party")
+set_target_properties(Texas PROPERTIES FOLDER "Third Party")
+set_target_properties(Texas PROPERTIES CXX_STANDARD 17)
 
 message("==============================================")
 message("                  VkRenderer                  ")
@@ -263,11 +273,12 @@ target_include_directories(VkRenderer
         third_party/include
         ${GLFW3_INCLUDE_DIR}
         # ${SHADERC_INCLUDE_DIR}
+        ${TEXAS_DIR}/include
 )
 
 # link_directories(${SHADERC_LIBRARY_DIR})
 #target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp shaderc_combined)
-target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp )
+target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp Texas)
 
 set_target_properties(VkRenderer PROPERTIES CXX_STANDARD 17)
 
