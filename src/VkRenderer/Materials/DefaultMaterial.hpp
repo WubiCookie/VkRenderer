@@ -2,6 +2,7 @@
 
 #include "Material.hpp"
 #include "Buffer.hpp"
+#include "Texture2D.hpp"
 
 #include <memory>
 
@@ -18,6 +19,8 @@ class DefaultMaterial : public Material
 		float metalness;
 		float roughness;
 
+		//uint32_t textureIndex;
+
 		// padding
 		float _0{ float(0xcccccccc) };
 		float _1{ float(0xcccccccc) };
@@ -28,7 +31,10 @@ class DefaultMaterial : public Material
 	struct FragmentShaderBuildData : FragmentShaderBuildDataBase
 	{
 		std::unique_ptr<sdw::Ubo> ubo;
+		//sdw::USampledImage2DRgba8 tex;
 	};
+
+	Texture2D m_texture;
 
 public:
 	DefaultMaterial() = default;
@@ -47,6 +53,7 @@ protected:
 
 	void setFloatParameter(const std::string& name, uint32_t instanceIndex, float a)          override;
 	void setVec4Parameter(const std::string& name , uint32_t instanceIndex, const vector4& a) override;
+	void setTexture(Texture2D texture);
 
 public:
 	// void vertexFunction(Vec3& inOutPosition, Vec3& inOutNormal);

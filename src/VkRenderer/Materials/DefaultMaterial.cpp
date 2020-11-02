@@ -83,6 +83,7 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 	uboStruct.color = vector4{ 0.9f, 0.5f, 0.25f, 1.0f };
 	uboStruct.metalness = 0.1f;
 	uboStruct.roughness = 0.3f;
+	//uboStruct.textureIndex = 
 
 	m_uboStructs.resize(size_t(instancePoolSize) + 1, uboStruct);
 
@@ -121,6 +122,7 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 #pragma region descriptor pool
 	std::array poolSizes{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1},
 	};
 
 	vk::DescriptorPoolCreateInfo poolInfo;
@@ -143,8 +145,16 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 	layoutBindingUbo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindingUbo.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+	VkDescriptorSetLayoutBinding layoutBindingTextureUbo{};
+	layoutBindingTextureUbo.binding = 1;
+	layoutBindingTextureUbo.descriptorCount = 1;
+	layoutBindingTextureUbo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingTextureUbo.stageFlags =
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
 	std::array layoutBindings{
 		layoutBindingUbo,
+		layoutBindingTextureUbo,
 	};
 
 	vk::DescriptorSetLayoutCreateInfo setLayoutInfo;
@@ -184,6 +194,56 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 	uboWrite.pBufferInfo = &setBufferInfo;
 
 	vk.updateDescriptorSets(uboWrite);
+
+#pragma region default texture
+	m_texture = Texture2D(
+		renderWindow, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+		VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	union U
+	{
+		uint32_t defaultTextureTexel;
+		uint8_t b[4];
+	};
+
+	U u;
+	u.b[0] = 255 / 2;
+	u.b[1] = 255 / 2;
+	u.b[2] = 255;
+	u.b[3] = 255;
+
+	VkBufferImageCopy defaultTextureCopy{};
+	defaultTextureCopy.bufferImageHeight = 1;
+	defaultTextureCopy.bufferRowLength = 1;
+	defaultTextureCopy.imageExtent.width = 1;
+	defaultTextureCopy.imageExtent.height = 1;
+	defaultTextureCopy.imageExtent.depth = 1;
+	defaultTextureCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	defaultTextureCopy.imageSubresource.baseArrayLayer = 0;
+	defaultTextureCopy.imageSubresource.layerCount = 1;
+	defaultTextureCopy.imageSubresource.mipLevel = 0;
+
+	m_texture.uploadDataImmediate(
+		&u.defaultTextureTexel, sizeof(uint32_t), defaultTextureCopy,
+		VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = m_texture.view();
+	imageInfo.sampler = m_texture.sampler();
+
+	vk::WriteDescriptorSet textureWrite;
+	textureWrite.descriptorCount = 1;
+	textureWrite.descriptorType =
+		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	textureWrite.dstArrayElement = 0;
+	textureWrite.dstBinding = 1;
+	textureWrite.dstSet = m_descriptorSet;
+	textureWrite.pImageInfo = &imageInfo;
+
+	vk.updateDescriptorSets(textureWrite);
+#pragma endregion
 }
 
 float DefaultMaterial::floatParameter(const std::string& name,
@@ -235,6 +295,11 @@ void DefaultMaterial::setVec4Parameter(const std::string& name,
 	m_uniformBuffer.unmap();
 }
 
+void DefaultMaterial::setTexture(Texture2D texture)
+{
+	m_texture = std::move(texture);
+}
+
 MaterialVertexFunction DefaultMaterial::vertexFunction(
     sdw::VertexWriter& writer, VertexShaderBuildDataBase* shaderBuildData)
 {
@@ -270,6 +335,9 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 
 	buildData->ubo = std::make_unique<sdw::Ubo>(sdw::Ubo(
 	    writer, "DefaultMaterialUBO", 0, 2));
+
+	//ICI : recuperer la texture comme defaultmaterialUBO
+
 	// buildData->ubo->declMember<DefaultMaterialUBOStruct>(
 	//    "materials", instancePoolSize() + 1);
 	buildData->ubo->declMember<Vec4>("color0");
@@ -299,7 +367,7 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 
 		    IF(writer, inMaterialInstanceIndex == 0_u)
 		    {
-			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color0");
+			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color0"); //a remplacer par la texture ?
 			    inOutMetalness = buildData->ubo->getMember<Float>("metalness0");
 			    inOutRoughness = buildData->ubo->getMember<Float>("roughness0");
 		    }

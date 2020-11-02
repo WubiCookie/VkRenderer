@@ -861,12 +861,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = &m_descriptorSetLayout.get();
-	// pipelineLayoutInfo.setLayoutCount = 0;
-	// pipelineLayoutInfo.pSetLayouts = nullptr;
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	pipelineLayoutInfo.pPushConstantRanges = &pcRange;
-	// pipelineLayoutInfo.pushConstantRangeCount = 0;
-	// pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
 	m_pipelineLayout = vk.create(pipelineLayoutInfo);
 	if (!m_pipelineLayout)
@@ -1255,10 +1251,66 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		}
 	};
 
+	auto createTexture = [&](std::string_view filename) 
+	{
+		int w, h, c;
+		uint8_t* imageData = stbi_load(filename.data(), &w, &h, &c, 4);
+
+		if(imageData)
+		{
+			m_singleTexture = Texture2D(
+				rw, w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				-1);
+
+			VkBufferImageCopy copy{};
+			copy.bufferImageHeight = h;
+			copy.bufferRowLength = w;  // *4 * sizeof(float);
+			copy.imageExtent.width = w;
+			copy.imageExtent.height = h;
+			copy.imageExtent.depth = 1;
+			copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			copy.imageSubresource.baseArrayLayer = 0;
+			copy.imageSubresource.layerCount = 1;
+			copy.imageSubresource.mipLevel = 0;
+
+			m_singleTexture.uploadDataImmediate(
+				imageData, w * h * 4 * sizeof(uint8_t), copy,
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+			stbi_image_free(imageData);
+
+			m_singleTexture.generateMipmapsImmediate(
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = m_singleTexture.view();
+			imageInfo.sampler = m_singleTexture.sampler();
+
+			vk::WriteDescriptorSet textureWrite;
+			textureWrite.descriptorCount = 1;
+			textureWrite.descriptorType =
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			textureWrite.dstArrayElement = 0;
+			textureWrite.dstBinding = 1;
+			textureWrite.dstSet = m_descriptorSet;
+			textureWrite.pImageInfo = &imageInfo;
+
+			vk.updateDescriptorSets(textureWrite);
+		}
+	};
+
+	//create texture2D
+	//call setTexture of DefaultMaterial
+
 	std::string resourcePath = "../resources/";
 	// resourcePath += "Metal007_4K-JPG/";
 	// resourcePath += "Marble009_8K-JPG/";
-	resourcePath += "Leather011_8K-JPG/";
+	//resourcePath += "Leather011_8K-JPG/";
 	// resourcePath += "ChristmasTreeOrnament006_8K-JPG/";
 	// resourcePath += "Chip001_4K-JPG";
 
@@ -1266,7 +1318,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	//    "../resources/Marble009_2K-JPG/"
 	//    "Marble009_2K_Color.jpg",
 	//    m_albedos, 1);
-	updateTextureDescriptor(resourcePath + "/Color.jpg", m_albedos, 1);
+	updateTextureDescriptor(resourcePath + "/MetalAlbedo.png", m_albedos, 1);
 	updateTextureDescriptor(resourcePath + "/Displacement.jpg",
 	                        m_displacements, 1);
 	updateTextureDescriptor(resourcePath + "/Metalness.jpg", m_metalnesses, 1);
@@ -1285,6 +1337,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	    "../resources/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_CYCLO.png",
 	    m_albedos, 9);
+
+	createTexture(resourcePath + "/MetalAlbedo.png");
 	// m_meshes[9].materialData.uScale = 20.0f;
 	// m_meshes[9].materialData.vScale = 20.0f;
 	// m_meshes[2].materialData.uScale = 2.0f;
