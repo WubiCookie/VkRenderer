@@ -548,8 +548,8 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	    "combinedMaterialShading",
 	    [&writer, &materialFunction, buildData](
 	        const UInt& inMaterialInstanceIndex, const Vec3& wsPosition_arg,
-	        const Vec3& wsNormal_arg, const Vec3& wsTangent_arg,
-	        const Vec3& wsViewPosition_arg) {
+	        const Vec2& uv_arg, const Vec3& wsNormal_arg,
+	        const Vec3& wsTangent_arg, const Vec3& wsViewPosition_arg) {
 		    Locale(pi, *buildData->PI);
 		    Locale(pointLightsCount,
 		           buildData->shadingModelData->getMember<UInt>(
@@ -568,9 +568,9 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(instanceIndex, inMaterialInstanceIndex);
 
-		    Locale(unused, materialFunction(instanceIndex, albedo, wsPosition,
-		                                    wsNormal, wsTangent, metalness,
-		                                    roughness));
+		    Locale(unused, materialFunction(instanceIndex, albedo, uv_arg,
+		                                    wsPosition, wsNormal, wsTangent,
+		                                    metalness, roughness));
 
 		    Locale(V, normalize(wsViewPosition - wsPosition));
 
@@ -677,8 +677,8 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    // writer.returnStmt(wsLightPos);
 	    },
 	    InUInt{ writer, "inMaterialInstanceIndex" },
-	    InVec3{ writer, "wsPosition_arg" }, InVec3{ writer, "wsNormal_arg" },
-	    InVec3{ writer, "wsTangent_arg" },
+	    InVec3{ writer, "wsPosition_arg" }, InVec2{ writer, "uv_arg" },
+	    InVec3{ writer, "wsNormal_arg" }, InVec3{ writer, "wsTangent_arg" },
 	    InVec3{ writer, "wsViewPosition_arg" });
 }
 

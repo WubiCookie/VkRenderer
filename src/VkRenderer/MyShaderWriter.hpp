@@ -31,24 +31,26 @@ using MaterialVertexFunction =
 
 // void fragmentFunction(UInt inMaterialInstanceIndex,
 //                       Vec4& inOutAlbedo,
+//                       Vec2& inOutUv,
 //                       Vec3& inOutWsPosition,
 //                       Vec3& inOutWsNormal,
 //                       Vec3& inOutWsTangent,
 //                       Float& inOutMetalness,
 //                       Float& inOutRoughness);
 using MaterialFragmentFunction =
-    sdw::Function<sdw::Float, sdw::InUInt, sdw::InOutVec4, sdw::InOutVec3,
-                  sdw::InOutVec3, sdw::InOutVec3, sdw::InOutFloat,
-                  sdw::InOutFloat>;
+    sdw::Function<sdw::Float, sdw::InUInt, sdw::InOutVec4, sdw::InOutVec2,
+                  sdw::InOutVec3, sdw::InOutVec3, sdw::InOutVec3,
+                  sdw::InOutFloat, sdw::InOutFloat>;
 
 // Vec4 combinedMaterialShading(UInt inMaterialInstanceIndex,
 //                              Vec3 wsPosition,
+//                              Vec2 uv,
 //                              Vec3 wsNormal,
 //                              Vec3 wsTangent,
 //                              Vec3 wsViewPosition);
 using CombinedMaterialShadingFragmentFunction =
-    sdw::Function<sdw::Vec4, sdw::InUInt, sdw::InVec3, sdw::InVec3,
-                  sdw::InVec3, sdw::InVec3>;
+    sdw::Function<sdw::Vec4, sdw::InUInt, sdw::InVec3, sdw::InVec2,
+                  sdw::InVec3, sdw::InVec3, sdw::InVec3>;
 
 struct VertexShaderHelperResult
 {

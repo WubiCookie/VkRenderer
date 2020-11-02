@@ -365,9 +365,10 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	MaterialFragmentFunction res = writer.implementFunction<Float>(
 	    "DefaultFragment",
 	    [&writer, buildData](const UInt& inMaterialInstanceIndex,
-	                         Vec4& inOutAlbedo, Vec3& inOutWsPosition,
-	                         Vec3& inOutWsNormal, Vec3& inOutWsTangent,
-	                         Float& inOutMetalness, Float& inOutRoughness) {
+	                         Vec4& inOutAlbedo, Vec2& inOutUv,
+	                         Vec3& inOutWsPosition, Vec3& inOutWsNormal,
+	                         Vec3& inOutWsTangent, Float& inOutMetalness,
+	                         Float& inOutRoughness) {
 		    // Locale(material,
 		    //       buildData->ubo->getMemberArray<DefaultMaterialUBOStruct>(
 		    //           "materials")[inMaterialInstanceIndex]);
@@ -422,7 +423,7 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    writer.returnStmt(0.0_f);
 	    },
 	    InUInt{ writer, "inMaterialInstanceIndex" },
-	    InOutVec4{ writer, "inOutAlbedo" },
+	    InOutVec4{ writer, "inOutAlbedo" }, InOutVec2{ writer, "inOutUv" },
 	    InOutVec3{ writer, "inOutWsPosition" },
 	    InOutVec3{ writer, "inOutWsNormal" },
 	    InOutVec3{ writer, "inOutWsTangent" },
