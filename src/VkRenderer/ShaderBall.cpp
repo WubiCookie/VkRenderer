@@ -1,7 +1,7 @@
 #include "ShaderBall.hpp"
 
-#include "EquirectangularToCubemap.hpp"
 #include "CommandBufferPool.hpp"
+#include "EquirectangularToCubemap.hpp"
 #include "TextureFactory.hpp"
 
 #include <CompilerSpirV/compileSpirV.hpp>
@@ -258,10 +258,9 @@ public:
 			    Locale(MAX_REFLECTION_LOD,
 			           cast<Float>(prefilteredMap.getLevels()));
 			    Locale(prefilteredColor,
-                       prefilteredMap.lod(R,
-			                      roughness * MAX_REFLECTION_LOD));
+			           prefilteredMap.lod(R, roughness * MAX_REFLECTION_LOD));
 			    Locale(brdf,
-                       brdfLut.sample(vec2(max(dot(N, V), 0.0_f), roughness))
+			           brdfLut.sample(vec2(max(dot(N, V), 0.0_f), roughness))
 			               .rg());
 			    specular = prefilteredColor * (F * brdf.x() + brdf.y());
 
@@ -442,9 +441,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region bunny mesh
 	const aiScene* bunnyScene = importer.ReadFile(
-	    "../resources/illumination_assets/bunny.obj", aiProcess_Triangulate | aiProcess_FlipUVs |
-	                                  aiProcess_GenNormals |
-	                                  aiProcess_CalcTangentSpace);
+	    "../resources/illumination_assets/bunny.obj",
+	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
+	        aiProcess_CalcTangentSpace);
 
 	if (!bunnyScene || bunnyScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
 	    !bunnyScene->mRootNode)
@@ -612,8 +611,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
-	 colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	//colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	// colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -623,8 +622,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	VkAttachmentDescription objectIDAttachment = {};
 	objectIDAttachment.format = VK_FORMAT_R32_UINT;
 	objectIDAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
-	 objectIDAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	//objectIDAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	objectIDAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	// objectIDAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	objectIDAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	objectIDAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	objectIDAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -946,12 +945,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = &m_descriptorSetLayout.get();
-	// pipelineLayoutInfo.setLayoutCount = 0;
-	// pipelineLayoutInfo.pSetLayouts = nullptr;
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	pipelineLayoutInfo.pPushConstantRanges = &pcRange;
-	// pipelineLayoutInfo.pushConstantRangeCount = 0;
-	// pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
 	m_pipelineLayout = vk.create(pipelineLayoutInfo);
 	if (!m_pipelineLayout)
@@ -1088,12 +1083,11 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region equirectangularHDR
 	int w, h, c;
-	float* imageData =
-	    stbi_loadf(
-			//"../resources/illumination_assets/PaperMill_Ruins_E/PaperMill_E_3k.hdr",
-	               "../resources/illumination_assets/Milkyway/Milkyway_small.hdr",
-	               //"../resources/illumination_assets/UV-Testgrid/testgrid.jpg",
-	               &w, &h, &c, 4);
+	float* imageData = stbi_loadf(
+	    //"../resources/illumination_assets/PaperMill_Ruins_E/PaperMill_E_3k.hdr",
+	    "../resources/illumination_assets/Milkyway/Milkyway_small.hdr",
+	    //"../resources/illumination_assets/UV-Testgrid/testgrid.jpg",
+	    &w, &h, &c, 4);
 
 	if (!imageData)
 		throw std::runtime_error("could not load equirectangular map");
@@ -1105,7 +1099,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 	m_equirectangularTexture = f.createTexture2D();
 
-	//m_equirectangularTexture = Texture2D(
+	// m_equirectangularTexture = Texture2D(
 	//    rw, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL,
 	//    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 	//    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -1123,8 +1117,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 	m_equirectangularTexture.uploadDataImmediate(
 	    imageData, size_t(w) * size_t(h) * 4 * sizeof(float), copy,
-	    VK_IMAGE_LAYOUT_UNDEFINED,
-	    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	stbi_image_free(imageData);
 
@@ -1173,8 +1166,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		irradianceMapTextureWrite.dstSet = m_descriptorSet;
 		irradianceMapTextureWrite.pImageInfo = &irradianceMapImageInfo;
 
-		m_prefilteredMap = PrefilteredCubemap(rw, 512, -1, m_environmentMap,
-		                                      "Milkyway_small_prefiltered.hdr");
+		m_prefilteredMap = PrefilteredCubemap(
+		    rw, 512, -1, m_environmentMap, "Milkyway_small_prefiltered.hdr");
 
 		if (m_prefilteredMap.get().get() == nullptr)
 			throw std::runtime_error("could not create prefilteredMap");
@@ -1356,10 +1349,75 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		}
 	};
 
+	auto createTexture = [&](std::string_view filename) {
+		int w, h, c;
+		uint8_t* imageData = stbi_load(filename.data(), &w, &h, &c, 4);
+
+		if (imageData)
+		{
+			f.setWidth(w);
+			f.setHeight(h);
+			f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
+			f.setUsage(VK_IMAGE_USAGE_SAMPLED_BIT |
+			           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+			           VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+			f.setMipLevels(-1);
+
+			m_singleTexture = f.createTexture2D();
+
+			// m_singleTexture = Texture2D(
+			//	rw, w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+			//	VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+			//	VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+			//	VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			//	-1);
+
+			VkBufferImageCopy copy{};
+			copy.bufferImageHeight = h;
+			copy.bufferRowLength = w;  // *4 * sizeof(float);
+			copy.imageExtent.width = w;
+			copy.imageExtent.height = h;
+			copy.imageExtent.depth = 1;
+			copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			copy.imageSubresource.baseArrayLayer = 0;
+			copy.imageSubresource.layerCount = 1;
+			copy.imageSubresource.mipLevel = 0;
+
+			m_singleTexture.uploadDataImmediate(
+			    imageData, w * h * 4 * sizeof(uint8_t), copy,
+			    VK_IMAGE_LAYOUT_UNDEFINED,
+			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+			stbi_image_free(imageData);
+
+			m_singleTexture.generateMipmapsImmediate(
+			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = m_singleTexture.view();
+			imageInfo.sampler = m_singleTexture.sampler();
+
+			vk::WriteDescriptorSet textureWrite;
+			textureWrite.descriptorCount = 1;
+			textureWrite.descriptorType =
+			    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			textureWrite.dstArrayElement = 0;
+			textureWrite.dstBinding = 1;
+			textureWrite.dstSet = m_descriptorSet;
+			textureWrite.pImageInfo = &imageInfo;
+
+			vk.updateDescriptorSets(textureWrite);
+		}
+	};
+
+	// create texture2D
+	// call setTexture of DefaultMaterial
+
 	std::string resourcePath = "../resources/illumination_assets/";
 	// resourcePath += "Metal007_4K-JPG/";
 	// resourcePath += "Marble009_8K-JPG/";
-	resourcePath += "Leather011_8K-JPG/";
+	// resourcePath += "Leather011_8K-JPG/";
 	// resourcePath += "ChristmasTreeOrnament006_8K-JPG/";
 	// resourcePath += "Chip001_4K-JPG";
 
@@ -1367,7 +1425,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	//    "../resources/Marble009_2K-JPG/"
 	//    "Marble009_2K_Color.jpg",
 	//    m_albedos, 1);
-	updateTextureDescriptor(resourcePath + "/Color.jpg", m_albedos, 1);
+	updateTextureDescriptor(resourcePath + "/MetalAlbedo.png", m_albedos, 1);
 	updateTextureDescriptor(resourcePath + "/Displacement.jpg",
 	                        m_displacements, 1);
 	updateTextureDescriptor(resourcePath + "/Metalness.jpg", m_metalnesses, 1);
@@ -1386,6 +1444,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	    "../resources/illumination_assets/MathieuMaurel ShaderBall "
 	    "2017/Textures/ShaderBall_A_CYCLO.png",
 	    m_albedos, 9);
+
+	createTexture(resourcePath + "/MetalAlbedo.png");
 	// m_meshes[9].materialData.uScale = 20.0f;
 	// m_meshes[9].materialData.vScale = 20.0f;
 	// m_meshes[2].materialData.uScale = 2.0f;
@@ -1473,7 +1533,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	m_materialInstance3 = m_defaultMaterial.instanciate();
 	m_materialInstance3->setFloatParameter("roughness", 1.0f);
 	m_materialInstance3->setFloatParameter("metalness", 0.0f);
-	m_materialInstance3->setVec4Parameter("color", vector4(0.5, 0.5, 0.5, 0.5));
+	m_materialInstance3->setVec4Parameter("color",
+	                                      vector4(0.5, 0.5, 0.5, 0.5));
 
 	for (auto& mesh : m_sponzaMeshes)
 	{
@@ -1668,8 +1729,6 @@ void ShaderBall::imgui(CommandBuffer& cb)
 				ImGui::DragFloat3("position", &lightPos.x, 0.01f);
 		}
 
-
-
 		// changed |= ImGui::SliderFloat("CamFocalDistance",
 		//	&m_config.camFocalDistance, 0.1f, 30.0f);
 		// changed |= ImGui::SliderFloat("CamFocalLength",
@@ -1824,10 +1883,9 @@ void ShaderBall::imgui(CommandBuffer& cb)
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = 0;
 	cb.pipelineBarrier(
-		//VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-	                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
-	                   barrier);
+	    // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, barrier);
 }
 
 void ShaderBall::standaloneDraw()
@@ -1896,18 +1954,18 @@ void ShaderBall::standaloneDraw()
 
 	m_skybox->setMatrices(m_config.proj, m_config.view);
 
-	//static float x = 0.0f;
+	// static float x = 0.0f;
 
 	auto* shadingModelData =
 	    m_shadingModel.m_shadingModelStaging
 	        .map<PbrShadingModel::ShadingModelUboStruct>();
 	shadingModelData->pointLightsCount = pointEnabled;
 	shadingModelData->directionalLightsCount = directionalEnabled;
-		m_shadingModel.m_shadingModelStaging.unmap();
+	m_shadingModel.m_shadingModelStaging.unmap();
 	m_shadingModel.uploadShadingModelDataStaging();
 
 	auto* pointLights = m_shadingModel.m_pointLightsStaging
-	    .map<PbrShadingModel::PointLightUboStruct>();
+	                        .map<PbrShadingModel::PointLightUboStruct>();
 	pointLights->color = vector4(1.0f, 1.0f, 1.0f, 1.0f) * 80.f;
 	pointLights->intensity = 1.0f;
 	if (pointAtCameraEnabled)
@@ -1917,12 +1975,13 @@ void ShaderBall::standaloneDraw()
 	m_shadingModel.m_pointLightsStaging.unmap();
 	m_shadingModel.uploadPointLightsStaging();
 
-	auto* directionalLights = m_shadingModel.m_directionalLightsStaging
-	    .map<PbrShadingModel::DirectionalLightUboStruct>();
+	auto* directionalLights =
+	    m_shadingModel.m_directionalLightsStaging
+	        .map<PbrShadingModel::DirectionalLightUboStruct>();
 	directionalLights->color = vector4(1.0f, 1.0f, 1.0f, 1.0f) * 2.0f;
 	directionalLights->intensity = 1.0f;
 	directionalLights->direction = lightDir;
-	//pointLights->position = vector3(0, 10, 0);
+	// pointLights->position = vector3(0, 10, 0);
 	m_shadingModel.m_directionalLightsStaging.unmap();
 	m_shadingModel.uploadDirectionalLightsStaging();
 
@@ -2360,23 +2419,21 @@ void ShaderBall::rebuild()
 
 			Locale(albedo,
 			       pow(albedos[pc.getMember<UInt>("albedoIndex")].sample(
-			                   scaledUV),
+			               scaledUV),
 			           vec4(2.2_f)));
-			Locale(metalness,
-                   metalnesses[pc.getMember<UInt>("metalnessIndex")].sample(
-			               scaledUV)
-			                   .r() *
-			               pc.getMember<Float>("metalnessScale") +
-			           pc.getMember<Float>("metalnessShift"));
-			Locale(roughness,
-                   roughnesses[pc.getMember<UInt>("roughnessIndex")].sample(
-			               scaledUV)
-			                   .r() *
-			               pc.getMember<Float>("roughnessScale") +
-			           pc.getMember<Float>("roughnessShift"));
+			Locale(metalness, metalnesses[pc.getMember<UInt>("metalnessIndex")]
+			                              .sample(scaledUV)
+			                              .r() *
+			                          pc.getMember<Float>("metalnessScale") +
+			                      pc.getMember<Float>("metalnessShift"));
+			Locale(roughness, roughnesses[pc.getMember<UInt>("roughnessIndex")]
+			                              .sample(scaledUV)
+			                              .r() *
+			                          pc.getMember<Float>("roughnessScale") +
+			                      pc.getMember<Float>("roughnessShift"));
 
-			Locale(N, normals[pc.getMember<UInt>("normalIndex")].sample(
-			                  scaledUV)
+			Locale(N, normals[pc.getMember<UInt>("normalIndex")]
+			              .sample(scaledUV)
 			              .xyz());
 			N = normalize((N * vec3(2.0_f) - vec3(1.0_f)));
 
