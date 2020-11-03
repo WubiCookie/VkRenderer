@@ -675,8 +675,10 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 			    // VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT,
 			    name);
 
-			framebufferInfo.width = m_cubemapWidth * std::pow(0.5, mipLevel);
-			framebufferInfo.height = m_cubemapWidth * std::pow(0.5, mipLevel);
+			framebufferInfo.width =
+			    uint32_t(m_cubemapWidth * std::pow(0.5, mipLevel));
+			framebufferInfo.height =
+			    uint32_t(m_cubemapWidth * std::pow(0.5, mipLevel));
 			framebufferInfo.pAttachments = &imageViews.back().get();
 			framebuffers[layer].push_back(vk.create(framebufferInfo));
 			name = "prefilter Framebuffer layer(" + std::to_string(layer) +
@@ -732,8 +734,8 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 	std::vector<std::array<PrefilterCubemapPushConstant, 6>> pcs(m_mipLevels);
 	for (uint32_t i = 0; i < m_mipLevels; i++)
 	{
-		uint32_t mipWidth = m_cubemapWidth * std::pow(0.5, i);
-		uint32_t mipHeight = m_cubemapWidth * std::pow(0.5, i);
+		uint32_t mipWidth = uint32_t(m_cubemapWidth * std::pow(0.5, i));
+		uint32_t mipHeight = uint32_t(m_cubemapWidth * std::pow(0.5, i));
 
 		for (uint32_t j = 0; j < 6; j++)
 		{
@@ -760,15 +762,15 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 		for (size_t y = 0; y < RowCount; y++)
 		{
 			vk::Rect2D scissor;
-			scissor.extent.width =
-			    m_cubemapWidth * std::pow(0.5, mipLevel) / ColumnCount;
+			scissor.extent.width = uint32_t(
+			    m_cubemapWidth * std::pow(0.5, mipLevel) / ColumnCount);
 			scissor.extent.height =
-			    m_cubemapWidth * std::pow(0.5, mipLevel) / RowCount;
-			scissor.offset.y = y * scissor.extent.height;
+			    uint32_t(m_cubemapWidth * std::pow(0.5, mipLevel) / RowCount);
+			scissor.offset.y = int32_t(y * scissor.extent.height);
 
 			for (size_t x = 0; x < ColumnCount; x++)
 			{
-				scissor.offset.x = x * scissor.extent.width;
+				scissor.offset.x = int32_t(x * scissor.extent.width);
 
 				scissors[x + ColumnCount * y] = scissor;
 			}

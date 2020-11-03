@@ -34,6 +34,8 @@ Written by Charles Seizilles de Mazancourt
 
 #undef min
 #undef max
+#undef near
+#undef far
 
 namespace cdm
 {
@@ -563,6 +565,7 @@ struct matrix4
 	static matrix4 translation(const vector3& t);
 	static matrix4 perspective(const radian& angle, float ratio, float near_plane, float far_plane);
 	static matrix4 look_at(const vector3& from, const vector3& to, const vector3& up = { 0.0f, 1.0f, 0.0f });
+	static matrix4 orthographic(float left, float right, float top, float bottom, float near, float far);
 	static matrix4 rotation_around_x(const radian& angle);
 	static matrix4 rotation_around_y(const radian& angle);
 	static matrix4 rotation_around_z(const radian& angle);
@@ -657,7 +660,7 @@ struct cartesian_direction2d
 
 	cartesian_direction2d& operator=(const cartesian_direction2d&) = default;
 	cartesian_direction2d& operator=(cartesian_direction2d&&) = default;
-	
+
 	cartesian_direction2d& rotate(const radian& angle);
 	cartesian_direction2d get_rotated(const radian& angle);
 };
@@ -680,7 +683,7 @@ struct polar_direction2d
 
 	polar_direction2d& rotate(const radian& angle);
 	polar_direction2d get_rotated(const radian& angle);
-	
+
 	polar_direction2d& wrap();
 	polar_direction2d get_wrapped();
 };
@@ -2133,6 +2136,19 @@ inline matrix4 matrix4::look_at(const vector3& from, const vector3& to, const ve
 		0.0f,    0.0f,      0.0f,      1.0f
 	};
 }
+inline matrix4 matrix4::orthographic(float left, float right, float top, float bottom, float near, float far)
+{
+	float a = 1.0f / (right - left);
+	float b = 1.0f / (bottom - top);
+	float c = 1.0f / (near - far);
+
+	return {
+		2.0f * a, 0.0f,     0.0f, -(right + left) * a,
+		0.0f,     2.0f * b, 0.0f, -(bottom + top) * b,
+		0.0f,     0.0f,     c,    near * c,
+		0.0f,     0.0f,     0.0f, 1.0f,
+	};
+}
 inline matrix4 matrix4::rotation_around_x(const radian& angle) { return matrix4(matrix3::rotation_around_x(angle)); }
 inline matrix4 matrix4::rotation_around_y(const radian& angle) { return matrix4(matrix3::rotation_around_y(angle)); }
 inline matrix4 matrix4::rotation_around_z(const radian& angle) { return matrix4(matrix3::rotation_around_z(angle)); }
@@ -2631,7 +2647,7 @@ inline cartesian_direction2d::cartesian_direction2d(float x_, float y_) : cartes
 inline cartesian_direction2d::cartesian_direction2d(const normalized<vector2>& direction) : x(direction->x), y(direction->y) {}
 inline cartesian_direction2d::cartesian_direction2d(const polar_direction2d& direction) : cartesian_direction2d(direction.angle) {}
 inline cartesian_direction2d::cartesian_direction2d(const radian& angle) : cartesian_direction2d(cos(angle), sin(angle)) {}
-	
+
 inline cartesian_direction2d& cartesian_direction2d::rotate(const radian& angle)
 {
 	const float c = cos(angle);

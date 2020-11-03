@@ -221,8 +221,8 @@ void LightTransport::render(CommandBuffer& cb)
 			j++;
 		}
 
-		rpInfo.renderArea.extent.width = width * HDR_SCALE;
-		rpInfo.renderArea.extent.height = height * HDR_SCALE;
+		rpInfo.renderArea.extent.width = uint32_t(float(width) * HDR_SCALE);
+		rpInfo.renderArea.extent.height = uint32_t(float(height) * HDR_SCALE);
 		cb.beginRenderPass2(rpInfo, subpassBeginInfo);
 
 		cb.bindPipeline(m_pipeline);

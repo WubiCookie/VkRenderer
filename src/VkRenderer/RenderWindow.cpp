@@ -449,7 +449,7 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 
 #pragma region imguirenderPass
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = VkFormat::VK_FORMAT_B8G8R8A8_UNORM;
+	colorAttachment.format = VkFormat::VK_FORMAT_R8G8B8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

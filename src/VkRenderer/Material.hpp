@@ -160,7 +160,8 @@ class MaterialInstance final : public MaterialInterface
 
 	std::reference_wrapper<Material> m_material;
 
-	Movable<uint32_t, 0ull> m_instanceOffset;
+	//Movable<uint32_t, 0ull> m_instanceOffset;
+	uint32_t m_instanceOffset = 0;
 
 	MaterialInstance(Material& material, uint32_t instanceOffset);
 

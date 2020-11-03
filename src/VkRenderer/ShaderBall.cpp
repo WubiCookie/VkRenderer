@@ -609,7 +609,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
+	colorAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	// colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -644,7 +644,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription colorResolveAttachment = {};
-	colorResolveAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
+	colorResolveAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
 	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	// colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -743,12 +743,14 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		std::cerr << "error: failed to create render pass" << std::endl;
 		abort();
 	}
+
+	vk.debugMarkerSetObjectName(m_renderPass, "ShaderBall render pass");
 #pragma endregion
 
 #pragma region hightlight render
 	{
 		VkAttachmentDescription colorAttachment = {};
-		colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
+		colorAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1551,16 +1553,20 @@ ShaderBall::~ShaderBall() = default;
 void ShaderBall::renderOpaque(CommandBuffer& cb)
 {
 	{
+		cb.debugMarkerBegin("shadows", 0.2f, 0.2f, 0.4f);
+		m_scene.drawShadowmapPass(cb);
+		cb.debugMarkerEnd();
+
 		VkClearValue clearColor{};
 		clearColor.color.float32[0] = 0X27 / 255.0f;
 		clearColor.color.float32[1] = 0X28 / 255.0f;
 		clearColor.color.float32[2] = 0X22 / 255.0f;
 
 		VkClearValue clearID{};
-		clearID.color.uint32[0] = -1u;
-		clearID.color.uint32[1] = -1u;
-		clearID.color.uint32[2] = -1u;
-		clearID.color.uint32[3] = -1u;
+		clearID.color.uint32[0] = 0xffff;
+		clearID.color.uint32[1] = 0xffff;
+		clearID.color.uint32[2] = 0xffff;
+		clearID.color.uint32[3] = 0xffff;
 
 		VkClearValue clearDepth{};
 		clearDepth.depthStencil.depth = 1.0f;
@@ -1583,7 +1589,9 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 
 		cb.beginRenderPass2(rpInfo, subpassBeginInfo);
 
+		cb.debugMarkerBegin("skybox", 0.8f, 0.8f, 1.0f);
 		m_skybox->render(cb);
+		cb.debugMarkerEnd();
 
 		// cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 		// cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1608,8 +1616,10 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		// m_bunnyPipeline.bindDescriptorSet(cb);
 		// m_bunnyPipeline.draw(cb);
 
+		cb.debugMarkerBegin("main", 0.3f, 0.8f, 0.4f);
 		m_scene.draw(cb, m_renderPass, std::make_optional(viewport),
 		             std::make_optional(scissor));
+		cb.debugMarkerEnd();
 
 		// m_bunnySceneObject->draw(cb, m_renderPass, viewport, scissor);
 		// m_bunnySceneObject2->draw(cb, m_renderPass, viewport, scissor);
@@ -1666,6 +1676,7 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 
 		vk::SubpassEndInfo subpassEndInfo;
 
+		cb.debugMarkerBegin("post process", 8.0f, 0.3f, 0.4f);
 		cb.beginRenderPass2(rpInfo, subpassBeginInfo);
 
 		cb.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_highlightPipeline);
@@ -1691,6 +1702,7 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		barrier.image = m_objectIDResolveTexture;
 		cb.pipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		                   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, barrier);
+		cb.debugMarkerEnd();
 	}
 }
 
@@ -1713,6 +1725,8 @@ void ShaderBall::imgui(CommandBuffer& cb)
 
 		ImGui::Begin("Lights");
 
+		ImGui::DragFloat("shadow bias", &m_scene.shadowBias, 0.0001f);
+
 		ImGui::Checkbox("directional", &directionalEnabled);
 
 		if (directionalEnabled)
@@ -1726,7 +1740,7 @@ void ShaderBall::imgui(CommandBuffer& cb)
 		{
 			ImGui::Checkbox("at camera", &pointAtCameraEnabled);
 			if (!pointAtCameraEnabled)
-				ImGui::DragFloat3("position", &lightPos.x, 0.01f);
+				ImGui::DragFloat3("position", &lightPos.x, 0.1f);
 		}
 
 		// changed |= ImGui::SliderFloat("CamFocalDistance",
@@ -1756,6 +1770,11 @@ void ShaderBall::imgui(CommandBuffer& cb)
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
 		            1000.0f / ImGui::GetIO().Framerate,
 		            ImGui::GetIO().Framerate);
+
+		//ImGui::Image(
+		//    (ImTextureID)(intptr_t)m_scene.shadowmap().image(),
+		//    ImVec2(m_scene.shadowmap().width(), m_scene.shadowmap().height()));
+
 		ImGui::End();
 
 		/*
@@ -1932,10 +1951,15 @@ void ShaderBall::standaloneDraw()
 	                             float(rw.get().swapchainExtent().height),
 	                         0.01f, 1000.0f)
 	        .get_transposed();
-	m_config.viewPos = cameraTr.position;
 
-	// m_config.copyTo(m_matricesUBO.map());
-	// m_matricesUBO.unmap();
+	//float aspect = float(rw.get().swapchainExtent().height) /
+	//               float(rw.get().swapchainExtent().width);
+
+	//m_config.proj = matrix4::orthographic(-20, 20, 20 * aspect, -20 * aspect,
+	//                                      0.01f, 1000.0f)
+	//                    .get_transposed();
+
+	m_config.viewPos = cameraTr.position;
 
 	m_bunnySceneObject->transform.position = { 0, 0, -20 };
 	m_bunnySceneObject->transform.scale = { 6, 6, 6 };
@@ -1950,11 +1974,14 @@ void ShaderBall::standaloneDraw()
 		obj->transform.rotation = quaternion(vector3(1, 0, 0), 90.0_deg);
 	}
 
-	m_scene.uploadTransformMatrices(cameraTr, m_config.proj);
+	static transform3d lightTr;
+	lightTr.scale = { 1, 1, 1 };
 
-	m_skybox->setMatrices(m_config.proj, m_config.view);
-
-	// static float x = 0.0f;
+	if (pointAtCameraEnabled)
+	{
+		lightTr = cameraTr;
+		lightDir = (cameraTr.rotation * vector3(0, 0, -1)).get_normalized();
+	}
 
 	auto* shadingModelData =
 	    m_shadingModel.m_shadingModelStaging
@@ -1985,6 +2012,12 @@ void ShaderBall::standaloneDraw()
 	m_shadingModel.m_directionalLightsStaging.unmap();
 	m_shadingModel.uploadDirectionalLightsStaging();
 
+	m_scene.uploadTransformMatrices(cameraTr, m_config.proj,
+	                                //transform3d(pointLights->position, r, {1,1,1}));
+	    lightTr);
+
+	m_skybox->setMatrices(m_config.proj, m_config.view);
+
 	auto& frame = rw.get().getAvailableCommandBuffer();
 	frame.reset();
 	// vk.resetFence(frame.fence);
@@ -1992,8 +2025,8 @@ void ShaderBall::standaloneDraw()
 
 	// cb.reset();
 	cb.begin();
-	cb.debugMarkerBegin("render", 0.2f, 0.2f, 1.0f);
 	renderOpaque(cb);
+	cb.debugMarkerBegin("imgui", 0.2f, 0.2f, 1.0f);
 	imgui(cb);
 	cb.debugMarkerEnd();
 	cb.end();
@@ -2036,11 +2069,14 @@ void ShaderBall::rebuild()
 {
 	auto& vk = rw.get().device();
 
+	LogRRID log(vk);
+
 	TextureFactory f(vk);
 
 #pragma region color attachment texture
 	f.setExtent(rw.get().swapchainExtent());
 	f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
+	// f.setFormat(VK_FORMAT_B8G8R8A8_UNORM);
 	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
 	           // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -2181,7 +2217,7 @@ void ShaderBall::rebuild()
 
 #pragma region color resolve texture
 	f.setExtent(rw.get().swapchainExtent());
-	f.setFormat(VK_FORMAT_B8G8R8A8_UNORM);
+	f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
 	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
 	           // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -2238,6 +2274,8 @@ void ShaderBall::rebuild()
 			std::cerr << "error: failed to create framebuffer" << std::endl;
 			abort();
 		}
+
+		vk.debugMarkerSetObjectName(m_framebuffer, "ShaderBall framebuffer");
 	}
 #pragma endregion
 
@@ -2714,9 +2752,10 @@ void ShaderBall::rebuild()
 		pc.end();
 
 		writer.implementMain([&]() {
-			Locale(uv, in.fragCoord.xy() /
-			               vec2(Float(rw.get().swapchainExtent().width),
-			                    Float(rw.get().swapchainExtent().height)));
+			Locale(uv,
+			       in.fragCoord.xy() /
+			           vec2(Float(float(rw.get().swapchainExtent().width)),
+			                Float(float(rw.get().swapchainExtent().height))));
 			Locale(sceneColor, sceneColorTexture.sample(uv));
 			Locale(sceneID, sceneIDTexture.sample(uv));
 

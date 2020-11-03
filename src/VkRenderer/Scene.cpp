@@ -1,9 +1,9 @@
 #include "Scene.hpp"
 
-#include "TextureFactory.hpp"
+#include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
 #include "SceneObject.hpp"
-//#include "CommandBuffer.hpp"
+#include "TextureFactory.hpp"
 
 #include <iostream>
 
@@ -14,8 +14,8 @@ Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
 	auto& vk = renderWindow.device();
 
 	m_sceneUniformBuffer =
-	    Buffer(vk, sizeof(SceneUboStruct),
-	           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY,
+	    Buffer(vk, sizeof(SceneUboStruct), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	           VMA_MEMORY_USAGE_CPU_ONLY,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 	               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	m_sceneUniformBuffer.setName("Scene UBO");
@@ -27,14 +27,31 @@ Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
 	               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	m_modelUniformBuffer.setName("Models UBO");
 
+#pragma region shadowmap
 	TextureFactory f(vk);
 
+	f.setExtent(m_shadowmapResolution);
 	f.setFormat(VK_FORMAT_D32_SFLOAT);
 	f.setAspectMask(VK_IMAGE_ASPECT_DEPTH_BIT);
 	f.setUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 	           VK_IMAGE_USAGE_SAMPLED_BIT);
+	f.setSamplerCompareEnable(true);
+	f.setSamplerCompareOp(VK_COMPARE_OP_LESS);
 
 	m_shadowmap = f.createTexture2D();
+	m_shadowmap.transitionLayoutImmediate(
+	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	vk.debugMarkerSetObjectName(m_shadowmap.image(), "Scene shadowmap image");
+	vk.debugMarkerSetObjectName(m_shadowmap.view(),
+	                            "Scene shadowmap imageView");
+	vk.debugMarkerSetObjectName(m_shadowmap.sampler(),
+	                            "Scene shadowmap sampler");
+
+	VkDescriptorImageInfo shadowmapImageInfo{};
+	shadowmapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	shadowmapImageInfo.imageView = m_shadowmap.view();
+	shadowmapImageInfo.sampler = m_shadowmap.sampler();
+#pragma endregion
 
 #pragma region descriptor pool
 	std::array poolSizes{
@@ -73,14 +90,14 @@ Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
 	VkDescriptorSetLayoutBinding layoutBindingShadowMap{};
 	layoutBindingShadowMap.binding = 2;
 	layoutBindingShadowMap.descriptorCount = 1;
-	layoutBindingShadowMap.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layoutBindingShadowMap.stageFlags =
-	    VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingShadowMap.descriptorType =
+	    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingShadowMap.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	std::array layoutBindings{
 		layoutBindingSceneUbo,
 		layoutBindingModelUbo,
-		                       layoutBindingShadowMap,
+		layoutBindingShadowMap,
 	};
 
 	vk::DescriptorSetLayoutCreateInfo setLayoutInfo;
@@ -133,7 +150,55 @@ Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
 	modelUboWrite.dstSet = m_descriptorSet;
 	modelUboWrite.pBufferInfo = &modelSetBufferInfo;
 
-	vk.updateDescriptorSets({ sceneUboWrite, modelUboWrite });
+	vk::WriteDescriptorSet shadowmapWrite;
+	shadowmapWrite.descriptorCount = 1;
+	shadowmapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	shadowmapWrite.dstArrayElement = 0;
+	shadowmapWrite.dstBinding = 2;
+	shadowmapWrite.dstSet = m_descriptorSet;
+	shadowmapWrite.pImageInfo = &shadowmapImageInfo;
+
+	vk.updateDescriptorSets({ sceneUboWrite, modelUboWrite, shadowmapWrite });
+#pragma endregion
+
+#pragma region render pass
+	vk::AttachmentDescription attachment;
+	attachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	attachment.format = VK_FORMAT_D32_SFLOAT;
+	attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkAttachmentReference depthAttachment{};
+	depthAttachment.attachment = 0;
+	depthAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	vk::SubpassDescription subpass;
+	subpass.pDepthStencilAttachment = &depthAttachment;
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	vk::RenderPassCreateInfo rpInfo;
+	rpInfo.attachmentCount = 1;
+	rpInfo.pAttachments = &attachment;
+	rpInfo.subpassCount = 1;
+	rpInfo.pSubpasses = &subpass;
+
+	m_shadowmapRenderPass = vk.create(rpInfo);
+#pragma endregion
+
+#pragma region framebuffer
+	vk::FramebufferCreateInfo fbInfo;
+	fbInfo.attachmentCount = 1;
+	fbInfo.pAttachments = &m_shadowmap.view();
+	fbInfo.width = m_shadowmap.width();
+	fbInfo.height = m_shadowmap.height();
+	fbInfo.renderPass = m_shadowmapRenderPass;
+	fbInfo.layers = 1;
+
+	m_shadowmapFramebuffer = vk.create(fbInfo);
 #pragma endregion
 }
 
@@ -143,7 +208,7 @@ SceneObject& Scene::instantiateSceneObject()
 		throw std::runtime_error("can not instanciate more SceneObjects");
 
 	m_sceneObjects.push_back(std::make_unique<SceneObject>(*this));
-	m_sceneObjects.back()->id = m_sceneObjects.size() - 1;
+	m_sceneObjects.back()->id = uint32_t(m_sceneObjects.size() - 1);
 	return *m_sceneObjects.back();
 }
 
@@ -153,6 +218,51 @@ void Scene::removeSceneObject(SceneObject& sceneObject)
 	               [&](const std::unique_ptr<SceneObject>& soptr) {
 		               return &sceneObject == soptr.get();
 	               });
+}
+
+void Scene::drawShadowmapPass(CommandBuffer& cb)
+{
+	VkClearValue clearDepth{};
+	clearDepth.depthStencil.depth = 1.0f;
+
+	std::array clearValues = { clearDepth };
+
+	vk::RenderPassBeginInfo rpInfo;
+	rpInfo.framebuffer = m_shadowmapFramebuffer;
+	rpInfo.renderPass = m_shadowmapRenderPass;
+	rpInfo.renderArea.extent = m_shadowmap.extent2D();
+	rpInfo.clearValueCount = uint32_t(clearValues.size());
+	rpInfo.pClearValues = clearValues.data();
+
+	vk::SubpassBeginInfo subpassBeginInfo;
+	subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
+
+	vk::SubpassEndInfo subpassEndInfo;
+
+	cb.beginRenderPass2(rpInfo, subpassBeginInfo);
+
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = float(m_shadowmap.width());
+	viewport.height = float(m_shadowmap.height());
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	cb.setViewport(viewport);
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent.width = m_shadowmap.width();
+	scissor.extent.height = m_shadowmap.height();
+	cb.setScissor(scissor);
+
+	for (auto& sceneObject : m_sceneObjects)
+	{
+		sceneObject->drawShadowmapPass(cb, m_shadowmapRenderPass, viewport,
+		                               scissor);
+	}
+
+	cb.endRenderPass2(subpassEndInfo);
 }
 
 void Scene::draw(CommandBuffer& cb, VkRenderPass renderPass,
@@ -165,31 +275,24 @@ void Scene::draw(CommandBuffer& cb, VkRenderPass renderPass,
 	}
 }
 
-void Scene::uploadTransformMatrices(const transform3d& cameraTr, const matrix4& proj)
+void Scene::uploadTransformMatrices(const transform3d& cameraTr,
+                                    const matrix4& proj,
+                                    const transform3d& lightTr)
 {
-	struct alignas(16) SceneUboStruct
-	{
-		matrix4 view;
-		matrix4 proj;
-		vector3 viewPos;
-		vector3 lightPos;
-	};
-
-	struct alignas(16) ModelUboStruct
-	{
-		std::array<matrix4, Scene::MaxSceneObjectCountPerPool> model;
-	};
-
-	SceneUboStruct* sceneUBOPtr =
-	    sceneUniformBuffer().map<SceneUboStruct>();
+	SceneUboStruct* sceneUBOPtr = sceneUniformBuffer().map<SceneUboStruct>();
 	sceneUBOPtr->lightPos = { 0, 0, 0 };
 	sceneUBOPtr->view = matrix4(cameraTr).get_transposed().get_inversed();
 	sceneUBOPtr->proj = proj;
 	sceneUBOPtr->viewPos = cameraTr.position;
+	sceneUBOPtr->shadowView = matrix4(lightTr).get_transposed().get_inversed();
+	sceneUBOPtr->shadowProj =
+	    matrix4::orthographic(-150, 150, 150, -150, 0.01f, 1000.0f)
+	        .get_transposed();
+	sceneUBOPtr->shadowBias = shadowBias;
+
 	sceneUniformBuffer().unmap();
 
-	ModelUboStruct* modelUBOPtr =
-	    modelUniformBuffer().map<ModelUboStruct>();
+	ModelUboStruct* modelUBOPtr = modelUniformBuffer().map<ModelUboStruct>();
 
 	for (size_t i = 0; i < m_sceneObjects.size(); i++)
 	{
@@ -200,7 +303,7 @@ void Scene::uploadTransformMatrices(const transform3d& cameraTr, const matrix4& 
 	modelUniformBuffer().unmap();
 }
 
-    // sdw::Ubo Scene::buildSceneUbo(sdw::ShaderWriter& writer, uint32_t binding,
+// sdw::Ubo Scene::buildSceneUbo(sdw::ShaderWriter& writer, uint32_t binding,
 //                              uint32_t set)
 //{
 //	sdw::Ubo ubo(writer, "SceneUBO", binding, set);
@@ -228,12 +331,27 @@ Scene::SceneUbo::SceneUbo(sdw::ShaderWriter& writer)
 	declMember<sdw::Mat4>("proj");
 	declMember<sdw::Vec3>("viewPos");
 	declMember<sdw::Vec3>("lightPos");
+	declMember<sdw::Mat4>("shadowView");
+	declMember<sdw::Mat4>("shadowProj");
+	declMember<sdw::Float>("shadowBias");
 	end();
 }
 
 sdw::Mat4 Scene::SceneUbo::getView() { return getMember<sdw::Mat4>("view"); }
+sdw::Mat4 Scene::SceneUbo::getShadowView()
+{
+	return getMember<sdw::Mat4>("shadowView");
+}
 
 sdw::Mat4 Scene::SceneUbo::getProj() { return getMember<sdw::Mat4>("proj"); }
+sdw::Mat4 Scene::SceneUbo::getShadowProj()
+{
+	return getMember<sdw::Mat4>("shadowProj");
+}
+sdw::Float Scene::SceneUbo::getShadowBias()
+{
+	return getMember<sdw::Float>("shadowBias");
+}
 
 sdw::Vec3 Scene::SceneUbo::getViewPos()
 {
