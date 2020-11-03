@@ -43,8 +43,8 @@ void LightTransport::createImages()
 #pragma endregion
 
 #pragma region outputImageHDR
-	f.setWidth(width * HDR_SCALE);
-	f.setHeight(height * HDR_SCALE);
+	f.setWidth(uint32_t(float(width) * HDR_SCALE));
+	f.setHeight(uint32_t(float(height) * HDR_SCALE));
 	f.setFormat(VK_FORMAT_R32G32B32A32_SFLOAT);
 	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 	           VK_IMAGE_USAGE_TRANSFER_DST_BIT |

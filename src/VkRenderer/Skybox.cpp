@@ -334,8 +334,8 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent.width = m_viewport.width;
-	scissor.extent.height = m_viewport.height;
+	scissor.extent.width = uint32_t(m_viewport.width);
+	scissor.extent.height = uint32_t(m_viewport.height);
 
 	vk::PipelineViewportStateCreateInfo viewportState;
 	viewportState.viewportCount = 1;

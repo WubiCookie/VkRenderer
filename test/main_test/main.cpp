@@ -146,6 +146,8 @@ int main()
 
 	auto& vk = rw.device();
 
+	LogRRID log(vk);
+
 	// BrdfLut lut(rw, 1024, "brdfLut.hdr");
 
 	// cdm::UniqueFence fence = vk.createFence();
@@ -362,8 +364,8 @@ int main()
 
 			//*
 			shaderBall.cameraTr.rotation =
-			    quaternion(vector3(0, 1, 0), degree(rotationX)) *
-			    quaternion(vector3(1, 0, 0), degree(rotationY));
+			    quaternion(vector3(0, 1, 0), degree(float(rotationX))) *
+			    quaternion(vector3(1, 0, 0), degree(float(rotationY)));
 
 			if (rightClicking)
 			{
@@ -378,14 +380,14 @@ int main()
 				if (dPressed)
 					translation.x += 1.0;
 				if (qPressed)
-					shaderBall.cameraTr.position.y -= translationSpeed;
+					shaderBall.cameraTr.position.y -= float(translationSpeed);
 				if (ePressed)
-					shaderBall.cameraTr.position.y += translationSpeed;
+					shaderBall.cameraTr.position.y += float(translationSpeed);
 
 				if (translation.norm() > 0.01f)
 				{
 					translation.normalize();
-					translation *= translationSpeed;
+					translation *= float(translationSpeed);
 
 					shaderBall.cameraTr.position +=
 					    shaderBall.cameraTr.rotation * translation;

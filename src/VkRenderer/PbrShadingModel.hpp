@@ -1,8 +1,9 @@
 #pragma once
 
 #include "MyShaderWriter.hpp"
-#include "VulkanDevice.hpp"
 #include "StagingBuffer.hpp"
+#include "VulkanDevice.hpp"
+#include "Scene.hpp"
 #include "cdm_maths.hpp"
 
 #include <memory>
@@ -21,8 +22,10 @@ class PbrShadingModel final
 	uint32_t m_maxDirectionalLights = 0;
 	Buffer m_pointLightsUbo;
 	Buffer m_directionalLightsUbo;
+
 public:
-	struct FragmentShaderBuildDataBase {
+	struct FragmentShaderBuildDataBase
+	{
 		virtual ~FragmentShaderBuildDataBase() {}
 	};
 
@@ -85,9 +88,10 @@ public:
 	CombinedMaterialShadingFragmentFunction combinedMaterialFragmentFunction(
 	    sdw::FragmentWriter& writer,
 	    MaterialFragmentFunction& materialFunction,
-	    FragmentShaderBuildDataBase* shaderBuildData);
+	    FragmentShaderBuildDataBase* shaderBuildData,
+	    Scene::SceneUbo& sceneUbo);
 
 	std::unique_ptr<FragmentShaderBuildDataBase>
-		instantiateFragmentShaderBuildData();
+	instantiateFragmentShaderBuildData();
 };
 }  // namespace cdm

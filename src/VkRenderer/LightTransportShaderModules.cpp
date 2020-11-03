@@ -836,7 +836,8 @@ void LightTransport::createShaderModules()
 	factory.clearDynamicStates();
 	factory.setViewport(0.0f, 0.0f, widthf * HDR_SCALE, heightf * HDR_SCALE,
 						0.0f, 1.0f);
-	factory.setScissor(0, 0, width * HDR_SCALE, height * HDR_SCALE);
+	factory.setScissor(0, 0, uint32_t(width * HDR_SCALE),
+	                   uint32_t(height * HDR_SCALE));
 
 	{
 		auto [pipelineLayout, descriptorSetLayouts] =

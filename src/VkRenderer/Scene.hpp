@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Buffer.hpp"
-#include "Texture2D.hpp"
 #include "MyShaderWriter.hpp"
+#include "Texture2D.hpp"
 #include "cdm_maths.hpp"
 
 #include <array>
@@ -29,8 +29,14 @@ private:
 		matrix4 view;
 		matrix4 proj;
 		vector3 viewPos;
+		float _0 = 0xcccc;
 		vector3 lightPos;
-		matrix4 shadowTransform;
+		float _1 = 0xcccc;
+		//float _2 = 0xcccc;
+		//float _4 = 0xcccc;
+		matrix4 shadowView;
+		matrix4 shadowProj;
+		float shadowBias;
 	};
 
 	struct alignas(16) ModelUboStruct
@@ -48,6 +54,9 @@ private:
 	UniqueDescriptorSetLayout m_descriptorSetLayout;
 	Movable<VkDescriptorSet> m_descriptorSet;
 
+	UniqueRenderPass m_shadowmapRenderPass;
+	UniqueFramebuffer m_shadowmapFramebuffer;
+	VkExtent2D m_shadowmapResolution{ 4096, 4096 };
 	Texture2D m_shadowmap;
 
 	/// TODO: `RenderQueue`s
@@ -61,6 +70,8 @@ public:
 	Scene& operator=(const Scene&) = delete;
 	Scene& operator=(Scene&&) = default;
 
+	float shadowBias = -0.4096f;
+
 	const VkDescriptorSetLayout& descriptorSetLayout() const
 	{
 		return m_descriptorSetLayout;
@@ -70,6 +81,8 @@ public:
 	SceneObject& instantiateSceneObject();
 
 	void removeSceneObject(SceneObject& sceneObject);
+
+	void drawShadowmapPass(CommandBuffer& cb);
 
 	void draw(CommandBuffer& cb, VkRenderPass renderPass,
 	          std::optional<VkViewport> viewport = std::nullopt,
@@ -81,7 +94,10 @@ public:
 		SceneUbo(sdw::ShaderWriter& writer);
 
 		sdw::Mat4 getView();
+		sdw::Mat4 getShadowView();
 		sdw::Mat4 getProj();
+		sdw::Mat4 getShadowProj();
+		sdw::Float getShadowBias();
 		sdw::Vec3 getViewPos();
 		sdw::Vec3 getLightPos();
 	};
@@ -111,9 +127,12 @@ public:
 	//        uint32_t set);
 
 	void uploadTransformMatrices(const transform3d& cameraTr,
-	                             const matrix4& proj);
+	                             const matrix4& proj,
+	                             const transform3d& lightTr);
 
 	Buffer& sceneUniformBuffer() noexcept { return m_sceneUniformBuffer; }
 	Buffer& modelUniformBuffer() noexcept { return m_modelUniformBuffer; }
+
+	Texture2D& shadowmap() { return m_shadowmap; }
 };
 }  // namespace cdm

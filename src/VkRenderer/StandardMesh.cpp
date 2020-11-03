@@ -16,6 +16,10 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 {
 	auto& vk = rw.get()->device();
 
+	m_positions.reserve(m_vertices.size());
+	for (const auto& vertex : m_vertices)
+		m_positions.push_back(vector4(vertex.position, 1.0f));
+
 	CommandBuffer copyCB(vk, rw.get()->oneTimeCommandPool());
 
 #pragma region vertexBuffer
@@ -41,6 +45,32 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 
 	if (vk.queueSubmit(vk.graphicsQueue(), copyCB.get()) != VK_SUCCESS)
 		throw std::runtime_error("could not copy vertex buffer");
+#pragma endregion
+
+#pragma region positionBuffer
+	auto positionStagingBuffer =
+	    Buffer(vk, sizeof(vector4) * m_positions.size(),
+	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
+	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+	m_positionBuffer = Buffer(
+	    vk, sizeof(vector4) * m_positions.size(),
+	    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	vector4* positionData = positionStagingBuffer.map<vector4>();
+	std::copy(m_positions.begin(), m_positions.end(), positionData);
+	positionStagingBuffer.unmap();
+
+	vk.wait(vk.graphicsQueue());
+	copyCB.reset();
+	copyCB.begin();
+	copyCB.copyBuffer(positionStagingBuffer.get(), m_positionBuffer.get(),
+	                  sizeof(vector4) * m_positions.size());
+	copyCB.end();
+
+	if (vk.queueSubmit(vk.graphicsQueue(), copyCB.get()) != VK_SUCCESS)
+		throw std::runtime_error("could not copy position buffer");
 
 #pragma endregion
 
@@ -120,6 +150,35 @@ VertexInputState StandardMesh::vertexInputState()
 	res.attributes.push_back(normalAttribute);
 	res.attributes.push_back(uvAttribute);
 	res.attributes.push_back(tangentAttribute);
+
+	res.vertexInputInfo.vertexBindingDescriptionCount =
+	    uint32_t(res.bindings.size());
+	res.vertexInputInfo.pVertexBindingDescriptions = res.bindings.data();
+	res.vertexInputInfo.vertexAttributeDescriptionCount =
+	    uint32_t(res.attributes.size());
+	res.vertexInputInfo.pVertexAttributeDescriptions = res.attributes.data();
+
+	return res;
+}
+
+VertexInputState StandardMesh::positionOnlyVertexInputState()
+{
+	VertexInputState res;
+
+	VkVertexInputBindingDescription binding = {};
+	binding.binding = 0;
+	binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	binding.stride = sizeof(vector4);
+
+	res.bindings.push_back(binding);
+
+	VkVertexInputAttributeDescription positionAttribute = {};
+	positionAttribute.binding = 0;
+	positionAttribute.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	positionAttribute.location = 0;
+	positionAttribute.offset = 0;
+
+	res.attributes.push_back(positionAttribute);
 
 	res.vertexInputInfo.vertexBindingDescriptionCount =
 	    uint32_t(res.bindings.size());

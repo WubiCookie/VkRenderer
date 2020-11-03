@@ -275,7 +275,8 @@ MaterialInstance* Material::instanciate()
 	if (m_instances.size() >= m_instancePoolSize)
 		return nullptr;
 
-	m_instances.emplace_back(MaterialInstance(*this, m_instances.size() + 1));
+	m_instances.emplace_back(
+	    MaterialInstance(*this, uint32_t(m_instances.size() + 1)));
 	//m_instances.back().m_floatParameters = m_floatParameters;
 	//m_instances.back().m_vec2Parameters = m_vec2Parameters;
 	//m_instances.back().m_vec3Parameters = m_vec3Parameters;

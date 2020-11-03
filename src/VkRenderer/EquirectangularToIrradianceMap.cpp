@@ -625,11 +625,11 @@ Cubemap EquirectangularToIrradianceMap::computeCubemap(
 		vk::Rect2D scissor;
 		scissor.extent.width = m_resolution / ColumnCount;
 		scissor.extent.height = m_resolution / RowCount;
-		scissor.offset.y = y * scissor.extent.height;
+		scissor.offset.y = int32_t(y * scissor.extent.height);
 
 		for (size_t x = 0; x < ColumnCount; x++)
 		{
-			scissor.offset.x = x * scissor.extent.width;
+			scissor.offset.x = int32_t(x * scissor.extent.width);
 
 			scissors[x + ColumnCount * y] = scissor;
 		}

@@ -184,6 +184,9 @@ struct FragmentShaderBuildData : PbrShadingModel::FragmentShaderBuildDataBase
 
 	std::unique_ptr<Float> PI;
 
+	//std::unique_ptr<Scene::SceneUbo> sceneUbo;
+	std::unique_ptr<SampledImage2DShadowR32> shadowmap;
+
 	DistributionGGX_Signature DistributionGGX;
 	GeometrySchlickGGX_Signature GeometrySchlickGGX;
 	GeometrySmith_Signature GeometrySmith;
@@ -204,6 +207,7 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 	std::array poolSizes{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
 	};
 
 	vk::DescriptorPoolCreateInfo poolInfo;
@@ -256,7 +260,7 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 		layoutBindingPointLightsBuffer.binding = 4;
 		layoutBindingPointLightsBuffer.descriptorCount = 1;
 		layoutBindingPointLightsBuffer.descriptorType =
-		    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		layoutBindingPointLightsBuffer.stageFlags =
 		    VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -264,7 +268,7 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 		layoutBindingDirectionalLightsBuffer.binding = 5;
 		layoutBindingDirectionalLightsBuffer.descriptorCount = 1;
 		layoutBindingDirectionalLightsBuffer.descriptorType =
-		    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		layoutBindingDirectionalLightsBuffer.stageFlags =
 		    VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -304,6 +308,7 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 	    vk, sizeof(ShadingModelUboStruct),
 	    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_shadingModelUbo.setName("PbrShadingModel shadingModelUbo buffer");
 
 	VkDescriptorBufferInfo shadingModelUboInfo = {};
 	shadingModelUboInfo.buffer = m_shadingModelUbo;
@@ -318,15 +323,17 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 	shadingModelUboWrite.dstSet = m_descriptorSet;
 	shadingModelUboWrite.pBufferInfo = &shadingModelUboInfo;
 
-	m_shadingModelStaging =
-	    StagingBuffer(vk, sizeof(sizeof(ShadingModelUboStruct)));
+	m_shadingModelStaging = StagingBuffer(vk, sizeof(ShadingModelUboStruct));
+	m_shadingModelStaging.setName(
+	    "PbrShadingModel shadingModelStaging buffer");
 #pragma endregion
 
 #pragma region point lights buffer
 	m_pointLightsUbo = Buffer(
 	    vk, sizeof(PointLightUboStruct) * m_maxPointLights,
-	    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_pointLightsUbo.setName("PbrShadingModel pointLightsUbo buffer");
 
 	VkDescriptorBufferInfo pointLightsUboInfo = {};
 	pointLightsUboInfo.buffer = m_pointLightsUbo;
@@ -335,7 +342,7 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 
 	vk::WriteDescriptorSet pointLightsUboWrite;
 	pointLightsUboWrite.descriptorCount = 1;
-	pointLightsUboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pointLightsUboWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	pointLightsUboWrite.dstArrayElement = 0;
 	pointLightsUboWrite.dstBinding = 4;
 	pointLightsUboWrite.dstSet = m_descriptorSet;
@@ -343,13 +350,16 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 
 	m_pointLightsStaging =
 	    StagingBuffer(vk, sizeof(PointLightUboStruct) * m_maxPointLights);
+	m_pointLightsStaging.setName("PbrShadingModel pointLightsStaging buffer");
 #pragma endregion
 
-#pragma region directioanl lights buffer
+#pragma region directional lights buffer
 	m_directionalLightsUbo = Buffer(
 	    vk, sizeof(DirectionalLightUboStruct) * m_maxDirectionalLights,
-	    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_directionalLightsUbo.setName(
+	    "PbrShadingModel directionalLightsUbo buffer");
 
 	VkDescriptorBufferInfo directionalLightsUboInfo = {};
 	directionalLightsUboInfo.buffer = m_directionalLightsUbo;
@@ -360,7 +370,7 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 	vk::WriteDescriptorSet directionalLightsUboWrite;
 	directionalLightsUboWrite.descriptorCount = 1;
 	directionalLightsUboWrite.descriptorType =
-	    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	directionalLightsUboWrite.dstArrayElement = 0;
 	directionalLightsUboWrite.dstBinding = 5;
 	directionalLightsUboWrite.dstSet = m_descriptorSet;
@@ -368,6 +378,8 @@ PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
 
 	m_directionalLightsStaging = StagingBuffer(
 	    vk, sizeof(DirectionalLightUboStruct) * m_maxDirectionalLights);
+	m_directionalLightsStaging.setName(
+	    "PbrShadingModel directionalLightsStaging buffer");
 #pragma endregion
 
 	vk.updateDescriptorSets({ shadingModelUboWrite, pointLightsUboWrite,
@@ -437,7 +449,7 @@ void PbrShadingModel::uploadDirectionalLightsStaging()
 CombinedMaterialShadingFragmentFunction
 PbrShadingModel::combinedMaterialFragmentFunction(
     sdw::FragmentWriter& writer, MaterialFragmentFunction& materialFunction,
-    FragmentShaderBuildDataBase* shaderBuildData)
+    FragmentShaderBuildDataBase* shaderBuildData, Scene::SceneUbo& sceneUbo)
 {
 	FragmentShaderBuildData* buildData =
 	    dynamic_cast<FragmentShaderBuildData*>(shaderBuildData);
@@ -470,6 +482,9 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 	buildData->PI =
 	    std::make_unique<Float>(writer.declConstant("PI", 3.14159265359_f));
+
+	buildData->shadowmap = std::make_unique<SampledImage2DShadowR32>(
+	    writer.declSampledImage<FImg2DShadowR32>("shadowmap", 2, 0));
 
 	buildData->DistributionGGX = writer.implementFunction<Float>(
 	    "DistributionGGX",
@@ -546,7 +561,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 	return writer.implementFunction<Vec4>(
 	    "combinedMaterialShading",
-	    [&writer, &materialFunction, buildData](
+	    [&writer, &materialFunction, &sceneUbo, buildData](
 	        const UInt& inMaterialInstanceIndex, const Vec3& wsPosition_arg,
 	        const Vec2& uv_arg, const Vec3& wsNormal_arg,
 	        const Vec3& wsTangent_arg, const Vec3& wsViewPosition_arg) {
@@ -671,10 +686,27 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(ambient, kD * diffuse + specular);
 
-		    Locale(color, ambient + Lo);
+		    Locale(shadowView, sceneUbo.getShadowView());
+		    Locale(shadowProj, sceneUbo.getShadowProj());
+		    Locale(shadowBias, sceneUbo.getShadowBias());
+
+			Locale(wsPositionDepthBiased,
+		           wsPosition +
+		               normalize(buildData->directionalLights->operator[](0)
+		                              .direction) *
+		                   shadowBias);
+
+			Locale(lsPositionW, shadowProj * shadowView *
+		                            vec4(wsPositionDepthBiased, 1.0_f));
+		    Locale(lsPosition, (lsPositionW.xyz() / lsPositionW.w()) * 0.5_f + 0.5_f);
+
+			Locale(ref, 0.0_f);
+		    Locale(shadow, buildData->shadowmap->sample(lsPosition.xy(),
+		                                                lsPositionW.z(), ref));
+
+		    Locale(color, (ambient + Lo) * (shadow * 0.5_f + 0.5_f));
 
 		    writer.returnStmt(color);
-		    // writer.returnStmt(wsLightPos);
 	    },
 	    InUInt{ writer, "inMaterialInstanceIndex" },
 	    InVec3{ writer, "wsPosition_arg" }, InVec2{ writer, "uv_arg" },

@@ -90,6 +90,12 @@ BrdfLutGenerator::BrdfLutGenerator(RenderWindow& renderWindow,
 	}
 #pragma endregion
 
+#undef Locale
+#undef FLOAT
+#undef VEC2
+#undef VEC3
+#undef Constant
+
 #define Locale(name, value) auto name = writer.declLocale(#name, value);
 #define FLOAT(name) auto name = writer.declLocale<Float>(#name);
 #define VEC2(name) auto name = writer.declLocale<Vec2>(#name);
@@ -614,11 +620,11 @@ Texture2D BrdfLutGenerator::computeBrdfLut()
 		vk::Rect2D scissor;
 		scissor.extent.width = m_resolution / ColumnCount;
 		scissor.extent.height = m_resolution / RowCount;
-		scissor.offset.y = y * scissor.extent.height;
+		scissor.offset.y = int32_t(y * scissor.extent.height);
 
 		for (size_t x = 0; x < ColumnCount; x++)
 		{
-			scissor.offset.x = x * scissor.extent.width;
+			scissor.offset.x = int32_t(x * scissor.extent.width);
 
 			scissors[x + ColumnCount * y] = scissor;
 		}

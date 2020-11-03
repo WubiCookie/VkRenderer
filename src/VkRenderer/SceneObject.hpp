@@ -50,6 +50,35 @@ class SceneObject
 		void draw(CommandBuffer& cb);
 	};
 
+	struct ShadowmapPipeline
+	{
+		Movable<Scene*> scene;
+		Movable<StandardMesh*> mesh;
+		Movable<MaterialInterface*> material;
+		Movable<VkRenderPass> renderPass;
+
+		UniqueShaderModule vertexModule;
+		UniqueShaderModule fragmentModule;
+
+		UniquePipelineLayout pipelineLayout;
+		UniquePipeline pipeline;
+
+		ShadowmapPipeline() = default;
+		ShadowmapPipeline(Scene& s, StandardMesh& mesh,
+		                  MaterialInterface& material,
+		                  VkRenderPass renderPass);
+		ShadowmapPipeline(const ShadowmapPipeline&) = delete;
+		ShadowmapPipeline(ShadowmapPipeline&&) = default;
+		~ShadowmapPipeline() = default;
+
+		ShadowmapPipeline& operator=(const ShadowmapPipeline&) = delete;
+		ShadowmapPipeline& operator=(ShadowmapPipeline&&) = default;
+
+		void bindPipeline(CommandBuffer& cb);
+		void bindDescriptorSet(CommandBuffer& cb);
+		void draw(CommandBuffer& cb);
+	};
+
 	struct PcbStruct
 	{
 		uint32_t modelIndex;
@@ -61,6 +90,7 @@ protected:
 	Movable<StandardMesh*> m_mesh;
 	Movable<MaterialInterface*> m_material;
 	std::unordered_map<VkRenderPass, Pipeline> m_pipelines;
+	std::unordered_map<VkRenderPass, ShadowmapPipeline> m_shadowmapPipelines;
 
 public:
 	transform3d transform;
@@ -83,5 +113,10 @@ public:
 	virtual void draw(CommandBuffer& cb, VkRenderPass renderPass,
 	                  std::optional<VkViewport> viewport = std::nullopt,
 	                  std::optional<VkRect2D> scissor = std::nullopt);
+
+	virtual void drawShadowmapPass(
+	    CommandBuffer& cb, VkRenderPass renderPass,
+	    std::optional<VkViewport> viewport = std::nullopt,
+	    std::optional<VkRect2D> scissor = std::nullopt);
 };
 }  // namespace cdm
