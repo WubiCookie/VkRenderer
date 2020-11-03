@@ -1404,7 +1404,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			textureWrite.dstArrayElement = 0;
 			textureWrite.dstBinding = 1;
-			textureWrite.dstSet = m_descriptorSet;
+			textureWrite.dstSet = m_defaultMaterial.descriptorSet();// m_descriptorSet;
 			textureWrite.pImageInfo = &imageInfo;
 
 			vk.updateDescriptorSets(textureWrite);

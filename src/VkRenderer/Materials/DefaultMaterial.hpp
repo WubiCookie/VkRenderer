@@ -31,7 +31,7 @@ class DefaultMaterial : public Material
 	struct FragmentShaderBuildData : FragmentShaderBuildDataBase
 	{
 		std::unique_ptr<sdw::Ubo> ubo;
-		//sdw::USampledImage2DRgba8 tex;
+		std::unique_ptr<sdw::USampledImage2DRgba8> tex;
 	};
 
 	Texture2D m_texture;

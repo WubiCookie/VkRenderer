@@ -344,7 +344,8 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	buildData->ubo = std::make_unique<sdw::Ubo>(
 	    sdw::Ubo(writer, "DefaultMaterialUBO", 0, 2));
 
-	// ICI : recuperer la texture comme defaultmaterialUBO
+	buildData->tex = std::make_unique<sdw::USampledImage2DRgba8>(
+		writer.declSampledImage<UImg2DRgba8>("tex", 1, 2));
 
 	// buildData->ubo->declMember<DefaultMaterialUBOStruct>(
 	//    "materials", instancePoolSize() + 1);
@@ -379,8 +380,9 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 
 		    IF(writer, inMaterialInstanceIndex == 0_u)
 		    {
-			    inOutAlbedo = buildData->ubo->getMember<Vec4>(
-			        "color0");  // a remplacer par la texture ?
+				sdw::UVec4 sample = buildData->tex->sample(inOutUv);
+				inOutAlbedo = writer.cast<Vec4>(sample); //buildData->ubo->getMember<Vec4>(
+			     //   "color0");
 			    inOutMetalness =
 			        buildData->ubo->getMember<Float>("metalness0");
 			    inOutRoughness =
