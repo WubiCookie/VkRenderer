@@ -1365,7 +1365,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			           VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 			f.setMipLevels(-1);
 
-			m_singleTexture = f.createTexture2D();
+			Texture2D tex;
+
+			tex = f.createTexture2D();
 
 			// m_singleTexture = Texture2D(
 			//	rw, w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
@@ -1385,17 +1387,17 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			copy.imageSubresource.layerCount = 1;
 			copy.imageSubresource.mipLevel = 0;
 
-			m_singleTexture.uploadDataImmediate(
+			tex.uploadDataImmediate(
 			    imageData, w * h * 4 * sizeof(uint8_t), copy,
 			    VK_IMAGE_LAYOUT_UNDEFINED,
 			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 			stbi_image_free(imageData);
 
-			m_singleTexture.generateMipmapsImmediate(
+			tex.generateMipmapsImmediate(
 			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-			VkDescriptorImageInfo imageInfo{};
+			/*VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			imageInfo.imageView = m_singleTexture.view();
 			imageInfo.sampler = m_singleTexture.sampler();
@@ -1403,14 +1405,18 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			vk::WriteDescriptorSet textureWrite;
 			textureWrite.descriptorCount = 1;
 			textureWrite.descriptorType =
-			    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			textureWrite.dstArrayElement = 0;
 			textureWrite.dstBinding = 1;
-			textureWrite.dstSet = m_defaultMaterial.descriptorSet();// m_descriptorSet;
+			textureWrite.dstSet = m_defaultMaterial.descriptorSet();
 			textureWrite.pImageInfo = &imageInfo;
+			
+			vk.updateDescriptorSets(textureWrite);*/
 
-			vk.updateDescriptorSets(textureWrite);
+			//m_singleTexture = &tex;
+			return tex;
 		}
+		assert(false);
 	};
 
 	// create texture2D
@@ -1447,7 +1453,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	    "2017/Textures/ShaderBall_A_CYCLO.png",
 	    m_albedos, 9);
 
-	createTexture(resourcePath + "/MetalAlbedo.png");
+	m_singleTexture = createTexture(resourcePath + "Fox.jpg");
+	m_singleTexture2 = createTexture(resourcePath + "MetalAlbedo.png");
 	// m_meshes[9].materialData.uScale = 20.0f;
 	// m_meshes[9].materialData.vScale = 20.0f;
 	// m_meshes[2].materialData.uScale = 2.0f;
@@ -1465,6 +1472,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	m_materialInstance1->setFloatParameter("roughness", 0.5f);
 	m_materialInstance1->setFloatParameter("metalness", 0.0f);
 	m_materialInstance1->setVec4Parameter("color", vector4(1, 0, 0, 1));
+	m_materialInstance1->setTextureParameter("", m_singleTexture);
 
 	m_materialInstance2 = m_defaultMaterial.instanciate();
 	m_materialInstance2->setFloatParameter("roughness", 0.001f);
@@ -1537,6 +1545,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	m_materialInstance3->setFloatParameter("metalness", 0.0f);
 	m_materialInstance3->setVec4Parameter("color",
 	                                      vector4(0.5, 0.5, 0.5, 0.5));
+	m_materialInstance3->setTextureParameter("", m_singleTexture2);
 
 	for (auto& mesh : m_sponzaMeshes)
 	{

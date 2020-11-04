@@ -130,6 +130,7 @@ class ShaderBall final
 	std::array<Texture2D, 16> m_normals;
 	std::array<Texture2D, 16> m_roughnesses;
 	Texture2D m_singleTexture;
+	Texture2D m_singleTexture2;
 
 	Texture2D m_colorAttachmentTexture;
 	Texture2D m_objectIDAttachmentTexture;

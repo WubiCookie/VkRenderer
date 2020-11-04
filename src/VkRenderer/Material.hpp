@@ -145,6 +145,11 @@ protected:
 	{
 		assert(false);
 	}
+	virtual void setTextureParameter(const std::string& name,
+		uint32_t instanceIndex, Texture2D& a)
+	{
+		assert(false);
+	}
 
 public:
 	virtual void bind(CommandBuffer& cb, VkPipelineLayout layout) = 0;
@@ -192,6 +197,7 @@ public:
 	void setMat4Parameter(const std::string& name, const matrix4& a);
 	void setUintParameter(const std::string& name, uint32_t a);
 	void setIntParameter(const std::string& name, int32_t a);
+	void setTextureParameter(const std::string& name, Texture2D& a);
 
 	void bind(CommandBuffer& cb, VkPipelineLayout layout) override;
 	void pushOffset(CommandBuffer& cb, VkPipelineLayout layout) override;
@@ -287,6 +293,7 @@ protected:
 	using MaterialInterface::setVec2Parameter;
 	using MaterialInterface::setVec3Parameter;
 	using MaterialInterface::setVec4Parameter;
+	using MaterialInterface::setTextureParameter;
 	using MaterialInterface::uintParameter;
 	using MaterialInterface::vec2Parameter;
 	using MaterialInterface::vec3Parameter;
@@ -365,6 +372,10 @@ public:
 	void setIntParameter(const std::string& name, int32_t a)
 	{
 		MaterialInterface::setIntParameter(name, 0, a);
+	}
+	void setTextureParameter(const std::string& name, Texture2D& a)
+	{
+		MaterialInterface::setTextureParameter(name, 0, a);
 	}
 
 	void setParameter(const std::string& name, float a)
