@@ -427,7 +427,7 @@ static void processNode(RenderWindow& rw, aiNode* node, const aiScene* scene,
 ShaderBall::ShaderBall(RenderWindow& renderWindow)
     : rw(renderWindow),
       m_shadingModel(rw.get().device(), 1, 1),
-      m_defaultMaterial(rw, m_shadingModel, 3),
+      m_defaultMaterial(rw, m_shadingModel, 4),
       m_scene(renderWindow),
       imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
       copyHDRCB(
@@ -583,6 +583,83 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 		m_sponzaMeshes.emplace_back(
 		    StandardMesh(rw, std::move(vertices), std::move(indices)));
+	}
+#pragma endregion
+
+#pragma region sphere mesh
+	const aiScene* sphereScene = importer.ReadFile(
+	    "../resources/Vulkan-Samples-Assets/scenes/geosphere.gltf",
+	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals
+		| aiProcess_CalcTangentSpace
+	);
+
+	if (!sphereScene || sphereScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
+	    !sphereScene->mRootNode)
+	{
+		std::cerr << "assimp error: " << importer.GetErrorString()
+		          << std::endl;
+		throw std::runtime_error(std::string("assimp error: ") +
+		                         importer.GetErrorString());
+	}
+
+	//assert(sphereScene->mNumMeshes == 1);
+
+	{
+		auto& mesh = sphereScene->mMeshes[0];
+		std::vector<StandardMesh::Vertex> vertices;
+		vertices.reserve(mesh->mNumVertices);
+		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+		{
+			StandardMesh::Vertex vertex;
+			vertex.position.x = mesh->mVertices[i].x;
+			vertex.position.y = mesh->mVertices[i].y;
+			vertex.position.z = mesh->mVertices[i].z;
+			vertex.normal = vertex.position.get_normalized();
+			//if (mesh->HasNormals())
+			//{
+			//	vertex.normal.x = mesh->mNormals[i].x;
+			//	vertex.normal.y = mesh->mNormals[i].y;
+			//	vertex.normal.z = mesh->mNormals[i].z;
+			//}
+			//else
+			//{
+			//	vertex.normal = { 1, 0, 0 };
+			//}
+			if (mesh->mTextureCoords[0])
+			{
+				vertex.uv.x = mesh->mTextureCoords[0][i].x;
+				vertex.uv.y = mesh->mTextureCoords[0][i].y;
+			}
+			else
+			{
+				vertex.uv = {};
+			}
+			if (mesh->HasTangentsAndBitangents())
+			{
+				vertex.tangent.x = mesh->mTangents[i].x;
+				vertex.tangent.y = mesh->mTangents[i].y;
+				vertex.tangent.z = mesh->mTangents[i].z;
+				vertex.tangent.normalize();
+			}
+			else
+			{
+				vertex.tangent = { 0, 1, 0 };
+			}
+
+			vertices.push_back(vertex);
+		}
+
+		std::vector<uint32_t> indices;
+		indices.reserve(mesh->mNumFaces * 3);
+		for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+		{
+			const aiFace& face = mesh->mFaces[i];
+			for (unsigned int j = 0; j < face.mNumIndices; j++)
+				indices.push_back(face.mIndices[j]);
+		}
+
+		m_sphereMesh =
+		    StandardMesh(rw, std::move(vertices), std::move(indices));
 	}
 #pragma endregion
 
@@ -1531,18 +1608,29 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	}
 #pragma endregion
 
-#pragma region sponza
+#pragma region sphere
 	m_materialInstance3 = m_defaultMaterial.instanciate();
-	m_materialInstance3->setFloatParameter("roughness", 1.0f);
+	m_materialInstance3->setFloatParameter("roughness", 0.3f);
 	m_materialInstance3->setFloatParameter("metalness", 0.0f);
-	m_materialInstance3->setVec4Parameter("color",
+	m_materialInstance3->setVec4Parameter("color", vector4(1, 1, 1, 1));
+
+	m_sphereSceneObject = &m_scene.instantiateSceneObject();
+	m_sphereSceneObject->setMesh(m_sphereMesh);
+	m_sphereSceneObject->setMaterial(*m_materialInstance3);
+#pragma endregion
+
+#pragma region sponza
+	m_materialInstance4 = m_defaultMaterial.instanciate();
+	m_materialInstance4->setFloatParameter("roughness", 1.0f);
+	m_materialInstance4->setFloatParameter("metalness", 0.0f);
+	m_materialInstance4->setVec4Parameter("color",
 	                                      vector4(0.5, 0.5, 0.5, 0.5));
 
 	for (auto& mesh : m_sponzaMeshes)
 	{
 		auto* sponzaSceneObject = &m_scene.instantiateSceneObject();
 		sponzaSceneObject->setMesh(mesh);
-		sponzaSceneObject->setMaterial(*m_materialInstance3);
+		sponzaSceneObject->setMaterial(*m_materialInstance4);
 		m_sponzaSceneObjects.push_back(sponzaSceneObject);
 	}
 #pragma endregion
@@ -1707,10 +1795,10 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 }
 
 vector3 lightDir{ 0, -1, 0 };
-bool directionalEnabled = true;
+bool directionalEnabled = false;
 
-vector3 lightPos{ 0, 0, 0 };
-bool pointEnabled = false;
+vector3 lightPos{ 0, 20, 0 };
+bool pointEnabled = true;
 bool pointAtCameraEnabled = false;
 
 void ShaderBall::imgui(CommandBuffer& cb)
@@ -1726,6 +1814,12 @@ void ShaderBall::imgui(CommandBuffer& cb)
 		ImGui::Begin("Lights");
 
 		ImGui::DragFloat("shadow bias", &m_scene.shadowBias, 0.0001f);
+		ImGui::DragFloat("R", &m_scene.R, 0.01f);
+		ImGui::SliderFloat("sigma", &m_scene.sigma, 0.0f, Pi/2.0f);
+		ImGui::SliderFloat("roughness", &m_scene.roughness, 0.0f, 0.7f);
+		ImGui::DragFloat3("LTDM 0", &m_scene.LTDM.m00, 0.01f);
+		ImGui::DragFloat3("LTDM 1", &m_scene.LTDM.m01, 0.01f);
+		ImGui::DragFloat3("LTDM 2", &m_scene.LTDM.m02, 0.01f);
 
 		ImGui::Checkbox("directional", &directionalEnabled);
 
@@ -1967,6 +2061,10 @@ void ShaderBall::standaloneDraw()
 	m_bunnySceneObject2->transform.scale = { 6, 6, 6 };
 	m_bunnySceneObject3->transform.position = { -20, 0, -20 };
 	m_bunnySceneObject3->transform.scale = { 6, 6, 6 };
+
+	m_sphereSceneObject->transform.position = { 0.0f, 2.5f, 0.0f };
+	m_sphereSceneObject->transform.scale = { 0.5f, 0.5f, 0.5f };
+	m_sphereSceneObject->transform.rotation = quaternion(vector3(1,0,0), 90.0_deg);
 
 	for (auto& obj : m_sponzaSceneObjects)
 	{

@@ -360,6 +360,9 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	buildData->ubo->declMember<Vec4>("color3");
 	buildData->ubo->declMember<Float>("metalness3");
 	buildData->ubo->declMember<Float>("roughness3");
+	buildData->ubo->declMember<Vec4>("color4");
+	buildData->ubo->declMember<Float>("metalness4");
+	buildData->ubo->declMember<Float>("roughness4");
 	buildData->ubo->end();
 
 	MaterialFragmentFunction res = writer.implementFunction<Float>(
@@ -402,13 +405,21 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 			    inOutRoughness =
 			        buildData->ubo->getMember<Float>("roughness2");
 		    }
-		    ELSE
+		    ELSEIF(inMaterialInstanceIndex == 3_u)
 		    {
 			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color3");
 			    inOutMetalness =
 			        buildData->ubo->getMember<Float>("metalness3");
 			    inOutRoughness =
 			        buildData->ubo->getMember<Float>("roughness3");
+		    }
+		    ELSE
+		    {
+			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color4");
+			    inOutMetalness =
+			        buildData->ubo->getMember<Float>("metalness4");
+			    inOutRoughness =
+			        buildData->ubo->getMember<Float>("roughness4");
 		    }
 		    FI;
 

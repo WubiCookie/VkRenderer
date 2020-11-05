@@ -34,11 +34,11 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 
 		auto fragPosition = writer.declOutput<Vec3>("fragPosition", 0);
 		auto fragUV = writer.declOutput<Vec2>("fragUV", 1);
-		auto fragTanLightPos = writer.declOutput<Vec3>("fragTanLightPos", 2);
-		auto fragTanViewPos = writer.declOutput<Vec3>("fragTanViewPos", 3);
-		auto fragTanFragPos = writer.declOutput<Vec3>("fragTanFragPos", 4);
-		auto fragNormal = writer.declOutput<Vec3>("fragNormal", 5);
-		auto fragTangent = writer.declOutput<Vec3>("fragTangent", 6);
+		//auto fragTanLightPos = writer.declOutput<Vec3>("fragTanLightPos", 2);
+		//auto fragTanViewPos = writer.declOutput<Vec3>("fragTanViewPos", 3);
+		//auto fragTanFragPos = writer.declOutput<Vec3>("fragTanFragPos", 4);
+		auto fragNormal = writer.declOutput<Vec3>("fragNormal", 2);
+		auto fragTangent = writer.declOutput<Vec3>("fragTangent", 3);
 
 		auto out = writer.getOut();
 
@@ -73,13 +73,13 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			fragTangent = normalize(fragTangent -
 			                        dot(fragTangent, fragNormal) * fragNormal);
 
-			Locale(B, cross(fragNormal, fragTangent));
+			//Locale(B, cross(fragNormal, fragTangent));
 
-			Locale(TBN, transpose(mat3(fragTangent, B, fragNormal)));
+			//Locale(TBN, transpose(mat3(fragTangent, B, fragNormal)));
 
-			fragTanLightPos = TBN * sceneUbo.getLightPos();
-			fragTanViewPos = TBN * sceneUbo.getViewPos();
-			fragTanFragPos = TBN * fragPosition;
+			//fragTanLightPos = TBN * sceneUbo.getLightPos();
+			//fragTanViewPos = TBN * sceneUbo.getViewPos();
+			//fragTanFragPos = TBN * fragPosition;
 
 			out.vtx.position = proj * view * model *
 			                   vec4(shaderVertexInput.inPosition, 1.0_f);
@@ -112,12 +112,12 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 
 		auto fragPosition = writer.declInput<sdw::Vec3>("fragPosition", 0);
 		auto fragUV = writer.declInput<sdw::Vec2>("fragUV", 1);
-		auto fragTanLightPos =
-		    writer.declInput<sdw::Vec3>("fragTanLightPos", 2);
-		auto fragTanViewPos = writer.declInput<sdw::Vec3>("fragTanViewPos", 3);
-		auto fragTanFragPos = writer.declInput<sdw::Vec3>("fragTanFragPos", 4);
-		auto fragNormal = writer.declInput<sdw::Vec3>("fragNormal", 5);
-		auto fragTangent = writer.declInput<sdw::Vec3>("fragTangent", 6);
+		//auto fragTanLightPos =
+		//    writer.declInput<sdw::Vec3>("fragTanLightPos", 2);
+		//auto fragTanViewPos = writer.declInput<sdw::Vec3>("fragTanViewPos", 3);
+		//auto fragTanFragPos = writer.declInput<sdw::Vec3>("fragTanFragPos", 4);
+		auto fragNormal = writer.declInput<sdw::Vec3>("fragNormal", 2);
+		auto fragTangent = writer.declInput<sdw::Vec3>("fragTangent", 3);
 
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
 		auto fragID = writer.declOutput<UInt>("fragID", 1);
@@ -141,9 +141,11 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 		writer.implementMain([&]() {
 			Locale(materialInstanceId, modelPcb.getMaterialInstanceId() + 1_u);
 			materialInstanceId -= 1_u;
+			Locale(normal, normalize(fragNormal));
+			Locale(tangent, normalize(fragTangent));
 			fragColor = combinedMaterialFragmentFunction(
-			    materialInstanceId, fragPosition, fragUV, fragNormal,
-			    fragTangent, sceneUbo.getViewPos());
+			    materialInstanceId, fragPosition, fragUV, normal, tangent,
+			    sceneUbo.getViewPos());
 			fragID = modelPcb.getModelId();
 		});
 

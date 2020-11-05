@@ -165,9 +165,14 @@ struct TypeTraits<shader::DirectionalLights>
 namespace cdm
 {
 using DistributionGGX_Signature = Function<Float, InVec3, InVec3, InFloat>;
+using DistributionBeckmann_Signature =
+    Function<Float, InVec3, InFloat, InFloat>;
 using GeometrySchlickGGX_Signature = Function<Float, InFloat, InFloat>;
 using GeometrySmith_Signature =
     Function<Float, InVec3, InVec3, InVec3, InFloat>;
+using Lambda_Signature = Function<Float, InVec3, InFloat, InFloat>;
+using GeometryBeckmann_Signature =
+    Function<Float, InVec3, InVec3, InFloat, InFloat>;
 using fresnelSchlick_Signature = Function<Vec4, InFloat, InVec4>;
 using fresnelSchlickRoughness_Signature =
     Function<Vec4, InFloat, InVec4, InFloat>;
@@ -184,12 +189,15 @@ struct FragmentShaderBuildData : PbrShadingModel::FragmentShaderBuildDataBase
 
 	std::unique_ptr<Float> PI;
 
-	//std::unique_ptr<Scene::SceneUbo> sceneUbo;
+	// std::unique_ptr<Scene::SceneUbo> sceneUbo;
 	std::unique_ptr<SampledImage2DShadowR32> shadowmap;
 
 	DistributionGGX_Signature DistributionGGX;
+	DistributionBeckmann_Signature DistributionBeckmann;
 	GeometrySchlickGGX_Signature GeometrySchlickGGX;
 	GeometrySmith_Signature GeometrySmith;
+	Lambda_Signature Lambda;
+	GeometryBeckmann_Signature GeometryBeckmann;
 	fresnelSchlick_Signature fresnelSchlick;
 	fresnelSchlickRoughness_Signature fresnelSchlickRoughness;
 };
@@ -503,6 +511,42 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	    InVec3{ writer, "N" }, InVec3{ writer, "H" },
 	    InFloat{ writer, "roughness" });
 
+	buildData->DistributionBeckmann = writer.implementFunction<Float>(
+	    "DistributionBeckmann",
+	    [&writer, buildData](const Vec3& wh, const Float& alphax,
+	                         const Float& alphay) {
+		    Locale(cosThetah, wh.z());
+		    Locale(cos2Thetah, cosThetah * cosThetah);
+		    Locale(sin2Thetah, max(0.0_f, 1.0_f - cos2Thetah));
+		    Locale(tan2Thetah, sin2Thetah / cos2Thetah);
+		    Locale(sinThetah, sqrt(sin2Thetah));
+
+		    Locale(cosPhih,
+		           TERNARY(writer, Float, sinThetah == 0.0_f, 1.0_f,
+		                   sdw::clamp(wh.x() / sinThetah, -1.0_f, 1.0_f)));
+		    Locale(sinPhih,
+		           TERNARY(writer, Float, sinThetah == 0.0_f, 0.0_f,
+		                   sdw::clamp(wh.y() / sinThetah, -1.0_f, 1.0_f)));
+		    Locale(cos2Phih, cosPhih * cosPhih);
+		    Locale(sin2Phih, sinPhih * sinPhih);
+
+		    IF(writer, sdw::isinf(tan2Thetah)) { writer.returnStmt(0.0_f); }
+		    ELSE
+		    {
+			    Locale(cos4Thetah,
+			           cosThetah * cosThetah * cosThetah * cosThetah);
+			    writer.returnStmt(
+			        sdw::exp(-tan2Thetah * (cos2Phih / (alphax * alphax) +
+			                                sin2Phih / (alphay * alphay))) /
+			        //(cos2Phih / alphaX2 + sin2Phih / alphaY2)) /
+			        //(*buildData->PI * alphaX * alphaY * cos4Thetah);
+			        (3.14159_f * alphax * alphay * cos4Thetah));
+		    }
+		    FI;
+	    },
+	    InVec3{ writer, "wh" }, InFloat{ writer, "alphax" },
+	    InFloat{ writer, "alphay" });
+
 	buildData->GeometrySchlickGGX = writer.implementFunction<Float>(
 	    "GeometrySchlickGGX",
 	    [&writer, buildData](const Float& NdotV, const Float& roughness) {
@@ -528,6 +572,55 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	    },
 	    InVec3{ writer, "N" }, InVec3{ writer, "V" }, InVec3{ writer, "L" },
 	    InFloat{ writer, "roughness" });
+
+	buildData->Lambda = writer.implementFunction<Float>(
+	    "Lambda",
+	    [&writer, buildData](const Vec3& w, const Float& alphax,
+	                         const Float& alphay) {
+		    Locale(cosTheta, w.z());
+		    Locale(cos2Theta, cosTheta * cosTheta);
+		    Locale(sin2Theta, max(0.0_f, 1.0_f - cos2Theta));
+		    Locale(sinTheta, sqrt(sin2Theta));
+		    Locale(tanTheta, sinTheta / cosTheta);
+		    Locale(absTanTheta, abs(tanTheta));
+		    Locale(cosPhi,
+		           TERNARY(writer, Float, sinTheta == 0.0_f, 1.0_f,
+		                   sdw::clamp(w.x() / sinTheta, -1.0_f, 1.0_f)));
+		    Locale(sinPhi,
+		           TERNARY(writer, Float, sinTheta == 0.0_f, 0.0_f,
+		                   sdw::clamp(w.y() / sinTheta, -1.0_f, 1.0_f)));
+		    Locale(cos2Phi, cosPhi * cosPhi);
+		    Locale(sin2Phi, sinPhi * sinPhi);
+
+		    IF(writer, isinf(absTanTheta)) { writer.returnStmt(0.0_f); }
+		    ELSE
+		    {
+			    Locale(alpha, sqrt(cos2Phi * (alphax * alphax) +
+			                       sin2Phi * (alphay * alphay)));
+			    Locale(a, 1.0_f / (alpha * absTanTheta));
+			    IF(writer, a >= 1.6_f) { writer.returnStmt(0.0_f); }
+			    ELSE
+			    {
+				    writer.returnStmt((1.0_f - 1.259_f * a + 0.396_f * a * a) /
+				                      (3.535_f * a + 2.181_f * a * a));
+			    }
+			    FI;
+		    }
+		    FI;
+	    },
+	    InVec3{ writer, "w" }, InFloat{ writer, "alphax" },
+	    InFloat{ writer, "alphay" });
+
+	buildData->GeometryBeckmann = writer.implementFunction<Float>(
+	    "GeometryBeckmann",
+	    [&writer, buildData](const Vec3& wo, const Vec3& wi,
+	                         const Float& alphax, const Float& alphay) {
+		    writer.returnStmt(1.0_f /
+		                      (1.0_f + buildData->Lambda(wo, alphax, alphay) +
+		                       buildData->Lambda(wi, alphax, alphay)));
+	    },
+	    InVec3{ writer, "wo" }, InVec3{ writer, "wi" },
+	    InFloat{ writer, "alphax" }, InFloat{ writer, "alphay" });
 
 	buildData->fresnelSchlick = writer.implementFunction<Vec4>(
 	    "fresnelSchlick",
@@ -572,11 +665,17 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    Locale(directionalLightsCount,
 		           buildData->shadingModelData->getMember<UInt>(
 		               "directionalLightsCount"));
+		    Locale(alpha, sceneUbo.getRoughness());
+		    Locale(R, sceneUbo.getR());
 		    Locale(albedo, vec4(0.0_f));
 		    Locale(wsPosition, wsPosition_arg);
 		    Locale(wsNormal, wsNormal_arg);
 		    Locale(wsTangent, wsTangent_arg);
 		    Locale(wsViewPosition, wsViewPosition_arg);
+
+		    // Locale(B, cross(wsNormal, wsTangent));
+		    Locale(TBN, transpose(mat3(wsTangent, cross(wsNormal, wsTangent),
+		                               wsNormal)));
 
 		    Locale(metalness, 0.0_f);
 		    Locale(roughness, 0.3_f);
@@ -589,122 +688,390 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(V, normalize(wsViewPosition - wsPosition));
 
+		    Locale(tsPosition, TBN * wsPosition);
+		    Locale(tsNormal, TBN * wsNormal);
+		    Locale(tsV, TBN * V);
+
+		    Locale(F, vec4(0.0_f));
 		    Locale(F0, mix(vec4(0.04_f), albedo, vec4(metalness)));
 
 		    Locale(Lo, vec4(0.0_f));
 
-		    Locale(F, vec4(0.0_f));
 		    Locale(kS, vec4(0.0_f));
 		    Locale(kD, vec4(0.0_f));
 		    Locale(specular, vec4(0.0_f));
+
+		    Locale(shadow, 1.0_f);
+
+		    Locale(M, sceneUbo.getLTDM());
+		    // mat3(vec3(0.1_f, 0.0_f, 0.0_f), vec3(0.0_f, 0.1_f, 0.0_f),
+		    // vec3(0.0_f, 0.0_f, 1.0_f)));
+
+		    // wsNormal = normalize(M * wsNormal);
+		    // V = normalize(M * V);
+		    // wsNormal = M * wsNormal;
+
+		    Locale(wo, normalize(M * tsV));
+
+#pragma region trigonometry o
+		    Locale(cosThetao, wo.z());
+		    Locale(cos2Thetao, cosThetao * cosThetao);
+		    Locale(absCosThetao, abs(cosThetao));
+		    Locale(sin2Thetao, max(0.0_f, 1.0_f - cos2Thetao));
+		    Locale(sinThetao, sqrt(sin2Thetao));
+		    // Locale(absSinThetao, abs(sinThetao));
+		    Locale(tanThetao, sinThetao / cosThetao);
+		    Locale(tan2Thetao, sin2Thetao / cos2Thetao);
+		    Locale(absTanThetao, abs(tanThetao));
+
+		    Locale(cosPhio,
+		           TERNARY(writer, Float, sinThetao == 0.0_f, 1.0_f,
+		                   sdw::clamp(wo.x() / sinThetao, -1.0_f, 1.0_f)));
+		    Locale(sinPhio,
+		           TERNARY(writer, Float, sinThetao == 0.0_f, 0.0_f,
+		                   sdw::clamp(wo.y() / sinThetao, -1.0_f, 1.0_f)));
+		    Locale(cos2Phio, cosPhio * cosPhio);
+		    Locale(sin2Phio, sinPhio * sinPhio);
+#pragma endregion
 
 		    FOR(writer, UInt, i, 0_u, i < pointLightsCount, ++i)
 		    {
 			    Locale(wsLightPos,
 			           buildData->pointLights->operator[](i).position);
+			    Locale(tsLightPos, TBN * wsLightPos);
 			    Locale(lightColor,
 			           buildData->pointLights->operator[](i).color);
-			    Locale(L, normalize(wsLightPos - wsPosition));
-			    Locale(H, normalize(V + L));
-			    Locale(distance, length(wsLightPos - wsPosition));
+
+			    // Locale(L, normalize(wsLightPos - wsPosition));
+			    Locale(tsL, normalize(tsLightPos - tsPosition));
+
+			    // L = normalize(M * L);
+
+			    // Locale(H, normalize(V + L));
+			    // Locale(tsH, tsV + tsL);
+
+			    // H = normalize(M * H);
+
+			    // Locale(distance, length(wsLightPos - wsPosition));
+			    Locale(distance, length(tsLightPos - tsPosition));
 			    Locale(attenuation, 1.0_f / (distance * distance));
 			    Locale(radiance, lightColor * vec4(attenuation));
 
-			    Locale(NDF,
-			           buildData->DistributionGGX(wsNormal, H, roughness));
-			    Locale(G, buildData->GeometrySmith(wsNormal, V, L, roughness));
-			    F = buildData->fresnelSchlick(max(dot(H, V), 0.0_f), F0);
+			    Locale(wi, normalize(M * tsL));
+			    Locale(wh, tsV + tsL);
 
-			    kS = F;
-			    kD = vec4(1.0_f) - kS;
-			    kD = kD * vec4(1.0_f - metalness);
+			    IF(writer,
+			       (wh.x() == 0.0_f && wh.y() == 0.0_f && wh.z() == 0.0_f))
+			    {
+				    writer.loopContinueStmt();
+			    }
+			    FI;
 
-			    Locale(nominator, NDF * G * F);
-			    Locale(denominator, 4.0_f * max(dot(wsNormal, V), 0.0_f) *
-			                            max(dot(wsNormal, L), 0.0_f));
-			    Locale(loopSpecular,
-			           nominator / vec4(max(denominator, 0.001_f)));
+			    wh = normalize(M * wh);
 
-			    Locale(NdotL, max(dot(wsNormal, L), 0.0_f));
+#pragma region trigonometry i
+			    Locale(cosThetai, wi.z());
+			    Locale(cos2Thetai, cosThetai * cosThetai);
+			    Locale(absCosThetai, abs(cosThetai));
+			    Locale(sin2Thetai, max(0.0_f, 1.0_f - cos2Thetai));
+			    Locale(sinThetai, sqrt(sin2Thetai));
+			    // Locale(absSinThetai, abs(sinThetai));
+			    Locale(tanThetai, sinThetai / cosThetai);
+			    Locale(tan2Thetai, sin2Thetai / cos2Thetai);
+			    Locale(absTanThetai, abs(tanThetai));
 
-			    Lo += (kD * albedo / vec4(pi) + loopSpecular) * radiance *
-			          vec4(NdotL);
+			    Locale(cosPhii,
+			           TERNARY(writer, Float, sinThetai == 0.0_f, 1.0_f,
+			                   sdw::clamp(wi.x() / sinThetai, -1.0_f, 1.0_f)));
+			    Locale(sinPhii,
+			           TERNARY(writer, Float, sinThetai == 0.0_f, 0.0_f,
+			                   sdw::clamp(wi.y() / sinThetai, -1.0_f, 1.0_f)));
+			    Locale(cos2Phii, cosPhii * cosPhii);
+			    Locale(sin2Phii, sinPhii * sinPhii);
+#pragma endregion
+
+#pragma region trigonometry h
+			    Locale(cosThetah, wh.z());
+			    Locale(cos2Thetah, cosThetah * cosThetah);
+			    Locale(absCosThetah, abs(cosThetah));
+			    Locale(sin2Thetah, max(0.0_f, 1.0_f - cos2Thetah));
+			    Locale(tan2Thetah, sin2Thetah / cos2Thetah);
+			    Locale(sinThetah, sqrt(sin2Thetah));
+			    // Locale(absSinThetah, abs(sinThetah));
+			    Locale(cosPhih,
+			           TERNARY(writer, Float, sinThetah == 0.0_f, 1.0_f,
+			                   sdw::clamp(wh.x() / sinThetah, -1.0_f, 1.0_f)));
+			    Locale(sinPhih,
+			           TERNARY(writer, Float, sinThetah == 0.0_f, 0.0_f,
+			                   sdw::clamp(wh.y() / sinThetah, -1.0_f, 1.0_f)));
+			    Locale(cos2Phih, cosPhih * cosPhih);
+			    Locale(sin2Phih, sinPhih * sinPhih);
+#pragma endregion
+
+			    //#pragma region Roughness Alpha
+			    //			    // Locale(clampledRoughness,
+			    // max(roughness, 1.0e-1_f)); Locale(clampledRoughnessX,
+			    //			           max(sceneUbo.getRoughness(), 1.0e-1_f));
+			    //			    Locale(clampledRoughnessY, clampledRoughnessX);
+			    //			    // Locale(clampledRoughnessX,
+			    // max(2.0_f, 1.0e-1_f));
+			    //			    // Locale(clampledRoughnessY,
+			    // max(0.8_f, 1.0e-1_f));
+			    //
+			    //			    Locale(x, log(clampledRoughnessX));
+			    //			    Locale(distributionAlphaX, 1.062142_f +
+			    //0.819955_f
+			    //* x + 			                                   0.1734_f * x *
+			    //x + 			                                   0.0171201_f * x
+			    //* x * x + 			                                   0.000640711_f * x * x * x * x);
+			    //
+			    //			    Locale(y, log(clampledRoughnessY));
+			    //			    Locale(distributionAlphaY, 1.062142_f +
+			    //0.819955_f
+			    //* y + 			                                   0.1734_f * y *
+			    //y + 			                                   0.0171201_f * y
+			    //* y * y + 			                                   0.000640711_f * y * y * y * y);
+			    //
+			    //			    // Locale(alphaX, distributionAlphaX);
+			    //			    // Locale(alphaY, distributionAlphaY);
+			    //
+			    //			    Locale(alpha, sceneUbo.getRoughness());
+			    //			    Locale(alphaX, sceneUbo.getRoughness());
+			    //			    Locale(alphaY, sceneUbo.getRoughness());
+			    //
+			    //			    Locale(alphaX2, alphaX * alphaX);
+			    //			    Locale(alphaY2, alphaY * alphaY);
+			    //#pragma endregion
+			    //#pragma region Oren and Nayar
+			    //			    Locale(R, sceneUbo.getR());
+			    //			    Locale(sigma, sceneUbo.getSigma());
+			    //			    Locale(sigma2, sigma * sigma);
+			    //			    Locale(A, 1.0_f - (sigma2 / (2.0_f * (sigma2 +
+			    // 0.33_f)))); 			    Locale(B, (0.45_f * sigma2 / (sigma2 +
+			    // 0.09_f)));
+			    //
+			    //			    Locale(maxCos, 0.0_f);
+			    //			    IF(writer, sinThetai > 1.0e-4_f && sinThetao
+			    //> 1.0e-4_f)
+			    //			    {
+			    //				    Locale(sinPhii,
+			    //				           TERNARY(
+			    //				               writer, Float, sinThetai ==
+			    //0.0_f,
+			    // 0.0_f, 				               sdw::clamp(wi.y() / sinThetai,
+			    // -1.0_f, 1.0_f))); 				    Locale(sinPhio, 				           TERNARY( 				               writer, Float,
+			    //sinThetao == 0.0_f, 0.0_f,
+			    // sdw::clamp(wo.y() / sinThetao, -1.0_f, 1.0_f)));
+			    //
+			    //				    Locale(cosPhii,
+			    //				           TERNARY(
+			    //				               writer, Float, sinThetai ==
+			    //0.0_f,
+			    // 0.0_f, 				               sdw::clamp(wi.x() / sinThetai,
+			    // -1.0_f, 1.0_f))); 				    Locale(cosPhio, 				           TERNARY( 				               writer, Float,
+			    //sinThetao == 0.0_f, 0.0_f,
+			    // sdw::clamp(wo.x() / sinThetao, -1.0_f, 1.0_f)));
+			    //
+			    //				    Locale(dCos, cosPhii * cosPhio + sinPhii *
+			    // sinPhio); 				    maxCos = max(0.0_f, dCos);
+			    //			    }
+			    //			    FI;
+			    //
+			    //			    FLOAT(sinAlpha);
+			    //			    FLOAT(tanBeta);
+			    //			    IF(writer, abs(wi.z()) > abs(wo.z()))
+			    //			    {
+			    //				    sinAlpha = sinThetao;
+			    //				    tanBeta = sinThetai / abs(wi.z());
+			    //			    }
+			    //			    ELSE
+			    //			    {
+			    //				    sinAlpha = sinThetai;
+			    //				    tanBeta = sinThetao / abs(wo.z());
+			    //			    }
+			    //			    FI;
+			    //
+			    //			    Locale(Lambertian, (R / *buildData->PI) *
+			    //			                           (A + B * maxCos * sinAlpha
+			    //* tanBeta)); #pragma endregion
+
+			    IF(writer, cosThetai == 0.0_f || cosThetao == 0.0_f)
+			    {
+				    // Lo += vec4(0.0_f);
+			    }
+			    ELSE
+			    {
+				    Locale(DBeckmann,
+				           buildData->DistributionBeckmann(wh, alpha, alpha));
+
+				    Locale(GBeckmann,
+				           buildData->GeometryBeckmann(wo, wi, alpha, alpha));
+
+				    F = buildData->fresnelSchlick(max(cosThetai, 0.0_f), F0);
+
+				    kS = F;
+				    kD = vec4(1.0_f) - kS;
+				    kD = kD * vec4(1.0_f - metalness);
+
+				    Locale(NdotL, max(dot(tsNormal, tsL), 0.0_f));
+
+				    Lo +=
+				        (radiance * NdotL) *
+				        (kD * albedo / vec4(pi) + DBeckmann * GBeckmann * R) /
+				        (4.0_f * cosThetai * absCosThetao + 0.1_f);
+			    }
+			    FI;
 		    }
 		    ROF;
 		    FOR(writer, UInt, i, 0_u, i < directionalLightsCount, ++i)
 		    {
-			    Locale(radiance,
-			           buildData->directionalLights->operator[](i).color);
-			    Locale(L,
-			           normalize(-buildData->directionalLights->operator[](i)
-			                          .direction));
-			    Locale(H, normalize(V + L));
+			    Locale(radiance, (*buildData->directionalLights)[i].color);
 
-			    Locale(NDF,
-			           buildData->DistributionGGX(wsNormal, H, roughness));
-			    Locale(G, buildData->GeometrySmith(wsNormal, V, L, roughness));
-			    F = buildData->fresnelSchlick(max(dot(H, V), 0.0_f), F0);
+			    Locale(
+			        tsL,
+			        normalize(TBN *
+			                  -(*buildData->directionalLights)[i].direction));
 
-			    kS = F;
-			    kD = vec4(1.0_f) - kS;
-			    kD = kD * vec4(1.0_f - metalness);
+			    Locale(wi, normalize(M * tsL));
+			    Locale(wh, tsV + tsL);
 
-			    Locale(nominator, NDF * G * F);
-			    Locale(denominator, 4.0_f * max(dot(wsNormal, V), 0.0_f) *
-			                            max(dot(wsNormal, L), 0.0_f));
-			    Locale(loopSpecular,
-			           nominator / vec4(max(denominator, 0.001_f)));
+			    IF(writer,
+			       (wh.x() == 0.0_f && wh.y() == 0.0_f && wh.z() == 0.0_f))
+			    {
+				    writer.loopContinueStmt();
+			    }
+			    FI;
 
-			    Locale(NdotL, max(dot(wsNormal, L), 0.0_f));
+			    wh = normalize(M * wh);
 
-			    Lo += (kD * albedo / vec4(pi) + loopSpecular) * radiance *
-			          vec4(NdotL);
+#pragma region trigonometry i
+			    Locale(cosThetai, wi.z());
+			    Locale(cos2Thetai, cosThetai * cosThetai);
+			    Locale(absCosThetai, abs(cosThetai));
+			    Locale(sin2Thetai, max(0.0_f, 1.0_f - cos2Thetai));
+			    Locale(sinThetai, sqrt(sin2Thetai));
+			    // Locale(absSinThetai, abs(sinThetai));
+			    Locale(tanThetai, sinThetai / cosThetai);
+			    Locale(tan2Thetai, sin2Thetai / cos2Thetai);
+			    Locale(absTanThetai, abs(tanThetai));
+
+			    Locale(cosPhii,
+			           TERNARY(writer, Float, sinThetai == 0.0_f, 1.0_f,
+			                   sdw::clamp(wi.x() / sinThetai, -1.0_f, 1.0_f)));
+			    Locale(sinPhii,
+			           TERNARY(writer, Float, sinThetai == 0.0_f, 0.0_f,
+			                   sdw::clamp(wi.y() / sinThetai, -1.0_f, 1.0_f)));
+			    Locale(cos2Phii, cosPhii * cosPhii);
+			    Locale(sin2Phii, sinPhii * sinPhii);
+#pragma endregion
+
+#pragma region trigonometry h
+			    Locale(cosThetah, wh.z());
+			    Locale(cos2Thetah, cosThetah * cosThetah);
+			    Locale(absCosThetah, abs(cosThetah));
+			    Locale(sin2Thetah, max(0.0_f, 1.0_f - cos2Thetah));
+			    Locale(tan2Thetah, sin2Thetah / cos2Thetah);
+			    Locale(sinThetah, sqrt(sin2Thetah));
+			    // Locale(absSinThetah, abs(sinThetah));
+			    Locale(cosPhih,
+			           TERNARY(writer, Float, sinThetah == 0.0_f, 1.0_f,
+			                   sdw::clamp(wh.x() / sinThetah, -1.0_f, 1.0_f)));
+			    Locale(sinPhih,
+			           TERNARY(writer, Float, sinThetah == 0.0_f, 0.0_f,
+			                   sdw::clamp(wh.y() / sinThetah, -1.0_f, 1.0_f)));
+			    Locale(cos2Phih, cosPhih * cosPhih);
+			    Locale(sin2Phih, sinPhih * sinPhih);
+#pragma endregion
+
+			    IF(writer, cosThetai == 0.0_f || cosThetao == 0.0_f)
+			    {
+				    // Lo += vec4(0.0_f);
+			    }
+			    ELSE
+			    {
+				    // ================= Shadow =================
+				    Locale(shadowView, sceneUbo.getShadowView());
+				    Locale(shadowProj, sceneUbo.getShadowProj());
+				    Locale(shadowBias, sceneUbo.getShadowBias());
+
+				    Locale(wsPositionDepthBiased,
+				           wsPosition +
+				               normalize(
+				                   buildData->directionalLights->operator[](0)
+				                       .direction) *
+				                   shadowBias);
+
+				    Locale(lsPositionW,
+				           shadowProj * shadowView *
+				               vec4(wsPositionDepthBiased, 1.0_f));
+				    Locale(
+				        lsPosition,
+				        (lsPositionW.xyz() / lsPositionW.w()) * 0.5_f + 0.5_f);
+
+				    shadow = buildData->shadowmap->sample(lsPosition.xy(),
+				                                          lsPositionW.z());
+				    shadow = max(shadow, 0.1_f);
+				    // ==========================================
+
+				    Locale(DBeckmann,
+				           buildData->DistributionBeckmann(wh, alpha, alpha));
+
+				    Locale(GBeckmann,
+				           buildData->GeometryBeckmann(wo, wi, alpha, alpha));
+
+				    F = buildData->fresnelSchlick(max(cosThetai, 0.0_f), F0);
+
+				    kS = F;
+				    kD = vec4(1.0_f) - kS;
+				    kD = kD * vec4(1.0_f - metalness);
+
+				    Locale(NdotL, max(dot(tsNormal, tsL), 0.0_f));
+
+				    Lo +=
+				        shadow * (radiance * NdotL) *
+				        (kD * albedo / vec4(pi) + DBeckmann * GBeckmann * R) /
+				        (4.0_f * cosThetai * absCosThetao + 0.1_f);
+			    }
+			    FI;
 		    }
 		    ROF;
 
 		    F = buildData->fresnelSchlickRoughness(
-		        max(dot(wsNormal, V), 0.0_f), F0, roughness);
+		        // max(dot(wsNormal, V), 0.0_f), F0, roughness);
+		        max(cosThetao, 0.0_f), F0, roughness);
 
 		    kS = F;
 		    kD = vec4(1.0_f) - kS;
 		    kD = kD * vec4(1.0_f - metalness);
 
-		    Locale(R, reflect(-V, wsNormal));
+		    Locale(reflected, reflect(-wo, tsNormal));
 
-		    Locale(irradiance, buildData->irradianceMap->sample(wsNormal));
+		    Locale(TBNMinusOne, inverse(TBN));
+
+		    Locale(irradiance,
+		           buildData->irradianceMap->sample(TBNMinusOne * tsNormal));
 		    Locale(diffuse, irradiance * albedo);
 
 		    Locale(MAX_REFLECTION_LOD,
 		           writer.cast<Float>(buildData->prefilteredMap->getLevels()));
-		    Locale(prefilteredColor, buildData->prefilteredMap->lod(
-		                                 R, roughness * MAX_REFLECTION_LOD));
-		    Locale(brdf,
-		           buildData->brdfLut
-		               ->sample(vec2(max(dot(wsNormal, V), 0.0_f), roughness))
-		               .rg());
+		    Locale(prefilteredColor,
+		           buildData->prefilteredMap->lod(
+		               reflected, roughness * MAX_REFLECTION_LOD));
+		    Locale(
+		        brdf,
+		        buildData
+		            ->brdfLut
+		            //->sample(vec2(max(dot(wsNormal, V), 0.0_f), roughness))
+		            ->sample(vec2(max(cosThetao, 0.0_f), roughness))
+		            .rg());
 		    specular = prefilteredColor * (F * brdf.x() + brdf.y());
 
 		    Locale(ambient, kD * diffuse + specular);
 
-		    Locale(shadowView, sceneUbo.getShadowView());
-		    Locale(shadowProj, sceneUbo.getShadowProj());
-		    Locale(shadowBias, sceneUbo.getShadowBias());
+		    // Locale(color, (ambient + Lo) * shadow);
+		    Locale(color, ambient + Lo);
 
-			Locale(wsPositionDepthBiased,
-		           wsPosition +
-		               normalize(buildData->directionalLights->operator[](0)
-		                              .direction) *
-		                   shadowBias);
-
-			Locale(lsPositionW, shadowProj * shadowView *
-		                            vec4(wsPositionDepthBiased, 1.0_f));
-		    Locale(lsPosition, (lsPositionW.xyz() / lsPositionW.w()) * 0.5_f + 0.5_f);
-
-			Locale(ref, 0.0_f);
-		    Locale(shadow, buildData->shadowmap->sample(lsPosition.xy(),
-		                                                lsPositionW.z(), ref));
-
-		    Locale(color, (ambient + Lo) * (shadow * 0.5_f + 0.5_f));
+		    // Locale(color, Lo);
 
 		    writer.returnStmt(color);
 	    },

@@ -289,6 +289,10 @@ void Scene::uploadTransformMatrices(const transform3d& cameraTr,
 	    matrix4::orthographic(-150, 150, 150, -150, 0.01f, 1000.0f)
 	        .get_transposed();
 	sceneUBOPtr->shadowBias = shadowBias;
+	sceneUBOPtr->R = R;
+	sceneUBOPtr->sigma = sigma;
+	sceneUBOPtr->roughness = roughness;
+	sceneUBOPtr->LTDM = LTDM;
 
 	sceneUniformBuffer().unmap();
 
@@ -334,6 +338,10 @@ Scene::SceneUbo::SceneUbo(sdw::ShaderWriter& writer)
 	declMember<sdw::Mat4>("shadowView");
 	declMember<sdw::Mat4>("shadowProj");
 	declMember<sdw::Float>("shadowBias");
+	declMember<sdw::Float>("R");
+	declMember<sdw::Float>("sigma");
+	declMember<sdw::Float>("roughness");
+	declMember<sdw::Mat3>("LTDM");
 	end();
 }
 
@@ -342,26 +350,33 @@ sdw::Mat4 Scene::SceneUbo::getShadowView()
 {
 	return getMember<sdw::Mat4>("shadowView");
 }
-
 sdw::Mat4 Scene::SceneUbo::getProj() { return getMember<sdw::Mat4>("proj"); }
 sdw::Mat4 Scene::SceneUbo::getShadowProj()
 {
 	return getMember<sdw::Mat4>("shadowProj");
 }
-sdw::Float Scene::SceneUbo::getShadowBias()
-{
-	return getMember<sdw::Float>("shadowBias");
-}
-
 sdw::Vec3 Scene::SceneUbo::getViewPos()
 {
 	return getMember<sdw::Vec3>("viewPos");
 }
-
 sdw::Vec3 Scene::SceneUbo::getLightPos()
 {
 	return getMember<sdw::Vec3>("lightPos");
 }
+sdw::Float Scene::SceneUbo::getShadowBias()
+{
+	return getMember<sdw::Float>("shadowBias");
+}
+sdw::Float Scene::SceneUbo::getR() { return getMember<sdw::Float>("R"); }
+sdw::Float Scene::SceneUbo::getSigma()
+{
+	return getMember<sdw::Float>("sigma");
+}
+sdw::Float Scene::SceneUbo::getRoughness()
+{
+	return getMember<sdw::Float>("roughness");
+}
+sdw::Mat3 Scene::SceneUbo::getLTDM() { return getMember<sdw::Mat3>("LTDM"); }
 
 Scene::ModelUbo::ModelUbo(sdw::ShaderWriter& writer)
     : sdw::Ubo(writer, "ModelUBO", 1, 0)

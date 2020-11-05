@@ -27,16 +27,25 @@ private:
 	struct alignas(16) SceneUboStruct
 	{
 		matrix4 view;
+
 		matrix4 proj;
+
 		vector3 viewPos;
 		float _0 = 0xcccc;
+
 		vector3 lightPos;
 		float _1 = 0xcccc;
-		//float _2 = 0xcccc;
-		//float _4 = 0xcccc;
+
 		matrix4 shadowView;
+
 		matrix4 shadowProj;
+
 		float shadowBias;
+		float R;
+		float sigma;
+		float roughness;
+
+		matrix3 LTDM;
 	};
 
 	struct alignas(16) ModelUboStruct
@@ -71,6 +80,10 @@ public:
 	Scene& operator=(Scene&&) = default;
 
 	float shadowBias = -0.4096f;
+	float R = 1.0f;
+	float sigma = 1.0f;
+	float roughness = 0.3f;
+	matrix3 LTDM = matrix3::identity();
 
 	const VkDescriptorSetLayout& descriptorSetLayout() const
 	{
@@ -100,6 +113,10 @@ public:
 		sdw::Float getShadowBias();
 		sdw::Vec3 getViewPos();
 		sdw::Vec3 getLightPos();
+		sdw::Float getR();
+		sdw::Float getSigma();
+		sdw::Float getRoughness();
+		sdw::Mat3 getLTDM();
 	};
 
 	class ModelUbo : private sdw::Ubo
