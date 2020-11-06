@@ -36,9 +36,8 @@ public:
 private:
 	Movable<RenderWindow*> rw;
 
-	std::vector<Vertex> m_vertices;
-	std::vector<vector4> m_positions;
-	std::vector<uint32_t> m_indices;
+	uint32_t m_verticesCount = 0;
+	uint32_t m_indicesCount = 0;
 
 	Buffer m_vertexBuffer;
 	Buffer m_positionBuffer;
@@ -46,8 +45,8 @@ private:
 
 public:
 	StandardMesh() = default;
-	StandardMesh(RenderWindow& rw, std::vector<Vertex> vertices,
-	             std::vector<uint32_t> indices);
+	StandardMesh(RenderWindow& rw, const std::vector<Vertex>& vertices,
+	             const std::vector<uint32_t>& indices);
 	StandardMesh(const StandardMesh&) = delete;
 	StandardMesh(StandardMesh&&) = default;
 	~StandardMesh() = default;
@@ -56,17 +55,21 @@ public:
 	StandardMesh& operator=(StandardMesh&&) = default;
 
 	void draw(CommandBuffer& cb);
+	void drawPositions(CommandBuffer& cb);
 
-	const std::vector<Vertex>& vertices() const noexcept { return m_vertices; }
-	const std::vector<vector4>& positions() const noexcept
-	{
-		return m_positions;
-	}
-	const std::vector<uint32_t>& indices() const noexcept { return m_indices; }
+	//const std::vector<Vertex>& vertices() const noexcept { return m_vertices; }
+	//const std::vector<vector4>& positions() const noexcept
+	//{
+	//	return m_positions;
+	//}
+	//const std::vector<uint32_t>& indices() const noexcept { return m_indices; }
 
-	const Buffer& vertexBuffer() const noexcept { return m_vertexBuffer; }
-	const Buffer& positionBuffer() const noexcept { return m_positionBuffer; }
-	const Buffer& indexBuffer() const noexcept { return m_indexBuffer; }
+	//uint32_t verticesCount() const noexcept { return m_verticesCount; }
+	//uint32_t indicesCount() const noexcept { return m_indicesCount; }
+
+	//const Buffer& vertexBuffer() const noexcept { return m_vertexBuffer; }
+	//const Buffer& positionBuffer() const noexcept { return m_positionBuffer; }
+	//const Buffer& indexBuffer() const noexcept { return m_indexBuffer; }
 
 	static VertexInputState vertexInputState();
 	static VertexInputState positionOnlyVertexInputState();

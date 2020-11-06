@@ -22,3 +22,6 @@
 [submodule "resources/illumination_assets"]
 	path = resources/illumination_assets
 	url = ssh://git@git.isartintra.com:2424/2020/MGP2_2021_Illumination_Engine/02_Assets.git
+[submodule "external/astc-codec"]
+	path = external/astc-codec
+	url = https://github.com/google/astc-codec.git

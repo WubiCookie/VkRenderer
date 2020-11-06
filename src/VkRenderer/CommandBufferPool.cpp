@@ -13,7 +13,7 @@ bool FrameCommandBuffer::isAvailable()
 {
 	const auto& vk = commandBuffer.device();
 
-	return submitted == false;
+	return available == true && submitted == false;
 }
 
 VkResult FrameCommandBuffer::submit(VkQueue queue)
@@ -22,6 +22,7 @@ VkResult FrameCommandBuffer::submit(VkQueue queue)
 
 	VkResult res = vk.queueSubmit(queue, commandBuffer, fence);
 	submitted = true;
+	available = false;
 
 	return res;
 }
@@ -102,16 +103,16 @@ FrameCommandBuffer& CommandBufferPool::getAvailableCommandBuffer()
 {
 	const auto& vk = device();
 
-	int outCommandBufferIndex = 0;
+	uint32_t outCommandBufferIndex = 0;
 	for (auto& frame : m_frameCommandBuffers)
 	{
 		if (frame.isAvailable())
 			return frame;
 
-		/// AAAAAAAAAAAAH
 		outCommandBufferIndex++;
-		if (outCommandBufferIndex >= 256)
-			abort();
+		/// AAAAAAAAAAAAH
+		//if (outCommandBufferIndex >= 256)
+		//	abort();
 	}
 
 	m_frameCommandBuffers.push_back(
@@ -149,6 +150,12 @@ void CommandBufferPool::waitForAllCommandBuffers()
 			fences.push_back(frame.fence);
 
 	vk.wait(uint32_t(fences.size()), fences.data(), true);
+	vk.wait();
+
+	for (auto& frame : m_frameCommandBuffers)
+		frame.submitted = false;
+
+	m_registeredStagingBuffer.clear();
 }
 
 void CommandBufferPool::reset()
@@ -165,11 +172,15 @@ void CommandBufferPool::reset()
 	}
 }
 
+void CommandBufferPool::registerResource(StagingBuffer stagingBuffer)
+{
+	m_registeredStagingBuffer.emplace_back(std::move(stagingBuffer));
+}
+
 // ======================================================================
 
 ResettableCommandBufferPool::ResettableCommandBufferPool(
-    const VulkanDevice& vulkanDevice,
-                                     VkCommandPoolCreateFlags flags)
+    const VulkanDevice& vulkanDevice, VkCommandPoolCreateFlags flags)
     : m_device(vulkanDevice),
       m_flags(flags | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
 {
@@ -216,22 +227,22 @@ ResettableCommandBufferPool::getAvailableCommandBuffer()
 
 	m_frameCommandBuffers.push_back(ResettableFrameCommandBuffer{
 	    CommandBuffer(vk, commandPool()), vk.createFence(),
-	                        // vk.createFence(VK_FENCE_CREATE_SIGNALED_BIT),
-	                        vk.createSemaphore() });
+	    // vk.createFence(VK_FENCE_CREATE_SIGNALED_BIT),
+	    vk.createSemaphore() });
 
 #pragma region marker names
 	vk.debugMarkerSetObjectName(
 	    m_frameCommandBuffers.front().commandBuffer.get(),
 	    "ResettableCommandBufferPool::frameCommandBuffers[" +
 	        std::to_string(outCommandBufferIndex) + "].commandBuffer");
-	vk.debugMarkerSetObjectName(m_frameCommandBuffers.front().fence.get(),
-	                            "ResettableCommandBufferPool::frameCommandBuffers[" +
-	                                std::to_string(outCommandBufferIndex) +
-	                                "].fence");
-	vk.debugMarkerSetObjectName(m_frameCommandBuffers.front().semaphore.get(),
-	                            "ResettableCommandBufferPool::frameCommandBuffers[" +
-	                                std::to_string(outCommandBufferIndex) +
-	                                "].semaphore");
+	vk.debugMarkerSetObjectName(
+	    m_frameCommandBuffers.front().fence.get(),
+	    "ResettableCommandBufferPool::frameCommandBuffers[" +
+	        std::to_string(outCommandBufferIndex) + "].fence");
+	vk.debugMarkerSetObjectName(
+	    m_frameCommandBuffers.front().semaphore.get(),
+	    "ResettableCommandBufferPool::frameCommandBuffers[" +
+	        std::to_string(outCommandBufferIndex) + "].semaphore");
 #pragma endregion
 
 	return m_frameCommandBuffers.back();
@@ -241,8 +252,8 @@ void ResettableCommandBufferPool::waitForAllCommandBuffers()
 {
 	const auto& vk = device();
 
-	//std::vector<VkFence> fences;
-	//fences.reserve(m_frameCommandBuffers.size());
+	// std::vector<VkFence> fences;
+	// fences.reserve(m_frameCommandBuffers.size());
 
 	for (auto& frame : m_frameCommandBuffers)
 	{

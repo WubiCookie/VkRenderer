@@ -25,6 +25,7 @@ set(SDW_BUILD_STATIC_SDW ON CACHE BOOL "")
 set(SDW_BUILD_TESTS OFF CACHE BOOL "")
 set(SDW_BUILD_VULKAN_LAYER OFF CACHE BOOL "")
 set(SDW_GENERATE_SOURCE ON CACHE BOOL "")
+set(OPTION_ASTC_TESTS OFF CACHE BOOL "")
 set(TEXAS_ENABLE_KTX_SAVE OFF CACHE BOOL "")
 set(TEXAS_ENABLE_PNG_READ OFF CACHE BOOL "")
 
@@ -52,6 +53,12 @@ message("==============================================")
 set(SHADERWRITER_DIR "external/ShaderWriter")
 add_subdirectory(${SHADERWRITER_DIR})
 
+message("==============================================")
+message("                  astc-codec                  ")
+message("==============================================")
+set(ASTCCODEC_DIR "external/astc-codec")
+add_subdirectory(${ASTCCODEC_DIR})
+
 # message("==============================================")
 # message("                   ShaderC                    ")
 # message("==============================================")
@@ -64,15 +71,15 @@ message("==============================================")
 set(IMGUI_DIR "third_party/imgui")
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/examples)
 set(IMGUI_FILES
-    ${IMGUI_DIR}/imconfig.h
-    ${IMGUI_DIR}/imgui.h
-    ${IMGUI_DIR}/examples/imgui_impl_glfw.cpp
-    src/VkRenderer/my_imgui_impl_vulkan.cpp
-    src/VkRenderer/my_imgui_impl_vulkan.h
-    ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/imgui_draw.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
-    ${IMGUI_DIR}/imgui_widgets.cpp
+	${IMGUI_DIR}/imconfig.h
+	${IMGUI_DIR}/imgui.h
+	${IMGUI_DIR}/examples/imgui_impl_glfw.cpp
+	src/VkRenderer/my_imgui_impl_vulkan.cpp
+	src/VkRenderer/my_imgui_impl_vulkan.h
+	${IMGUI_DIR}/imgui.cpp
+	${IMGUI_DIR}/imgui_draw.cpp
+	${IMGUI_DIR}/imgui_demo.cpp
+	${IMGUI_DIR}/imgui_widgets.cpp
 )
 
 set_target_properties(glfw PROPERTIES FOLDER "Third Party/GLFW3")
@@ -113,7 +120,7 @@ set_target_properties(glfw PROPERTIES FOLDER "Third Party/GLFW3")
 #set_target_properties(assimp PROPERTIES FOLDER "Third Party" COMPILE_OPTIONS "${ASSIMP_COMPILE_OPTIONS}")
 set_target_properties(assimp PROPERTIES FOLDER "Third Party")
 if(MSVC)
-    target_compile_options(assimp PUBLIC /WX-)
+	target_compile_options(assimp PUBLIC /WX-)
 endif()
 #message("${ASSIMP_COMPILE_OPTIONS}")
 #message("${ASSIMP_COMPILE_OPTIONS}")
@@ -146,6 +153,10 @@ set_target_properties(IrrXML PROPERTIES FOLDER "Third Party")
 set_target_properties(uninstall PROPERTIES FOLDER "Third Party")
 set_target_properties(UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER "Third Party")
 set_target_properties(zlibstatic PROPERTIES FOLDER "Third Party")
+set_target_properties(astc_inspector_cli PROPERTIES FOLDER "Third Party/astc-codec")
+set_target_properties(astc_utils PROPERTIES FOLDER "Third Party/astc-codec")
+set_target_properties(astc-codec PROPERTIES FOLDER "Third Party/astc-codec")
+set_target_properties(footprint PROPERTIES FOLDER "Third Party/astc-codec")
 set_target_properties(Texas PROPERTIES FOLDER "Third Party")
 set_target_properties(Texas PROPERTIES CXX_STANDARD 17)
 
@@ -153,46 +164,46 @@ message("==============================================")
 message("                  VkRenderer                  ")
 message("==============================================")
 set(MATERIAL_FILES
-    src/VkRenderer/Materials/CustomMaterial.cpp
-    src/VkRenderer/Materials/CustomMaterial.hpp
-    src/VkRenderer/Materials/DefaultMaterial.cpp
-    src/VkRenderer/Materials/DefaultMaterial.hpp
+	src/VkRenderer/Materials/CustomMaterial.cpp
+	src/VkRenderer/Materials/CustomMaterial.hpp
+	src/VkRenderer/Materials/DefaultMaterial.cpp
+	src/VkRenderer/Materials/DefaultMaterial.hpp
 )
 
 set(SOURCE_FILES
-    src/VkRenderer/BrdfLut.cpp
-    src/VkRenderer/BrdfLut.hpp
-    src/VkRenderer/BrdfLutGenerator.cpp
-    src/VkRenderer/BrdfLutGenerator.hpp
-    src/VkRenderer/Buffer.cpp
-    src/VkRenderer/Buffer.hpp
-    src/VkRenderer/CommandBuffer.cpp
-    src/VkRenderer/CommandBuffer.hpp
-    src/VkRenderer/CommandBuffer.inl
-    src/VkRenderer/CommandBufferPool.cpp
-    src/VkRenderer/CommandBufferPool.hpp
-    src/VkRenderer/CommandPool.cpp
-    src/VkRenderer/CommandPool.hpp
-    src/VkRenderer/Cubemap.cpp
-    src/VkRenderer/Cubemap.hpp
-    src/VkRenderer/DepthTexture.cpp
-    src/VkRenderer/DepthTexture.hpp
-    src/VkRenderer/EquirectangularToCubemap.cpp
-    src/VkRenderer/EquirectangularToCubemap.hpp
-    src/VkRenderer/EquirectangularToIrradianceMap.cpp
-    src/VkRenderer/EquirectangularToIrradianceMap.hpp
-    src/VkRenderer/Framebuffer.cpp
-    src/VkRenderer/Framebuffer.hpp
-    src/VkRenderer/Image.cpp
-    src/VkRenderer/Image.hpp
-    src/VkRenderer/TextureFactory.cpp
-    src/VkRenderer/TextureFactory.hpp
-    src/VkRenderer/ImageView.cpp
-    src/VkRenderer/ImageView.hpp
-    src/VkRenderer/IrradianceMap.cpp
-    src/VkRenderer/IrradianceMap.hpp
-    src/VkRenderer/LightTransport.cpp
-    src/VkRenderer/LightTransport.hpp
+	src/VkRenderer/BrdfLut.cpp
+	src/VkRenderer/BrdfLut.hpp
+	src/VkRenderer/BrdfLutGenerator.cpp
+	src/VkRenderer/BrdfLutGenerator.hpp
+	src/VkRenderer/Buffer.cpp
+	src/VkRenderer/Buffer.hpp
+	src/VkRenderer/CommandBuffer.cpp
+	src/VkRenderer/CommandBuffer.hpp
+	src/VkRenderer/CommandBuffer.inl
+	src/VkRenderer/CommandBufferPool.cpp
+	src/VkRenderer/CommandBufferPool.hpp
+	src/VkRenderer/CommandPool.cpp
+	src/VkRenderer/CommandPool.hpp
+	src/VkRenderer/Cubemap.cpp
+	src/VkRenderer/Cubemap.hpp
+	src/VkRenderer/DepthTexture.cpp
+	src/VkRenderer/DepthTexture.hpp
+	src/VkRenderer/EquirectangularToCubemap.cpp
+	src/VkRenderer/EquirectangularToCubemap.hpp
+	src/VkRenderer/EquirectangularToIrradianceMap.cpp
+	src/VkRenderer/EquirectangularToIrradianceMap.hpp
+	src/VkRenderer/Framebuffer.cpp
+	src/VkRenderer/Framebuffer.hpp
+	src/VkRenderer/Image.cpp
+	src/VkRenderer/Image.hpp
+	src/VkRenderer/TextureFactory.cpp
+	src/VkRenderer/TextureFactory.hpp
+	src/VkRenderer/ImageView.cpp
+	src/VkRenderer/ImageView.hpp
+	src/VkRenderer/IrradianceMap.cpp
+	src/VkRenderer/IrradianceMap.hpp
+	src/VkRenderer/LightTransport.cpp
+	src/VkRenderer/LightTransport.hpp
 	src/VkRenderer/LightTransportRenderPasses.cpp
 	src/VkRenderer/LightTransportShaderModules.cpp
 	src/VkRenderer/LightTransportDescriptorsObjects.cpp
@@ -201,62 +212,66 @@ set(SOURCE_FILES
 	src/VkRenderer/LightTransportImages.cpp
 	src/VkRenderer/LightTransportFramebuffers.cpp
 	src/VkRenderer/LightTransportUpdateDescriptorSets.cpp
-    src/VkRenderer/Mandelbulb.cpp
-    src/VkRenderer/Mandelbulb.hpp
-    src/VkRenderer/Material.cpp
-    src/VkRenderer/Material.hpp
-    src/VkRenderer/Model.cpp
-    src/VkRenderer/Model.hpp
-    src/VkRenderer/MyShaderWriter.cpp
-    src/VkRenderer/MyShaderWriter.hpp
-    src/VkRenderer/MyShaderWriter.inl
-    src/VkRenderer/PbrShadingModel.cpp
-    src/VkRenderer/PbrShadingModel.hpp
-    src/VkRenderer/PipelineFactory.cpp
-    src/VkRenderer/PipelineFactory.hpp
-    src/VkRenderer/PrefilterCubemap.cpp
-    src/VkRenderer/PrefilterCubemap.hpp
-    src/VkRenderer/PrefilteredCubemap.cpp
-    src/VkRenderer/PrefilteredCubemap.hpp
-    src/VkRenderer/Renderer.cpp
-    src/VkRenderer/Renderer.hpp
-    src/VkRenderer/RenderPass.cpp
-    src/VkRenderer/RenderPass.hpp
-    src/VkRenderer/RenderWindow.cpp
-    src/VkRenderer/RenderWindow.hpp
-    src/VkRenderer/Scene.cpp
-    src/VkRenderer/Scene.hpp
-    src/VkRenderer/SceneObject.cpp
-    src/VkRenderer/SceneObject.hpp
-    src/VkRenderer/ShaderBall.cpp
-    src/VkRenderer/ShaderBall.hpp
-    src/VkRenderer/Skybox.cpp
-    src/VkRenderer/Skybox.hpp
-    src/VkRenderer/StagingBuffer.cpp
-    src/VkRenderer/StagingBuffer.hpp
-    src/VkRenderer/StandardMesh.cpp
-    src/VkRenderer/StandardMesh.hpp
-    src/VkRenderer/Texture1D.cpp
-    src/VkRenderer/Texture1D.hpp
-    src/VkRenderer/Texture2D.cpp
-    src/VkRenderer/Texture2D.hpp
-    src/VkRenderer/TextureInterface.hpp
-    src/VkRenderer/UniformBuffer.cpp
-    src/VkRenderer/UniformBuffer.hpp
-    src/VkRenderer/VertexInputHelper.cpp
-    src/VkRenderer/VertexInputHelper.hpp
-    src/VkRenderer/VulkanDevice.cpp
-    src/VkRenderer/VulkanDevice.hpp
-    src/VkRenderer/VulkanDevice.inl
-    src/VkRenderer/VulkanHelperStructs.hpp
+	src/VkRenderer/load_dds.cpp
+	src/VkRenderer/load_dds.hpp
+	src/VkRenderer/Mandelbulb.cpp
+	src/VkRenderer/Mandelbulb.hpp
+	src/VkRenderer/Material.cpp
+	src/VkRenderer/Material.hpp
+	src/VkRenderer/Model.cpp
+	src/VkRenderer/Model.hpp
+	src/VkRenderer/MyShaderWriter.cpp
+	src/VkRenderer/MyShaderWriter.hpp
+	src/VkRenderer/MyShaderWriter.inl
+	src/VkRenderer/PbrShadingModel.cpp
+	src/VkRenderer/PbrShadingModel.hpp
+	src/VkRenderer/PipelineFactory.cpp
+	src/VkRenderer/PipelineFactory.hpp
+	src/VkRenderer/PrefilterCubemap.cpp
+	src/VkRenderer/PrefilterCubemap.hpp
+	src/VkRenderer/PrefilteredCubemap.cpp
+	src/VkRenderer/PrefilteredCubemap.hpp
+	src/VkRenderer/Renderer.cpp
+	src/VkRenderer/Renderer.hpp
+	src/VkRenderer/RenderPass.cpp
+	src/VkRenderer/RenderPass.hpp
+	src/VkRenderer/RenderWindow.cpp
+	src/VkRenderer/RenderWindow.hpp
+	src/VkRenderer/Scene.cpp
+	src/VkRenderer/Scene.hpp
+	src/VkRenderer/SceneObject.cpp
+	src/VkRenderer/SceneObject.hpp
+	src/VkRenderer/ShaderBall.cpp
+	src/VkRenderer/ShaderBall.hpp
+	src/VkRenderer/Skybox.cpp
+	src/VkRenderer/Skybox.hpp
+	src/VkRenderer/StagingBuffer.cpp
+	src/VkRenderer/StagingBuffer.hpp
+	src/VkRenderer/StandardMesh.cpp
+	src/VkRenderer/StandardMesh.hpp
+	src/VkRenderer/Texture1D.cpp
+	src/VkRenderer/Texture1D.hpp
+	src/VkRenderer/Texture2D.cpp
+	src/VkRenderer/Texture2D.hpp
+	src/VkRenderer/TextureInterface.hpp
+	src/VkRenderer/UniformBuffer.cpp
+	src/VkRenderer/UniformBuffer.hpp
+	src/VkRenderer/VertexInputHelper.cpp
+	src/VkRenderer/VertexInputHelper.hpp
+	src/VkRenderer/VulkanDevice.cpp
+	src/VkRenderer/VulkanDevice.hpp
+	src/VkRenderer/VulkanDevice.inl
+	src/VkRenderer/VulkanHelperStructs.hpp
 )
 
 add_library(VkRenderer STATIC
-    src/third_party/stb_image.cpp
+	src/third_party/stb_image.cpp
+	src/third_party/astc_dec/astc_decomp.cpp
+	src/third_party/astc_dec/astc_decomp.h
 
-    ${SOURCE_FILES}
-    ${MATERIAL_FILES}
-    ${IMGUI_FILES}
+	${SOURCE_FILES}
+	${MATERIAL_FILES}
+	${IMGUI_FILES}
 )
 
 set_target_properties(VkRenderer PROPERTIES FOLDER "")
@@ -266,24 +281,28 @@ source_group("Materials" FILES ${MATERIAL_FILES})
 source_group("ImGui" FILES ${IMGUI_FILES})
 
 target_include_directories(VkRenderer
-    PUBLIC
-        src/VkRenderer
+	PUBLIC
+		src/VkRenderer
 
-        "${Vulkan_INCLUDE_DIRS}"
-        third_party/include
-        ${GLFW3_INCLUDE_DIR}
-        # ${SHADERC_INCLUDE_DIR}
-        ${TEXAS_DIR}/include
+		"${Vulkan_INCLUDE_DIRS}"
+		third_party/include
+		src/third_party/include
+		${GLFW3_INCLUDE_DIR}
+		# ${SHADERC_INCLUDE_DIR}
+		${TEXAS_DIR}/include
+		${ASTCCODEC_DIR}/include
+		# third_party/astc_dec
+		# src/third_party/astc_dec
 )
 
 # link_directories(${SHADERC_LIBRARY_DIR})
 #target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp shaderc_combined)
-target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp Texas)
+target_link_libraries(VkRenderer PRIVATE glfw sdw::ShaderWriter sdw::CompilerSpirV assimp::assimp Texas astc-codec)
 
 set_target_properties(VkRenderer PROPERTIES CXX_STANDARD 17)
 
 if(MSVC)
-    target_compile_options(VkRenderer PUBLIC "/MP")
+	target_compile_options(VkRenderer PUBLIC "/MP")
 endif()
 
 message("==============================================")
@@ -291,10 +310,10 @@ message("                   MainTest                   ")
 message("==============================================")
 add_executable(MainTest test/main_test/main.cpp)
 target_include_directories(MainTest
-    PUBLIC
-        include/VkRenderer
-        "${Vulkan_INCLUDE_DIRS}"
-        ${GLFW3_INCLUDE_DIR}
+	PUBLIC
+		include/VkRenderer
+		"${Vulkan_INCLUDE_DIRS}"
+		${GLFW3_INCLUDE_DIR}
 )
 
 target_link_libraries(MainTest PUBLIC VkRenderer glfw sdw::ShaderWriter sdw::CompilerSpirV)
@@ -310,7 +329,7 @@ set_target_properties(MainTest PROPERTIES RUNTIME_OUTPUT_NAME_RELEASE "MainTest"
 set_target_properties(MainTest PROPERTIES RUNTIME_OUTPUT_NAME_RELWITHDEBINFO "MainTest_RelWithDebInfo")
 
 if(MSVC)
-    target_compile_options(MainTest PUBLIC "/MP")
+	target_compile_options(MainTest PUBLIC "/MP")
 endif()
 
 add_compile_definitions(_AMD64_)

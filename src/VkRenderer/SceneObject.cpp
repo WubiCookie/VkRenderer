@@ -382,9 +382,7 @@ void SceneObject::Pipeline::bindDescriptorSet(CommandBuffer& cb)
 
 void SceneObject::Pipeline::draw(CommandBuffer& cb)
 {
-	cb.bindIndexBuffer(mesh.get()->indexBuffer());
-	cb.bindVertexBuffer(mesh.get()->vertexBuffer());
-	cb.drawIndexed(uint32_t(mesh.get()->indices().size()));
+	mesh.get()->draw(cb);
 }
 
 SceneObject::ShadowmapPipeline::ShadowmapPipeline(Scene& s, StandardMesh& mesh,
@@ -686,9 +684,7 @@ void SceneObject::ShadowmapPipeline::bindDescriptorSet(CommandBuffer& cb)
 
 void SceneObject::ShadowmapPipeline::draw(CommandBuffer& cb)
 {
-	cb.bindIndexBuffer(mesh.get()->indexBuffer());
-	cb.bindVertexBuffer(mesh.get()->positionBuffer());
-	cb.drawIndexed(uint32_t(mesh.get()->indices().size()));
+	mesh.get()->drawPositions(cb);
 }
 
 SceneObject::SceneObject(Scene& s) : m_scene(&s) {}

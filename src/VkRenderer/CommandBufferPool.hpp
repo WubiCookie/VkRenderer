@@ -2,6 +2,7 @@
 #define VKRENDERER_COMMAND_BUFFER_POOL_HPP
 
 #include "CommandBuffer.hpp"
+#include "StagingBuffer.hpp"
 #include "VulkanDevice.hpp"
 
 #include <vector>
@@ -14,6 +15,7 @@ struct FrameCommandBuffer
 	UniqueFence fence;
 	UniqueSemaphore semaphore;
 	bool submitted = false;
+	bool available = true;
 
 	VkResult wait(uint64_t timeout = UINT64_MAX);
 	bool isAvailable();
@@ -40,9 +42,11 @@ class CommandBufferPool final
 	UniqueCommandPool m_commandPool;
 
 	std::vector<FrameCommandBuffer> m_frameCommandBuffers;
+	std::vector<StagingBuffer> m_registeredStagingBuffer;
 
 public:
-	CommandBufferPool(const VulkanDevice& vulkanDevice,
+	CommandBufferPool(
+	    const VulkanDevice& vulkanDevice,
 	    VkCommandPoolCreateFlags flags = VkCommandPoolCreateFlags());
 	CommandBufferPool(const CommandBufferPool&) = default;
 	CommandBufferPool(CommandBufferPool&&) = default;
@@ -58,6 +62,8 @@ public:
 	void waitForAllCommandBuffers();
 
 	void reset();
+
+	void registerResource(StagingBuffer stagingBuffer);
 };
 
 class ResettableCommandBufferPool final

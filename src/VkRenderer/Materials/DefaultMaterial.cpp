@@ -5,18 +5,22 @@
 #include <iostream>
 #include <stdexcept>
 
-namespace cdm
+using namespace sdw;
+
+namespace shader
 {
-struct DefaultMaterialUBOStruct : public sdw::StructInstance
+struct DefaultMaterialData : public StructInstance
 {
-	DefaultMaterialUBOStruct(ast::Shader* shader, ast::expr::ExprPtr expr)
-	    : StructInstance(shader, std::move(expr)),
-	      color(getMember<sdw::Vec4>("color")),
-	      metalness(getMember<sdw::Float>("metalness")),
-	      roughness(getMember<sdw::Float>("roughness"))
+	DefaultMaterialData(ast::Shader* shader, ast::expr::ExprPtr expr)
+	    : StructInstance{ shader, std::move(expr) },
+	      color{ getMember<Vec4>("color") },
+	      metalness{ getMember<Float>("metalness") },
+	      roughness{ getMember<Float>("roughness") },
+	      albedoIndex{ getMember<UInt>("albedoIndex") }
 	{
 	}
-	DefaultMaterialUBOStruct& operator=(DefaultMaterialUBOStruct const& rhs)
+
+	DefaultMaterialData& operator=(DefaultMaterialData const& rhs)
 	{
 		StructInstance::operator=(rhs);
 		return *this;
@@ -24,43 +28,45 @@ struct DefaultMaterialUBOStruct : public sdw::StructInstance
 
 	static ast::type::StructPtr makeType(ast::type::TypesCache& cache)
 	{
-		auto result = std::make_unique<ast::type::Struct>(
-		    cache, ast::type::MemoryLayout::eStd140,
-		    "DefaultMaterialUBOStruct");
+		auto result =
+		    cache.getStruct(ast::type::MemoryLayout::eStd140, "DefaultMaterialData");
 
 		if (result->empty())
 		{
 			result->declMember("color", ast::type::Kind::eVec4F);
 			result->declMember("metalness", ast::type::Kind::eFloat);
 			result->declMember("roughness", ast::type::Kind::eFloat);
+			result->declMember("albedoIndex", ast::type::Kind::eUInt);
 		}
 
 		return result;
 	}
 
-	// static std::unique_ptr<sdw::Struct> declare(sdw::ShaderWriter& writer)
-	//{
-	//	return std::make_unique<sdw::Struct>(writer,
-	//	                                     makeType(writer.getTypesCache()));
-	//}
-
-	sdw::Vec4 color;
-	sdw::Float metalness;
-	sdw::Float roughness;
+	Vec4 color;
+	Float metalness;
+	Float roughness;
+	UInt albedoIndex;
 
 private:
-	using sdw::StructInstance::getMember;
-	using sdw::StructInstance::getMemberArray;
+	using StructInstance::getMember;
+	using StructInstance::getMemberArray;
 };
-}  // namespace cdm
+
+Writer_Parameter(DefaultMaterialData);
+
+enum class TypeName
+{
+	eDefaultMaterialData = 200,
+};
+}  // namespace shader
 
 namespace sdw
 {
 template <>
-struct TypeTraits<cdm::DefaultMaterialUBOStruct>
+struct TypeTraits<shader::DefaultMaterialData>
 {
 	static ast::type::Kind constexpr TypeEnum =
-	    ast::type::Kind(ast::type::Kind::eCount);
+	    ast::type::Kind(shader::TypeName::eDefaultMaterialData);
 };
 }  // namespace sdw
 
@@ -76,10 +82,10 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 
 	m_uniformBuffer =
 	    Buffer(vk, sizeof(UBOStruct) * (size_t(instancePoolSize) + 1),
-	           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY,
+	           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 	               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	m_uniformBuffer.setName("DefaultMaterial UBO");
+	m_uniformBuffer.setName("DefaultMaterial SSBO");
 
 	UBOStruct uboStruct;
 	uboStruct.color = vector4{ 0.9f, 0.5f, 0.25f, 1.0f };
@@ -123,7 +129,7 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 
 #pragma region descriptor pool
 	std::array poolSizes{
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 		                      1024 },
 	};
@@ -145,7 +151,7 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 	VkDescriptorSetLayoutBinding layoutBindingUbo{};
 	layoutBindingUbo.binding = 0;
 	layoutBindingUbo.descriptorCount = 1;
-	layoutBindingUbo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingUbo.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	layoutBindingUbo.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VkDescriptorSetLayoutBinding layoutBindingTextureUbo{};
@@ -191,7 +197,7 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 
 	vk::WriteDescriptorSet uboWrite;
 	uboWrite.descriptorCount = 1;
-	uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	uboWrite.dstArrayElement = 0;
 	uboWrite.dstBinding = 0;
 	uboWrite.dstSet = m_descriptorSet;
@@ -219,8 +225,8 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 	};
 
 	U u;
-	u.b[0] = 255 / 2;
-	u.b[1] = 255 / 2;
+	u.b[0] = 255;
+	u.b[1] = 255;
 	u.b[2] = 255;
 	u.b[3] = 255;
 
@@ -405,8 +411,7 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	// buildData->uboStruct->declMember<Float>("roughness");
 	// buildData->uboStruct->end();
 
-	buildData->ubo = std::make_unique<sdw::Ubo>(
-	    sdw::Ubo(writer, "DefaultMaterialUBO", 0, 2));
+	buildData->ssbo = std::make_unique<sdw::ArraySsboT<shader::DefaultMaterialData>>(writer, "DefaultMaterialUBO", 0, 2);
 
 	buildData->textures =
 	    std::make_unique<sdw::Array<sdw::SampledImage2DRgba32>>(
@@ -414,27 +419,27 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 
 	// buildData->ubo->declMember<DefaultMaterialUBOStruct>(
 	//    "materials", instancePoolSize() + 1);
-	buildData->ubo->declMember<Vec4>("color0");
-	buildData->ubo->declMember<Float>("metalness0");
-	buildData->ubo->declMember<Float>("roughness0");
-	buildData->ubo->declMember<UInt>("textureIndex0");
-	buildData->ubo->declMember<Vec4>("color1");
-	buildData->ubo->declMember<Float>("metalness1");
-	buildData->ubo->declMember<Float>("roughness1");
-	buildData->ubo->declMember<UInt>("textureIndex1");
-	buildData->ubo->declMember<Vec4>("color2");
-	buildData->ubo->declMember<Float>("metalness2");
-	buildData->ubo->declMember<Float>("roughness2");
-	buildData->ubo->declMember<UInt>("textureIndex2");
-	buildData->ubo->declMember<Vec4>("color3");
-	buildData->ubo->declMember<Float>("metalness3");
-	buildData->ubo->declMember<Float>("roughness3");
-	buildData->ubo->declMember<UInt>("textureIndex3");
-	buildData->ubo->declMember<Vec4>("color4");
-	buildData->ubo->declMember<Float>("metalness4");
-	buildData->ubo->declMember<Float>("roughness4");
-	buildData->ubo->declMember<UInt>("textureIndex4");
-	buildData->ubo->end();
+	//buildData->ubo->declMember<Vec4>("color0");
+	//buildData->ubo->declMember<Float>("metalness0");
+	//buildData->ubo->declMember<Float>("roughness0");
+	//buildData->ubo->declMember<UInt>("textureIndex0");
+	//buildData->ubo->declMember<Vec4>("color1");
+	//buildData->ubo->declMember<Float>("metalness1");
+	//buildData->ubo->declMember<Float>("roughness1");
+	//buildData->ubo->declMember<UInt>("textureIndex1");
+	//buildData->ubo->declMember<Vec4>("color2");
+	//buildData->ubo->declMember<Float>("metalness2");
+	//buildData->ubo->declMember<Float>("roughness2");
+	//buildData->ubo->declMember<UInt>("textureIndex2");
+	//buildData->ubo->declMember<Vec4>("color3");
+	//buildData->ubo->declMember<Float>("metalness3");
+	//buildData->ubo->declMember<Float>("roughness3");
+	//buildData->ubo->declMember<UInt>("textureIndex3");
+	//buildData->ubo->declMember<Vec4>("color4");
+	//buildData->ubo->declMember<Float>("metalness4");
+	//buildData->ubo->declMember<Float>("roughness4");
+	//buildData->ubo->declMember<UInt>("textureIndex4");
+	//buildData->ubo->end();
 
 	MaterialFragmentFunction res = writer.implementFunction<Float>(
 	    "DefaultFragment",
@@ -451,64 +456,74 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    // inOutMetalness = material.metalness;
 		    // inOutRoughness = material.roughness;
 
-		    IF(writer, inMaterialInstanceIndex == 0_u)
-		    {
-			    sdw::Vec4 sample =
-			        (*buildData->textures)[buildData->ubo->getMember<UInt>(
-			                                   "textureIndex0")]
-			            .sample(inOutUv);
-			    inOutAlbedo = sample;
+			auto& ssbo = *buildData->ssbo;
+		    auto& textures = *buildData->textures;
 
-			    inOutMetalness =
-			        buildData->ubo->getMember<Float>("metalness0");
-			    inOutRoughness =
-			        buildData->ubo->getMember<Float>("roughness0");
-		    }
-		    ELSEIF(inMaterialInstanceIndex == 1_u)
-		    {
-			    sdw::Vec4 sample =
-			        (*buildData->textures)[buildData->ubo->getMember<UInt>(
-			                                   "textureIndex1")]
-			            .sample(inOutUv);
-			    inOutAlbedo = sample;
-			    inOutMetalness =
-			        buildData->ubo->getMember<Float>("metalness1");
-			    inOutRoughness =
-			        buildData->ubo->getMember<Float>("roughness1");
-		    }
-		    ELSEIF(inMaterialInstanceIndex == 2_u)
-		    {
-			    sdw::Vec4 sample =
-			        (*buildData->textures)[buildData->ubo->getMember<UInt>(
-			                                   "textureIndex2")]
-			            .sample(inOutUv);
-			    inOutAlbedo = sample;
-			    inOutMetalness =
-			        buildData->ubo->getMember<Float>("metalness2");
-			    inOutRoughness =
-			        buildData->ubo->getMember<Float>("roughness2");
-		    }
-		    ELSEIF(inMaterialInstanceIndex == 3_u)
-		    {
-			    sdw::Vec4 sample =
-			        (*buildData->textures)[buildData->ubo->getMember<UInt>(
-			                                   "textureIndex3")]
-			            .sample(inOutUv);
-			    inOutAlbedo = sample;
-			    inOutMetalness =
-			        buildData->ubo->getMember<Float>("metalness3");
-			    inOutRoughness =
-			        buildData->ubo->getMember<Float>("roughness3");
-		    }
-		    ELSE
-		    {
-			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color4");
-			    inOutMetalness =
-			        buildData->ubo->getMember<Float>("metalness4");
-			    inOutRoughness =
-			        buildData->ubo->getMember<Float>("roughness4");
-		    }
-		    FI;
+			inOutAlbedo =
+		        textures[ssbo[inMaterialInstanceIndex].albedoIndex].sample(
+		            inOutUv);
+
+			inOutMetalness = ssbo[inMaterialInstanceIndex].metalness;
+			inOutRoughness = ssbo[inMaterialInstanceIndex].roughness;
+
+		    //IF(writer, inMaterialInstanceIndex == 0_u)
+		    //{
+			   // sdw::Vec4 sample =
+			   //     (*buildData->textures)[buildData->ubo->getMember<UInt>(
+			   //                                "textureIndex0")]
+			   //         .sample(inOutUv);
+			   // inOutAlbedo = sample;
+
+			   // inOutMetalness =
+			   //     buildData->ubo->getMember<Float>("metalness0");
+			   // inOutRoughness =
+			   //     buildData->ubo->getMember<Float>("roughness0");
+		    //}
+		    //ELSEIF(inMaterialInstanceIndex == 1_u)
+		    //{
+			   // sdw::Vec4 sample =
+			   //     (*buildData->textures)[buildData->ubo->getMember<UInt>(
+			   //                                "textureIndex1")]
+			   //         .sample(inOutUv);
+			   // inOutAlbedo = sample;
+			   // inOutMetalness =
+			   //     buildData->ubo->getMember<Float>("metalness1");
+			   // inOutRoughness =
+			   //     buildData->ubo->getMember<Float>("roughness1");
+		    //}
+		    //ELSEIF(inMaterialInstanceIndex == 2_u)
+		    //{
+			   // sdw::Vec4 sample =
+			   //     (*buildData->textures)[buildData->ubo->getMember<UInt>(
+			   //                                "textureIndex2")]
+			   //         .sample(inOutUv);
+			   // inOutAlbedo = sample;
+			   // inOutMetalness =
+			   //     buildData->ubo->getMember<Float>("metalness2");
+			   // inOutRoughness =
+			   //     buildData->ubo->getMember<Float>("roughness2");
+		    //}
+		    //ELSEIF(inMaterialInstanceIndex == 3_u)
+		    //{
+			   // sdw::Vec4 sample =
+			   //     (*buildData->textures)[buildData->ubo->getMember<UInt>(
+			   //                                "textureIndex3")]
+			   //         .sample(inOutUv);
+			   // inOutAlbedo = sample;
+			   // inOutMetalness =
+			   //     buildData->ubo->getMember<Float>("metalness3");
+			   // inOutRoughness =
+			   //     buildData->ubo->getMember<Float>("roughness3");
+		    //}
+		    //ELSE
+		    //{
+			   // inOutAlbedo = buildData->ubo->getMember<Vec4>("color4");
+			   // inOutMetalness =
+			   //     buildData->ubo->getMember<Float>("metalness4");
+			   // inOutRoughness =
+			   //     buildData->ubo->getMember<Float>("roughness4");
+		    //}
+		    //FI;
 
 		    //    (*buildData->ubo)[inMaterialInstanceIndex].getMember<Vec4>(
 		    //        "color");
@@ -518,6 +533,7 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    // inOutRoughness =
 		    //    (*buildData->ubo)[inMaterialInstanceIndex].getMember<Float>(
 		    //        "roughness");
+
 		    writer.returnStmt(0.0_f);
 	    },
 	    InUInt{ writer, "inMaterialInstanceIndex" },

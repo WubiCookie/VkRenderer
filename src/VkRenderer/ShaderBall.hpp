@@ -101,6 +101,9 @@ class ShaderBall final
 	MaterialInstance* m_materialInstance4;
 	StandardMesh m_bunnyMesh;
 	std::vector<StandardMesh> m_sponzaMeshes;
+	//std::unordered_map<int, MaterialInstance*> m_sponzaMaterialInstances;
+	std::vector<MaterialInstance*> m_sponzaMaterialInstances;
+	std::unordered_map<std::string, std::unique_ptr<Texture2D>> m_sponzaTextures;
 	StandardMesh m_sphereMesh;
 
 	Scene m_scene;

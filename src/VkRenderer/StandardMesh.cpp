@@ -8,39 +8,43 @@
 namespace cdm
 {
 StandardMesh::StandardMesh(RenderWindow& renderWindow,
-                           std::vector<Vertex> vertices,
-                           std::vector<uint32_t> indices)
-    : rw(&renderWindow),
-      m_vertices(std::move(vertices)),
-      m_indices(std::move(indices))
+                           const std::vector<Vertex>& vertices,
+                           const std::vector<uint32_t>& indices)
+    : rw(&renderWindow)//,
+      //m_vertices(std::move(vertices)),
+      //indices(std::move(indices))
 {
 	auto& vk = rw.get()->device();
 
-	m_positions.reserve(m_vertices.size());
-	for (const auto& vertex : m_vertices)
-		m_positions.push_back(vector4(vertex.position, 1.0f));
+	std::vector<vector4> positions;
+
+	positions.reserve(vertices.size());
+	for (const auto& vertex : vertices)
+		positions.push_back(vector4(vertex.position, 1.0f));
 
 	CommandBuffer copyCB(vk, rw.get()->oneTimeCommandPool());
 
 #pragma region vertexBuffer
+	m_verticesCount = vertices.size();
+
 	auto vertexStagingBuffer =
-	    Buffer(vk, sizeof(Vertex) * m_vertices.size(),
+	    Buffer(vk, sizeof(Vertex) * vertices.size(),
 	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	m_vertexBuffer = Buffer(
-	    vk, sizeof(Vertex) * m_vertices.size(),
+	    vk, sizeof(Vertex) * vertices.size(),
 	    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	Vertex* vertexData = vertexStagingBuffer.map<Vertex>();
-	std::copy(m_vertices.begin(), m_vertices.end(), vertexData);
+	std::copy(vertices.begin(), vertices.end(), vertexData);
 	vertexStagingBuffer.unmap();
 
 	copyCB.reset();
 	copyCB.begin();
 	copyCB.copyBuffer(vertexStagingBuffer.get(), m_vertexBuffer.get(),
-	                  sizeof(Vertex) * m_vertices.size());
+	                  sizeof(Vertex) * vertices.size());
 	copyCB.end();
 
 	if (vk.queueSubmit(vk.graphicsQueue(), copyCB.get()) != VK_SUCCESS)
@@ -49,24 +53,24 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 
 #pragma region positionBuffer
 	auto positionStagingBuffer =
-	    Buffer(vk, sizeof(vector4) * m_positions.size(),
+	    Buffer(vk, sizeof(vector4) * positions.size(),
 	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	m_positionBuffer = Buffer(
-	    vk, sizeof(vector4) * m_positions.size(),
+	    vk, sizeof(vector4) * positions.size(),
 	    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	vector4* positionData = positionStagingBuffer.map<vector4>();
-	std::copy(m_positions.begin(), m_positions.end(), positionData);
+	std::copy(positions.begin(), positions.end(), positionData);
 	positionStagingBuffer.unmap();
 
 	vk.wait(vk.graphicsQueue());
 	copyCB.reset();
 	copyCB.begin();
 	copyCB.copyBuffer(positionStagingBuffer.get(), m_positionBuffer.get(),
-	                  sizeof(vector4) * m_positions.size());
+	                  sizeof(vector4) * positions.size());
 	copyCB.end();
 
 	if (vk.queueSubmit(vk.graphicsQueue(), copyCB.get()) != VK_SUCCESS)
@@ -75,25 +79,27 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 #pragma endregion
 
 #pragma region indexBuffer
+	m_indicesCount = uint32_t(indices.size());
+
 	auto indexStagingBuffer =
-	    Buffer(vk, sizeof(uint32_t) * m_indices.size(),
+	    Buffer(vk, sizeof(uint32_t) * indices.size(),
 	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
 	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	m_indexBuffer = Buffer(
-	    vk, sizeof(uint32_t) * m_indices.size(),
+	    vk, sizeof(uint32_t) * indices.size(),
 	    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	uint32_t* indexData = indexStagingBuffer.map<uint32_t>();
-	std::copy(m_indices.begin(), m_indices.end(), indexData);
+	std::copy(indices.begin(), indices.end(), indexData);
 	indexStagingBuffer.unmap();
 
 	vk.wait(vk.graphicsQueue());
 	copyCB.reset();
 	copyCB.begin();
 	copyCB.copyBuffer(indexStagingBuffer.get(), m_indexBuffer.get(),
-	                  sizeof(uint32_t) * m_indices.size());
+	                  sizeof(uint32_t) * indices.size());
 	copyCB.end();
 
 	if (vk.queueSubmit(vk.graphicsQueue(), copyCB.get()) != VK_SUCCESS)
@@ -106,8 +112,29 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 void StandardMesh::draw(CommandBuffer& cb)
 {
 	cb.bindVertexBuffer(m_vertexBuffer.get());
-	cb.bindIndexBuffer(m_indexBuffer.get(), 0, VK_INDEX_TYPE_UINT32);
-	cb.drawIndexed(uint32_t(m_indices.size()));
+	if (m_indicesCount != 0)
+	{
+		cb.bindIndexBuffer(m_indexBuffer.get(), 0, VK_INDEX_TYPE_UINT32);
+		cb.drawIndexed(m_indicesCount);
+	}
+	else
+	{
+		cb.draw(m_verticesCount);
+	}
+}
+
+void StandardMesh::drawPositions(CommandBuffer& cb)
+{
+	cb.bindVertexBuffer(m_positionBuffer.get());
+	if (m_indicesCount == 0)
+	{
+		cb.bindIndexBuffer(m_indexBuffer.get(), 0, VK_INDEX_TYPE_UINT32);
+		cb.drawIndexed(m_indicesCount);
+	}
+	else
+	{
+		cb.draw(m_verticesCount);
+	}
 }
 
 VertexInputState StandardMesh::vertexInputState()

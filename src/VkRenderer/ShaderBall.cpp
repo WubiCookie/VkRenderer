@@ -13,16 +13,20 @@
 #include <assimp/Importer.hpp>
 
 #include <Texas/Texas.hpp>
+#include <Texas/VkTools.hpp>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "my_imgui_impl_vulkan.h"
 
+#include "load_dds.hpp"
 #include "stb_image.h"
+#include "astc-codec/astc-codec.h"
 
 #include <array>
 #include <iostream>
 #include <stdexcept>
+#include <string_view>
 
 namespace cdm
 {
@@ -427,7 +431,7 @@ static void processNode(RenderWindow& rw, aiNode* node, const aiScene* scene,
 ShaderBall::ShaderBall(RenderWindow& renderWindow)
     : rw(renderWindow),
       m_shadingModel(rw.get().device(), 1, 1),
-      m_defaultMaterial(rw, m_shadingModel, 4),
+      m_defaultMaterial(rw, m_shadingModel, 1000),
       m_scene(renderWindow),
       imguiCB(CommandBuffer(rw.get().device(), rw.get().oneTimeCommandPool())),
       copyHDRCB(
@@ -456,9 +460,11 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 	assert(bunnyScene->mNumMeshes == 1);
 
+	std::vector<StandardMesh::Vertex> vertices;
+	std::vector<uint32_t> indices;
+
 	{
 		auto& mesh = bunnyScene->mMeshes[0];
-		std::vector<StandardMesh::Vertex> vertices;
 		vertices.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
@@ -499,7 +505,6 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			vertices.push_back(vertex);
 		}
 
-		std::vector<uint32_t> indices;
 		indices.reserve(mesh->mNumFaces * 3);
 		for (unsigned int i = 0; i < mesh->mNumFaces; i++)
 		{
@@ -508,16 +513,18 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 				indices.push_back(face.mIndices[j]);
 		}
 
-		m_bunnyMesh =
-		    StandardMesh(rw, std::move(vertices), std::move(indices));
+		m_bunnyMesh = StandardMesh(rw, vertices, indices);
 	}
 #pragma endregion
 
 #pragma region sponza mesh
 	const aiScene* sponzaScene = importer.ReadFile(
 	    "../resources/Vulkan-Samples-Assets/scenes/sponza/Sponza01.gltf",
+	    //"../resources/illumination_assets/bistro/BistroExterior.fbx",
+	    //"../resources/illumination_assets/bistro/BistroInterior.fbx",
+	    //"../resources/illumination_assets/ZeroDay/MEASURE_ONE/MEASURE_ONE.fbx",
 	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
-	        aiProcess_CalcTangentSpace);
+	        aiProcess_CalcTangentSpace | aiProcess_RemoveRedundantMaterials);
 
 	if (!sponzaScene || sponzaScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
 	    !sponzaScene->mRootNode)
@@ -528,10 +535,271 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		                         importer.GetErrorString());
 	}
 
-	for (size_t i = 0; i < sponzaScene->mNumMeshes; i++)
+	//*
+	enum class AlphaMode
+	{
+		Opaque,
+		Blending,
+		Cutoff,
+	};
+
+	struct LoadedMaterial
+	{
+		vector4 diffuse;
+		vector4 baseColorFactor;
+		std::string tex1;
+		vector2 texCoord1;
+		std::string tex2;
+		vector2 texCoord2;
+		float metallicFactor;
+		float roughnessFactor;
+		float shininess;
+		vector4 emissive;
+		bool twoSided;
+		AlphaMode alphaMode;
+		float alphaCutoff;
+	};
+
+	CommandBufferPool sponzaPool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+
+	m_sponzaMaterialInstances.resize(sponzaScene->mNumMaterials);
+	for (size_t i = 0; i < sponzaScene->mNumMaterials; i++)
+	{
+		TextureFactory f(vk);
+		f.setUsage(VK_IMAGE_USAGE_SAMPLED_BIT |
+		           VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+		auto& material = *sponzaScene->mMaterials[i];
+		// std::cout << material.GetName().C_Str() << std::endl;
+
+		aiString diffuseTexturePath;
+		material.Get(AI_MATKEY_TEXTURE_DIFFUSE(0), diffuseTexturePath);
+
+		if (std::string_view(diffuseTexturePath.C_Str()).empty())
+			continue;
+
+		/*
+		// std::cout << "diffuse " << diffuseTexturePath.C_Str() << std::endl;
+		// material.Get(AI_MATKEY_TEXTURE_DIFFUSE(0), diffuseTexturePath);
+		// std::cout << "diffuse " << diffuseTexturePath.C_Str() << std::endl;
+
+		// std::string path = "../resources/illumination_assets/bistro/";
+		std::string path =
+		    "../resources/illumination_assets/ZeroDay/MEASURE_ONE/";
+		path += diffuseTexturePath.C_Str();
+		 std::cout << path << std::endl;
+
+		m_sponzaMaterialInstances[i] = m_defaultMaterial.instanciate();
+
+		auto found = m_sponzaTextures.find(path);
+
+		if (found == m_sponzaTextures.end() || found->second == nullptr ||
+		    found->second->image() == nullptr)
+		{
+		    // std::cout << "creating it" << std::endl;
+
+		    m_sponzaTextures[path] = std::make_unique<Texture2D>(
+		        texture_loadDDS(path.c_str(), f, sponzaPool));
+		    m_sponzaTextures[path]->setName(diffuseTexturePath.C_Str());
+		}
+
+		m_sponzaMaterialInstances[i]->setTextureParameter(
+		    "", *m_sponzaTextures[path]);
+
+		if (i % 16 == 15)
+		    sponzaPool.waitForAllCommandBuffers();
+		//*/
+
+		std::string path = "../resources/Vulkan-Samples-Assets/scenes/sponza/";
+		path += diffuseTexturePath.C_Str();
+		std::cout << path << std::endl;
+
+		m_sponzaMaterialInstances[i] = m_defaultMaterial.instanciate();
+
+		auto found = m_sponzaTextures.find(path);
+
+		if (found == m_sponzaTextures.end() || found->second == nullptr ||
+		    found->second->image() == nullptr)
+		{
+			Texas::ResultValue<Texas::Texture> res =
+			    Texas::loadFromPath(path.c_str());
+
+			if (!res)
+			{
+				std::cerr << "Texas error (" << path
+				          << "): " << res.errorMessage() << std::endl;
+			}
+			else
+			{
+				const Texas::Texture& tex = res.value();
+
+				const Texas::TextureInfo& textureInfo = tex.textureInfo();
+				Texas::FileFormat fileFormat = tex.fileFormat();
+				Texas::TextureType textureType = tex.textureType();
+				Texas::PixelFormat pixelFormat = tex.pixelFormat();
+				Texas::ChannelType channelType = tex.channelType();
+				Texas::ColorSpace colorSpace = tex.colorSpace();
+				Texas::Dimensions baseDimensions = tex.baseDimensions();
+				std::uint8_t mipCount = tex.mipCount();
+				std::uint64_t layerCount = tex.layerCount();
+				std::uint64_t mipOffset = tex.mipOffset(0);
+				//Texas::ConstByteSpan mipSpan = tex.mipSpan(0);
+				//std::uint64_t layerOffset = tex.layerOffset(0, 0);
+				//Texas::ConstByteSpan layerSpan = tex.layerSpan(0, 0);
+				//Texas::ConstByteSpan rawBufferSpan = tex.rawBufferSpan();
+
+				if (pixelFormat != Texas::PixelFormat::ASTC_8x8)
+					abort();
+				if (channelType != Texas::ChannelType::sRGB)
+					abort();
+				if (colorSpace != Texas::ColorSpace::sRGB)
+					abort();
+				if (layerCount != 1)
+					abort();
+				if (mipOffset != 0)
+					abort();
+
+				f.setWidth(baseDimensions.width);
+				f.setHeight(baseDimensions.height);
+				f.setDepth(baseDimensions.depth);
+				// f.setFormat(Texas::toVkFormat(pixelFormat));
+				f.setFormat(VK_FORMAT_R8G8B8A8_SRGB);
+				f.setMipLevels(1);
+
+				std::vector<uint8_t> rgbaData(baseDimensions.width *
+				                              baseDimensions.height * 4);
+
+				Texas::ConstByteSpan mipSpan = tex.mipSpan(0);
+
+				astc_codec::ASTCDecompressToRGBA(
+				    reinterpret_cast<const uint8_t*>(mipSpan.data()),
+				    mipSpan.size(), baseDimensions.width,
+				    baseDimensions.height, astc_codec::FootprintType::k8x8,
+				    rgbaData.data(), rgbaData.size(),
+				    baseDimensions.width * 4);
+
+				//for (size_t i = 0; i < mipSpan.size()/16; i++)
+				//{
+				//	    rgbaData.data() + i,
+				//	    reinterpret_cast<const uint8_t*>(mipSpan.data()) +
+				//	        i,
+				//	    true, 8, 8);
+				//}
+
+				auto& texture = m_sponzaTextures[path] =
+				    std::make_unique<Texture2D>(f.createTexture2D());
+				texture->setName(diffuseTexturePath.C_Str());
+
+				int32_t mipWidth = int32_t(baseDimensions.width);
+				int32_t mipHeight = int32_t(baseDimensions.height);
+
+				//for (uint32_t i = 0; i < mipCount; i++)
+				uint32_t i = 0;
+				{
+					//Texas::ConstByteSpan layerSpan = tex.layerSpan(i, 0);
+
+					// Texas::Dimensions mipDimensions =
+					// Texas::calcMipDimensions(tex.baseDimensions(), i);
+
+					VkBufferImageCopy region{};
+					region.imageExtent.width = mipWidth;
+					region.imageExtent.height = mipHeight;
+					region.imageExtent.depth = 1;
+					region.bufferRowLength = mipWidth;
+					region.bufferImageHeight = mipHeight;
+					region.imageSubresource.aspectMask =
+					    VK_IMAGE_ASPECT_COLOR_BIT;
+					region.imageSubresource.baseArrayLayer = 0;
+					region.imageSubresource.layerCount = 1;
+					region.imageSubresource.mipLevel = i;
+					std::cout << "loading level " << i << "/" << +mipCount
+					          << " (" << mipWidth << ";" << mipHeight << ")"
+					          << std::endl;
+					texture->uploadData(
+					    rgbaData.data(), rgbaData.size(), region,
+					    VK_IMAGE_LAYOUT_UNDEFINED,
+					    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, sponzaPool);
+
+					if (mipWidth > 1)
+						mipWidth /= 2;
+					if (mipHeight > 1)
+						mipHeight /= 2;
+				}
+			}
+
+			// texture_loadDDS(path.c_str(), f, sponzaPool));
+		}
+
+		m_sponzaMaterialInstances[i]->setTextureParameter(
+		    "", *m_sponzaTextures[path]);
+
+		if (i % 16 == 15)
+			sponzaPool.waitForAllCommandBuffers();
+
+		/*
+		for (size_t j = 0; j < material.mNumProperties; j++)
+		{
+		    auto& prop = *material.mProperties[j];
+		    std::cout << "    mKey        " << prop.mKey.C_Str() << std::endl;
+		    std::cout << "    mSemantic   " << prop.mSemantic << std::endl;
+		    std::cout << "    mIndex      " << prop.mIndex << std::endl;
+		    std::cout << "    mDataLength " << prop.mDataLength << std::endl;
+		    std::cout << "    mType       ";
+
+		    ai_real f[16];
+		    aiString str;
+
+		    switch (prop.mType)
+		    {
+		    case aiPTI_Float:
+		        std::cout << "Float" << std::endl;
+		        material.Get(prop.mKey.C_Str(), unsigned int(prop.mType),
+		                     prop.mIndex, f);
+		        std::cout << "                " << f << std::endl;
+		        break;
+		    case aiPTI_Double: std::cout << "Double" << std::endl; break;
+		    case aiPTI_String:
+		        std::cout << "String" << std::endl;
+		        material.Get(prop.mKey.C_Str(), prop.mType, prop.mIndex, str);
+		        std::cout << "                " << str.C_Str() << std::endl;
+		        break;
+		    case aiPTI_Integer: std::cout << "Integer" << std::endl; break;
+		    case aiPTI_Buffer: std::cout << "Buffer" << std::endl; break;
+		    }
+
+		    // std::cout << "    mType       ";
+		    std::cout << "                ";
+
+		    // if (prop.mType == )
+
+		    std::cout << std::endl;
+		    // $clr.diffuse
+		    // $mat.gltf.pbrMetallicRoughness.baseColorFactor
+		    // $tex.file
+		    // $tex.file.texCoord
+		    // $tex.file
+		    // $tex.file.texCoord
+		    // $mat.gltf.pbrMetallicRoughness.metallicFactor
+		    // $mat.gltf.pbrMetallicRoughness.roughnessFactor
+		    // $mat.shininess
+		    // $clr.emissive
+		    // $mat.twosided
+		    // $mat.gltf.alphaMode
+		    // $mat.gltf.alphaCutoff
+		}
+
+		std::cout << std::endl;
+		//*/
+	}
+	//*/
+
+	vertices.clear();
+	indices.clear();
+
+	m_sponzaMeshes.reserve(std::min(sponzaScene->mNumMeshes, 100u));
+	for (size_t i = 0; i < std::min(sponzaScene->mNumMeshes, 100u); i++)
 	{
 		auto& mesh = sponzaScene->mMeshes[i];
-		std::vector<StandardMesh::Vertex> vertices;
 		vertices.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
@@ -581,17 +849,41 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 				indices.push_back(face.mIndices[j]);
 		}
 
-		m_sponzaMeshes.emplace_back(
-		    StandardMesh(rw, std::move(vertices), std::move(indices)));
+		m_sponzaMeshes.emplace_back(StandardMesh(rw, vertices, indices));
+
+		auto* sponzaSceneObject = &m_scene.instantiateSceneObject();
+		sponzaSceneObject->setMesh(m_sponzaMeshes.back());
+		if (m_sponzaMaterialInstances[mesh->mMaterialIndex])
+			sponzaSceneObject->setMaterial(
+			    *m_sponzaMaterialInstances[mesh->mMaterialIndex]);
+		m_sponzaSceneObjects.push_back(sponzaSceneObject);
 	}
 #pragma endregion
+
+	/*
+#pragma region sponza
+	m_materialInstance4 = m_defaultMaterial.instanciate();
+	m_materialInstance4->setFloatParameter("roughness", 1.0f);
+	m_materialInstance4->setFloatParameter("metalness", 0.0f);
+	m_materialInstance4->setVec4Parameter("color",
+	                                      vector4(0.5, 0.5, 0.5, 0.5));
+	// m_materialInstance3->setTextureParameter("", m_singleTexture2);
+
+	for (auto& mesh : m_sponzaMeshes)
+	{
+	    auto* sponzaSceneObject = &m_scene.instantiateSceneObject();
+	    sponzaSceneObject->setMesh(mesh);
+	    sponzaSceneObject->setMaterial(*m_materialInstance4);
+	    m_sponzaSceneObjects.push_back(sponzaSceneObject);
+	}
+#pragma endregion
+	//*/
 
 #pragma region sphere mesh
 	const aiScene* sphereScene = importer.ReadFile(
 	    "../resources/Vulkan-Samples-Assets/scenes/geosphere.gltf",
-	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals
-		| aiProcess_CalcTangentSpace
-	);
+	    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals |
+	        aiProcess_CalcTangentSpace);
 
 	if (!sphereScene || sphereScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
 	    !sphereScene->mRootNode)
@@ -602,11 +894,13 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		                         importer.GetErrorString());
 	}
 
-	//assert(sphereScene->mNumMeshes == 1);
+	// assert(sphereScene->mNumMeshes == 1);
+
+	vertices.clear();
+	indices.clear();
 
 	{
 		auto& mesh = sphereScene->mMeshes[0];
-		std::vector<StandardMesh::Vertex> vertices;
 		vertices.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
@@ -615,13 +909,13 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			vertex.position.y = mesh->mVertices[i].y;
 			vertex.position.z = mesh->mVertices[i].z;
 			vertex.normal = vertex.position.get_normalized();
-			//if (mesh->HasNormals())
+			// if (mesh->HasNormals())
 			//{
 			//	vertex.normal.x = mesh->mNormals[i].x;
 			//	vertex.normal.y = mesh->mNormals[i].y;
 			//	vertex.normal.z = mesh->mNormals[i].z;
 			//}
-			//else
+			// else
 			//{
 			//	vertex.normal = { 1, 0, 0 };
 			//}
@@ -649,7 +943,6 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			vertices.push_back(vertex);
 		}
 
-		std::vector<uint32_t> indices;
 		indices.reserve(mesh->mNumFaces * 3);
 		for (unsigned int i = 0; i < mesh->mNumFaces; i++)
 		{
@@ -658,8 +951,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 				indices.push_back(face.mIndices[j]);
 		}
 
-		m_sphereMesh =
-		    StandardMesh(rw, std::move(vertices), std::move(indices));
+		m_sphereMesh = StandardMesh(rw, vertices, indices);
 	}
 #pragma endregion
 
@@ -1464,10 +1756,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			copy.imageSubresource.layerCount = 1;
 			copy.imageSubresource.mipLevel = 0;
 
-			tex.uploadDataImmediate(
-			    imageData, w * h * 4 * sizeof(uint8_t), copy,
-			    VK_IMAGE_LAYOUT_UNDEFINED,
-			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			tex.uploadDataImmediate(imageData, w * h * 4 * sizeof(uint8_t),
+			                        copy, VK_IMAGE_LAYOUT_UNDEFINED,
+			                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 			stbi_image_free(imageData);
 
@@ -1482,15 +1773,15 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			vk::WriteDescriptorSet textureWrite;
 			textureWrite.descriptorCount = 1;
 			textureWrite.descriptorType =
-				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			textureWrite.dstArrayElement = 0;
 			textureWrite.dstBinding = 1;
 			textureWrite.dstSet = m_defaultMaterial.descriptorSet();
 			textureWrite.pImageInfo = &imageInfo;
-			
+
 			vk.updateDescriptorSets(textureWrite);*/
 
-			//m_singleTexture = &tex;
+			// m_singleTexture = &tex;
 			return tex;
 		}
 		assert(false);
@@ -1625,23 +1916,6 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	m_sphereSceneObject = &m_scene.instantiateSceneObject();
 	m_sphereSceneObject->setMesh(m_sphereMesh);
 	m_sphereSceneObject->setMaterial(*m_materialInstance3);
-#pragma endregion
-
-#pragma region sponza
-	m_materialInstance4 = m_defaultMaterial.instanciate();
-	m_materialInstance4->setFloatParameter("roughness", 1.0f);
-	m_materialInstance4->setFloatParameter("metalness", 0.0f);
-	m_materialInstance4->setVec4Parameter("color",
-	                                      vector4(0.5, 0.5, 0.5, 0.5));
-	m_materialInstance3->setTextureParameter("", m_singleTexture2);
-
-	for (auto& mesh : m_sponzaMeshes)
-	{
-		auto* sponzaSceneObject = &m_scene.instantiateSceneObject();
-		sponzaSceneObject->setMesh(mesh);
-		sponzaSceneObject->setMaterial(*m_materialInstance4);
-		m_sponzaSceneObjects.push_back(sponzaSceneObject);
-	}
 #pragma endregion
 }
 
@@ -1824,7 +2098,7 @@ void ShaderBall::imgui(CommandBuffer& cb)
 
 		ImGui::DragFloat("shadow bias", &m_scene.shadowBias, 0.0001f);
 		ImGui::DragFloat("R", &m_scene.R, 0.01f);
-		ImGui::SliderFloat("sigma", &m_scene.sigma, 0.0f, Pi/2.0f);
+		ImGui::SliderFloat("sigma", &m_scene.sigma, 0.0f, Pi / 2.0f);
 		ImGui::SliderFloat("roughness", &m_scene.roughness, 0.0f, 0.7f);
 		ImGui::DragFloat3("LTDM 0", &m_scene.LTDM.m00, 0.01f);
 		ImGui::DragFloat3("LTDM 1", &m_scene.LTDM.m01, 0.01f);
@@ -1874,9 +2148,10 @@ void ShaderBall::imgui(CommandBuffer& cb)
 		            1000.0f / ImGui::GetIO().Framerate,
 		            ImGui::GetIO().Framerate);
 
-		//ImGui::Image(
+		// ImGui::Image(
 		//    (ImTextureID)(intptr_t)m_scene.shadowmap().image(),
-		//    ImVec2(m_scene.shadowmap().width(), m_scene.shadowmap().height()));
+		//    ImVec2(m_scene.shadowmap().width(),
+		//    m_scene.shadowmap().height()));
 
 		ImGui::End();
 
@@ -2055,10 +2330,11 @@ void ShaderBall::standaloneDraw()
 	                         0.01f, 1000.0f)
 	        .get_transposed();
 
-	//float aspect = float(rw.get().swapchainExtent().height) /
+	// float aspect = float(rw.get().swapchainExtent().height) /
 	//               float(rw.get().swapchainExtent().width);
 
-	//m_config.proj = matrix4::orthographic(-20, 20, 20 * aspect, -20 * aspect,
+	// m_config.proj = matrix4::orthographic(-20, 20, 20 * aspect, -20 *
+	// aspect,
 	//                                      0.01f, 1000.0f)
 	//                    .get_transposed();
 
@@ -2073,7 +2349,8 @@ void ShaderBall::standaloneDraw()
 
 	m_sphereSceneObject->transform.position = { 0.0f, 2.5f, 0.0f };
 	m_sphereSceneObject->transform.scale = { 0.5f, 0.5f, 0.5f };
-	m_sphereSceneObject->transform.rotation = quaternion(vector3(1,0,0), 90.0_deg);
+	m_sphereSceneObject->transform.rotation =
+	    quaternion(vector3(1, 0, 0), 90.0_deg);
 
 	for (auto& obj : m_sponzaSceneObjects)
 	{
@@ -2119,8 +2396,9 @@ void ShaderBall::standaloneDraw()
 	m_shadingModel.m_directionalLightsStaging.unmap();
 	m_shadingModel.uploadDirectionalLightsStaging();
 
-	m_scene.uploadTransformMatrices(cameraTr, m_config.proj,
-	                                //transform3d(pointLights->position, r, {1,1,1}));
+	m_scene.uploadTransformMatrices(
+	    cameraTr, m_config.proj,
+	    // transform3d(pointLights->position, r, {1,1,1}));
 	    lightTr);
 
 	m_skybox->setMatrices(m_config.proj, m_config.view);

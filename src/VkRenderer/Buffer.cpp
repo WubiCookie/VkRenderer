@@ -3,6 +3,7 @@
 #include "RenderWindow.hpp"
 
 #include <stdexcept>
+#include <iostream>
 
 namespace cdm
 {
@@ -23,11 +24,16 @@ Buffer::Buffer(const VulkanDevice& vulkanDevice, VkDeviceSize bufferSize,
 	// allocCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 	allocCreateInfo.requiredFlags = requiredFlags;
 
-	vmaCreateBuffer(vk.allocator(), &info, &allocCreateInfo, &m_buffer.get(),
+	VkResult res = vmaCreateBuffer(vk.allocator(), &info, &allocCreateInfo, &m_buffer.get(),
 	                &m_allocation.get(), &m_allocInfo);
 
 	if (m_buffer == false)
-		throw std::runtime_error("could not create buffer");
+	{
+		std::cerr << "could not create buffer " << vk::result_to_string(res)
+		          << std::endl;
+		throw std::runtime_error(std::string("could not create buffer ") +
+		                         std::string(vk::result_to_string(res)));
+	}
 }
 
 Buffer::~Buffer()
@@ -47,8 +53,7 @@ void Buffer::setName(std::string_view name)
 	if (get())
 	{
 		auto& vk = *m_vulkanDevice.get();
-		vk.debugMarkerSetObjectName(
-		    get(), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, name);
+		vk.debugMarkerSetObjectName(get(), name);
 	}
 }
 

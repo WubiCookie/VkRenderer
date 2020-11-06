@@ -221,6 +221,15 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
 
 	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 
+	uploadData(texels, size, region, initialLayout, finalLayout, pool);
+
+	pool.waitForAllCommandBuffers();
+
+	/*
+	auto& vk = *m_vulkanDevice.get();
+
+	CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+
 	StagingBuffer stagingBuffer(vk, texels, size);
 
 	auto& frame = pool.getAvailableCommandBuffer();
@@ -255,12 +264,71 @@ void Texture2D::uploadDataImmediate(const void* texels, size_t size,
 	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
 
 	if (cb.end() != VK_SUCCESS)
+	    throw std::runtime_error("failed to record upload command buffer");
+
+	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
+	    throw std::runtime_error("failed to submit upload command buffer");
+
+	pool.waitForAllCommandBuffers();
+	//*/
+}
+
+void Texture2D::uploadData(const void* texels, size_t size,
+                           const VkBufferImageCopy& region,
+                           VkImageLayout currentLayout,
+                           CommandBufferPool& pool)
+{
+	uploadData(texels, size, region, currentLayout, currentLayout, pool);
+}
+
+void Texture2D::uploadData(const void* texels, size_t size,
+                           const VkBufferImageCopy& region,
+                           VkImageLayout initialLayout,
+                           VkImageLayout finalLayout, CommandBufferPool& pool)
+{
+	auto& vk = *m_vulkanDevice.get();
+
+	StagingBuffer stagingBuffer(vk, texels, size);
+
+	auto& frame = pool.getAvailableCommandBuffer();
+	CommandBuffer& cb = frame.commandBuffer;
+
+	if (cb.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT) != VK_SUCCESS)
+		throw std::runtime_error("failed to begin upload command buffer");
+
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = initialLayout;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = image();
+	barrier.subresourceRange.aspectMask = m_aspectMask;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = mipLevels();
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
+
+	cb.copyBufferToImage(stagingBuffer, image(),
+	                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
+
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.newLayout = finalLayout;
+	barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+	barrier.dstAccessMask = 0;
+	cb.pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, barrier);
+
+	if (cb.end() != VK_SUCCESS)
 		throw std::runtime_error("failed to record upload command buffer");
 
 	if (frame.submit(vk.graphicsQueue()) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit upload command buffer");
 
-	pool.waitForAllCommandBuffers();
+	pool.registerResource(std::move(stagingBuffer));
 }
 
 Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout currentLayout)
@@ -331,5 +399,14 @@ Buffer Texture2D::downloadDataToBufferImmediate(VkImageLayout initialLayout,
 
 	// return tmpBuffer.download();
 	return tmpBuffer;
+}
+
+void Texture2D::setName(std::string_view name)
+{
+	if (get())
+	{
+		auto& vk = *m_vulkanDevice.get();
+		vk.debugMarkerSetObjectName(get(), name);
+	}
 }
 }  // namespace cdm

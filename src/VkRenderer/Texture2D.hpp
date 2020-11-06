@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Buffer.hpp"
+#include "CommandBufferPool.hpp"
 #include "TextureInterface.hpp"
 
 #include <vector>
@@ -81,6 +82,13 @@ public:
 	                         const VkBufferImageCopy& region,
 	                         VkImageLayout initialLayout,
 	                         VkImageLayout finalLayout);
+	void uploadData(const void* texels, size_t size,
+	                const VkBufferImageCopy& region,
+	                VkImageLayout currentLayout, CommandBufferPool& pool);
+	void uploadData(const void* texels, size_t size,
+	                const VkBufferImageCopy& region,
+	                VkImageLayout initialLayout, VkImageLayout finalLayout,
+	                CommandBufferPool& pool);
 
 	Buffer downloadDataToBufferImmediate(VkImageLayout currentLayout);
 	Buffer downloadDataToBufferImmediate(VkImageLayout initialLayout,
@@ -103,5 +111,7 @@ public:
 
 		return tmpBuffer.download<T>();
 	}
+
+	void setName(std::string_view name);
 };
 }  // namespace cdm

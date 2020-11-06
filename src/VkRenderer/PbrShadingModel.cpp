@@ -1011,7 +1011,6 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 				    shadow = buildData->shadowmap->sample(lsPosition.xy(),
 				                                          lsPositionW.z());
-				    shadow = max(shadow, 0.1_f);
 				    // ==========================================
 
 				    Locale(DBeckmann,
@@ -1037,8 +1036,8 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    }
 		    ROF;
 
+		    // ==================== IBL =====================
 		    F = buildData->fresnelSchlickRoughness(
-		        // max(dot(wsNormal, V), 0.0_f), F0, roughness);
 		        max(cosThetao, 0.0_f), F0, roughness);
 
 		    kS = F;
@@ -1062,17 +1061,16 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		        brdf,
 		        buildData
 		            ->brdfLut
-		            //->sample(vec2(max(dot(wsNormal, V), 0.0_f), roughness))
 		            ->sample(vec2(max(cosThetao, 0.0_f), roughness))
 		            .rg());
 		    specular = prefilteredColor * (F * brdf.x() + brdf.y());
 
 		    Locale(ambient, kD * diffuse + specular);
+		    // ==============================================
 
 		    Locale(color, ambient + Lo);
 
 			// =============== RTPLS with LTC ===============
-
 		    Locale(P1, vec3(1.0_f, 0.0_f, 0.0_f));
 		    Locale(P2, vec3(0.0_f, 1.0_f, 0.0_f));
 		    Locale(P3, vec3(0.0_f, 0.0_f, 1.0_f));
@@ -1116,7 +1114,6 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 			// polygon irradiance
 			Locale(I, E);
-
 			// ==============================================
 
 		    writer.returnStmt(color);

@@ -1,10 +1,15 @@
 #pragma once
 
-#include "Material.hpp"
 #include "Buffer.hpp"
+#include "Material.hpp"
 #include "Texture2D.hpp"
 
 #include <memory>
+
+namespace shader
+{
+struct DefaultMaterialData;
+}
 
 namespace cdm
 {
@@ -22,7 +27,7 @@ class DefaultMaterial : public Material
 		uint32_t textureIndex;
 
 		// padding
-		//float _0{ float(0xcccccccc) };
+		// float _0{ float(0xcccccccc) };
 		float _1{ float(0xcccccccc) };
 	};
 
@@ -30,7 +35,7 @@ class DefaultMaterial : public Material
 
 	struct FragmentShaderBuildData : FragmentShaderBuildDataBase
 	{
-		std::unique_ptr<sdw::Ubo> ubo;
+		std::unique_ptr<sdw::ArraySsboT<shader::DefaultMaterialData>> ssbo;
 		std::unique_ptr<sdw::Array<sdw::SampledImage2DRgba32>> textures;
 	};
 
@@ -50,12 +55,17 @@ public:
 	DefaultMaterial& operator=(DefaultMaterial&&) = default;
 
 protected:
-	float    floatParameter(const std::string& name, uint32_t instanceIndex) override;
-	vector4  vec4Parameter (const std::string& name, uint32_t instanceIndex) override;
+	float floatParameter(const std::string& name,
+	                     uint32_t instanceIndex) override;
+	vector4 vec4Parameter(const std::string& name,
+	                      uint32_t instanceIndex) override;
 
-	void setFloatParameter(const std::string& name, uint32_t instanceIndex, float a)          override;
-	void setVec4Parameter(const std::string& name, uint32_t instanceIndex, const vector4& a) override;
-	void setTextureParameter(const std::string& name, uint32_t instanceIndex, Texture2D& texture);
+	void setFloatParameter(const std::string& name, uint32_t instanceIndex,
+	                       float a) override;
+	void setVec4Parameter(const std::string& name, uint32_t instanceIndex,
+	                      const vector4& a) override;
+	void setTextureParameter(const std::string& name, uint32_t instanceIndex,
+	                         Texture2D& texture);
 
 public:
 	// void vertexFunction(Vec3& inOutPosition, Vec3& inOutNormal);
