@@ -688,6 +688,11 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(V, normalize(wsViewPosition - wsPosition));
 
+			//Locale(T1, normalize(V - wsNormal * dot(V, wsNormal)));
+		 //   Locale(T2, cross(wsNormal, T1));
+
+			//TBN = transpose(mat3(T1, T2, wsNormal));
+
 		    Locale(tsPosition, TBN * wsPosition);
 		    Locale(tsNormal, TBN * wsNormal);
 		    Locale(tsV, TBN * V);
@@ -703,7 +708,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(shadow, 1.0_f);
 
-		    Locale(M, sceneUbo.getLTDM());
+		    Locale(M, inverse(sceneUbo.getLTDM()));
 		    // mat3(vec3(0.1_f, 0.0_f, 0.0_f), vec3(0.0_f, 0.1_f, 0.0_f),
 		    // vec3(0.0_f, 0.0_f, 1.0_f)));
 
@@ -712,6 +717,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    // wsNormal = M * wsNormal;
 
 		    Locale(wo, normalize(M * tsV));
+		    //Locale(wo, tsV);
 
 #pragma region trigonometry o
 		    Locale(cosThetao, wo.z());
@@ -742,22 +748,14 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 			    Locale(lightColor,
 			           buildData->pointLights->operator[](i).color);
 
-			    // Locale(L, normalize(wsLightPos - wsPosition));
 			    Locale(tsL, normalize(tsLightPos - tsPosition));
 
-			    // L = normalize(M * L);
-
-			    // Locale(H, normalize(V + L));
-			    // Locale(tsH, tsV + tsL);
-
-			    // H = normalize(M * H);
-
-			    // Locale(distance, length(wsLightPos - wsPosition));
 			    Locale(distance, length(tsLightPos - tsPosition));
 			    Locale(attenuation, 1.0_f / (distance * distance));
 			    Locale(radiance, lightColor * vec4(attenuation));
 
-			    Locale(wi, normalize(M * tsL));
+			    //Locale(wi, normalize(M * tsL));
+			    Locale(wi, tsL);
 			    Locale(wh, tsV + tsL);
 
 			    IF(writer,
@@ -901,8 +899,10 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 			    }
 			    ELSE
 			    {
-				    Locale(DBeckmann,
-				           buildData->DistributionBeckmann(wh, alpha, alpha));
+				    // Locale(DBeckmann,
+				    // buildData->DistributionBeckmann(wh, alpha, alpha));
+				    //Locale(DBeckmann, max(0.0_f, normalize(M * wh).z()) / pi);
+				    Locale(DBeckmann, max(0.0_f, wh.z()) / pi);
 
 				    Locale(GBeckmann,
 				           buildData->GeometryBeckmann(wo, wi, alpha, alpha));
@@ -932,7 +932,8 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 			        normalize(TBN *
 			                  -(*buildData->directionalLights)[i].direction));
 
-			    Locale(wi, normalize(M * tsL));
+			    //Locale(wi, normalize(M * tsL));
+			    Locale(wi, tsL);
 			    Locale(wh, tsV + tsL);
 
 			    IF(writer,
@@ -1068,12 +1069,58 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(ambient, kD * diffuse + specular);
 
-		    // Locale(color, (ambient + Lo) * shadow);
 		    Locale(color, ambient + Lo);
 
-		    // Locale(color, Lo);
+			// =============== RTPLS with LTC ===============
+
+		    Locale(P1, vec3(1.0_f, 0.0_f, 0.0_f));
+		    Locale(P2, vec3(0.0_f, 1.0_f, 0.0_f));
+		    Locale(P3, vec3(0.0_f, 0.0_f, 1.0_f));
+
+			Locale(E, 0.0_f);
+
+			Locale(Pi, P1);
+			Locale(Pj, P2);
+
+		    Locale(dotPiPj, sdw::dot(Pi, Pj));
+		    Locale(acosdotPiPj, sdw::acos(dotPiPj));
+
+		    Locale(normalizedcrossPiPj, normalize(cross(Pi, Pj)));
+		    Locale(dotnormalizedcrossPiPjZ, dot(normalizedcrossPiPj, vec3(0.0_f, 0.0_f, 1.0_f)));
+			E += acosdotPiPj * dotnormalizedcrossPiPjZ;
+
+
+			Pi = P2;
+		    Pj = P3;
+
+		    dotPiPj = sdw::dot(Pi, Pj);
+		    acosdotPiPj = sdw::acos(dotPiPj);
+
+		    normalizedcrossPiPj = normalize(cross(Pi, Pj));
+		    dotnormalizedcrossPiPjZ =
+		           dot(normalizedcrossPiPj, vec3(0.0_f, 0.0_f, 1.0_f));
+		    E += acosdotPiPj * dotnormalizedcrossPiPjZ;
+
+		    Pi = P3;
+		    Pj = P1;
+
+		    dotPiPj = sdw::dot(Pi, Pj);
+		    acosdotPiPj = sdw::acos(dotPiPj);
+
+		    normalizedcrossPiPj = normalize(cross(Pi, Pj));
+		    dotnormalizedcrossPiPjZ =
+		        dot(normalizedcrossPiPj, vec3(0.0_f, 0.0_f, 1.0_f));
+		    E += acosdotPiPj * dotnormalizedcrossPiPjZ;
+
+			E = E / (2.0_f * pi);
+
+			// polygon irradiance
+			Locale(I, E);
+
+			// ==============================================
 
 		    writer.returnStmt(color);
+		    //writer.returnStmt(vec4(I));
 	    },
 	    InUInt{ writer, "inMaterialInstanceIndex" },
 	    InVec3{ writer, "wsPosition_arg" }, InVec2{ writer, "uv_arg" },
