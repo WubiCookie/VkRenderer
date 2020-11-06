@@ -69,7 +69,8 @@ namespace cdm
 DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
                                  PbrShadingModel& shadingModel,
                                  uint32_t instancePoolSize)
-    : Material(renderWindow, shadingModel, instancePoolSize)
+    : Material(renderWindow, shadingModel, instancePoolSize),
+      m_textureRef(m_texture)
 {
 	auto& vk = renderWindow.device();
 
@@ -84,7 +85,7 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 	uboStruct.color = vector4{ 0.9f, 0.5f, 0.25f, 1.0f };
 	uboStruct.metalness = 0.1f;
 	uboStruct.roughness = 0.3f;
-	// uboStruct.textureIndex =
+	uboStruct.textureIndex = 1023;
 
 	m_uboStructs.resize(size_t(instancePoolSize) + 1, uboStruct);
 
@@ -123,7 +124,8 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 #pragma region descriptor pool
 	std::array poolSizes{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		                      1024 },
 	};
 
 	vk::DescriptorPoolCreateInfo poolInfo;
@@ -148,7 +150,7 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 
 	VkDescriptorSetLayoutBinding layoutBindingTextureUbo{};
 	layoutBindingTextureUbo.binding = 1;
-	layoutBindingTextureUbo.descriptorCount = 1;
+	layoutBindingTextureUbo.descriptorCount = 1024;
 	layoutBindingTextureUbo.descriptorType =
 	    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	layoutBindingTextureUbo.stageFlags =
@@ -250,7 +252,23 @@ DefaultMaterial::DefaultMaterial(RenderWindow& renderWindow,
 	textureWrite.dstSet = m_descriptorSet;
 	textureWrite.pImageInfo = &imageInfo;
 
-	vk.updateDescriptorSets(textureWrite);
+	m_textures.reserve(1024);
+
+	for (uint32_t i = 0; i < 1024; i++)
+	{
+		textureWrite.dstArrayElement = i;
+		m_textures.push_back(m_texture);
+		vk.updateDescriptorSets(textureWrite);
+	}
+
+	/*vk::WriteDescriptorSet textureWrite;
+	textureWrite.descriptorCount = 1;
+	textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	textureWrite.dstArrayElement = 0;
+	textureWrite.dstBinding = 1;
+	textureWrite.dstSet = m_descriptorSet;
+	textureWrite.pImageInfo = &imageInfo;*/
+
 #pragma endregion
 }
 
@@ -303,9 +321,55 @@ void DefaultMaterial::setVec4Parameter(const std::string& name,
 	m_uniformBuffer.unmap();
 }
 
-void DefaultMaterial::setTexture(Texture2D texture)
+void DefaultMaterial::setTextureParameter(const std::string& name,
+                                          uint32_t instanceIndex,
+                                          Texture2D& texture)
 {
-	m_texture = std::move(texture);
+	auto found =
+	    std::find_if(m_textures.begin(), m_textures.end(),
+	                 [&](const Texture2D& a) { return a == texture; });
+
+	uint32_t textureIndex = 0;
+	if (found == m_textures.end())
+	{
+		for (auto& tex : m_textures)
+		{
+			if (tex.get() == m_texture)
+			{
+				tex = texture;
+				break;
+			}
+			textureIndex++;
+		}
+
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = texture.view();
+		imageInfo.sampler = texture.sampler();
+
+		vk::WriteDescriptorSet textureWrite;
+		textureWrite.descriptorCount = 1;
+		textureWrite.descriptorType =
+		    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+		textureWrite.dstArrayElement = textureIndex;
+		textureWrite.dstBinding = 1;
+		textureWrite.dstSet = m_descriptorSet;
+		textureWrite.pImageInfo = &imageInfo;
+
+		auto& vk = renderWindow().device();
+		vk.updateDescriptorSets(textureWrite);
+
+		m_textureRef = texture;
+	}
+	else
+	{
+		textureIndex = std::distance(m_textures.begin(), found);
+	}
+
+	UBOStruct* ptr = m_uniformBuffer.map<UBOStruct>();
+	ptr[instanceIndex].textureIndex = textureIndex;
+	m_uniformBuffer.unmap();
 }
 
 MaterialVertexFunction DefaultMaterial::vertexFunction(
@@ -344,25 +408,32 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 	buildData->ubo = std::make_unique<sdw::Ubo>(
 	    sdw::Ubo(writer, "DefaultMaterialUBO", 0, 2));
 
-	// ICI : recuperer la texture comme defaultmaterialUBO
+	buildData->textures =
+	    std::make_unique<sdw::Array<sdw::SampledImage2DRgba32>>(
+	        writer.declSampledImageArray<FImg2DRgba32>("tex", 1, 2, 1024));
 
 	// buildData->ubo->declMember<DefaultMaterialUBOStruct>(
 	//    "materials", instancePoolSize() + 1);
 	buildData->ubo->declMember<Vec4>("color0");
 	buildData->ubo->declMember<Float>("metalness0");
 	buildData->ubo->declMember<Float>("roughness0");
+	buildData->ubo->declMember<UInt>("textureIndex0");
 	buildData->ubo->declMember<Vec4>("color1");
 	buildData->ubo->declMember<Float>("metalness1");
 	buildData->ubo->declMember<Float>("roughness1");
+	buildData->ubo->declMember<UInt>("textureIndex1");
 	buildData->ubo->declMember<Vec4>("color2");
 	buildData->ubo->declMember<Float>("metalness2");
 	buildData->ubo->declMember<Float>("roughness2");
+	buildData->ubo->declMember<UInt>("textureIndex2");
 	buildData->ubo->declMember<Vec4>("color3");
 	buildData->ubo->declMember<Float>("metalness3");
 	buildData->ubo->declMember<Float>("roughness3");
+	buildData->ubo->declMember<UInt>("textureIndex3");
 	buildData->ubo->declMember<Vec4>("color4");
 	buildData->ubo->declMember<Float>("metalness4");
 	buildData->ubo->declMember<Float>("roughness4");
+	buildData->ubo->declMember<UInt>("textureIndex4");
 	buildData->ubo->end();
 
 	MaterialFragmentFunction res = writer.implementFunction<Float>(
@@ -382,8 +453,12 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 
 		    IF(writer, inMaterialInstanceIndex == 0_u)
 		    {
-			    inOutAlbedo = buildData->ubo->getMember<Vec4>(
-			        "color0");  // a remplacer par la texture ?
+			    sdw::Vec4 sample =
+			        (*buildData->textures)[buildData->ubo->getMember<UInt>(
+			                                   "textureIndex0")]
+			            .sample(inOutUv);
+			    inOutAlbedo = sample;
+
 			    inOutMetalness =
 			        buildData->ubo->getMember<Float>("metalness0");
 			    inOutRoughness =
@@ -391,7 +466,11 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    }
 		    ELSEIF(inMaterialInstanceIndex == 1_u)
 		    {
-			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color1");
+			    sdw::Vec4 sample =
+			        (*buildData->textures)[buildData->ubo->getMember<UInt>(
+			                                   "textureIndex1")]
+			            .sample(inOutUv);
+			    inOutAlbedo = sample;
 			    inOutMetalness =
 			        buildData->ubo->getMember<Float>("metalness1");
 			    inOutRoughness =
@@ -399,7 +478,11 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    }
 		    ELSEIF(inMaterialInstanceIndex == 2_u)
 		    {
-			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color2");
+			    sdw::Vec4 sample =
+			        (*buildData->textures)[buildData->ubo->getMember<UInt>(
+			                                   "textureIndex2")]
+			            .sample(inOutUv);
+			    inOutAlbedo = sample;
 			    inOutMetalness =
 			        buildData->ubo->getMember<Float>("metalness2");
 			    inOutRoughness =
@@ -407,7 +490,11 @@ MaterialFragmentFunction DefaultMaterial::fragmentFunction(
 		    }
 		    ELSEIF(inMaterialInstanceIndex == 3_u)
 		    {
-			    inOutAlbedo = buildData->ubo->getMember<Vec4>("color3");
+			    sdw::Vec4 sample =
+			        (*buildData->textures)[buildData->ubo->getMember<UInt>(
+			                                   "textureIndex3")]
+			            .sample(inOutUv);
+			    inOutAlbedo = sample;
 			    inOutMetalness =
 			        buildData->ubo->getMember<Float>("metalness3");
 			    inOutRoughness =

@@ -19,10 +19,10 @@ class DefaultMaterial : public Material
 		float metalness;
 		float roughness;
 
-		//uint32_t textureIndex;
+		uint32_t textureIndex;
 
 		// padding
-		float _0{ float(0xcccccccc) };
+		//float _0{ float(0xcccccccc) };
 		float _1{ float(0xcccccccc) };
 	};
 
@@ -31,10 +31,12 @@ class DefaultMaterial : public Material
 	struct FragmentShaderBuildData : FragmentShaderBuildDataBase
 	{
 		std::unique_ptr<sdw::Ubo> ubo;
-		//sdw::USampledImage2DRgba8 tex;
+		std::unique_ptr<sdw::Array<sdw::SampledImage2DRgba32>> textures;
 	};
 
 	Texture2D m_texture;
+	std::reference_wrapper<Texture2D> m_textureRef;
+	std::vector<std::reference_wrapper<Texture2D>> m_textures;
 
 public:
 	DefaultMaterial() = default;
@@ -52,8 +54,8 @@ protected:
 	vector4  vec4Parameter (const std::string& name, uint32_t instanceIndex) override;
 
 	void setFloatParameter(const std::string& name, uint32_t instanceIndex, float a)          override;
-	void setVec4Parameter(const std::string& name , uint32_t instanceIndex, const vector4& a) override;
-	void setTexture(Texture2D texture);
+	void setVec4Parameter(const std::string& name, uint32_t instanceIndex, const vector4& a) override;
+	void setTextureParameter(const std::string& name, uint32_t instanceIndex, Texture2D& texture);
 
 public:
 	// void vertexFunction(Vec3& inOutPosition, Vec3& inOutNormal);

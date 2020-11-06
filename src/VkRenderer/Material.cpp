@@ -32,6 +32,7 @@ MaterialInstance::MaterialInstance(Material& material, uint32_t instanceOffset) 
 	void MaterialInstance::setMat4Parameter(const std::string& name, const matrix4& a) { material().setMat4Parameter(name, m_instanceOffset, a); }
 	void MaterialInstance::setUintParameter(const std::string& name, uint32_t a)       { material().setUintParameter(name, m_instanceOffset, a); }
 	void MaterialInstance::setIntParameter(const std::string& name, int32_t a)         { material().setIntParameter(name, m_instanceOffset, a); }
+	void MaterialInstance::setTextureParameter(const std::string& name, Texture2D& a)  { material().setTextureParameter(name, m_instanceOffset, a); }
 
 //float MaterialInstance::floatParameter(const std::string& name)
 //{
