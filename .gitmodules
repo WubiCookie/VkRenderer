@@ -25,3 +25,6 @@
 [submodule "external/astc-codec"]
 	path = external/astc-codec
 	url = https://github.com/google/astc-codec.git
+[submodule "external/astc_dec"]
+    path = external/astc_dec
+    url = https://github.com/richgel999/astc_dec.git

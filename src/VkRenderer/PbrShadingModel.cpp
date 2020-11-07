@@ -1117,6 +1117,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 			// ==============================================
 
 		    writer.returnStmt(color);
+		    //writer.returnStmt(vec4(wsTangent, 1.0_f));
 		    //writer.returnStmt(vec4(I));
 	    },
 	    InUInt{ writer, "inMaterialInstanceIndex" },

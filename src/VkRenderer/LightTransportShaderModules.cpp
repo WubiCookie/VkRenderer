@@ -273,7 +273,7 @@ public:
 
 		randomFloat = implementFunction<Float>(
 			"randomFloat",
-			[&](Float& seed) {
+			[&](Float seed) {
 				auto res = declLocale("res", fract(sin(seed) * 43758.5453_f));
 				seed = seed + 1.0_f;
 				returnStmt(res);
@@ -307,7 +307,7 @@ public:
 
 		// randomDir = implementFunction<Vec3>(
 		//    "randomDir",
-		//    [&](Float& seed) {
+		//    [&](Float seed) {
 		//      returnStmt(
 		//          vec3(1.0_f, 0.0_f, 0.0_f) *
 		//          rotationMatrix(vec3(randomFloat(seed) * 2.0_f * Pi, 0.0_f,
@@ -590,7 +590,7 @@ void LightTransport::createShaderModules()
 
 		auto sampleRoughMirror = writer.implementFunction<Vec2>(
 			"sampleRoughMirror",
-			[&](const Vec2& w_o, const Float& s, Float& rng) {
+			[&](const Vec2& w_o, const Float& s, Float rng) {
 				auto thetaMin = writer.declLocale<Float>(
 					"thetaMin",
 					max(asin(w_o.x()), 0.0_f) - (writer.Pi / 2.0_f));
@@ -613,7 +613,7 @@ void LightTransport::createShaderModules()
 		auto intersectPlane = writer.implementFunction<Void>(
 			"intersectPlane",
 			[&](const Vec2& a, const Vec2& b, const Vec2& pos, const Vec2& dir,
-				Float& tMin, Float& tMax, Vec2& normal) {
+				Float tMin, Float tMax, Vec2 normal) {
 				// auto a = writer.declLocale<Vec2>("a", vec2(0.0_f,
 				// Float(heightf))); auto b = writer.declLocale<Vec2>("b",
 				// vec2(Float(widthf), Float(heightf)));
@@ -660,13 +660,13 @@ void LightTransport::createShaderModules()
 			Float saltedrng =
 				writer.declLocale<Float>("saltedrng", rng + indexf);
 
-			auto& ray = raysSsbo[rayIndex];
+			// auto ray = raysSsbo[rayIndex];
 
 			IF(writer, init == 1_i)
 			{
-				auto& vertex = rayVerticesSsbo[vertexIndex];
-				 vertex.colA = vec4(1.0_f);
-				 vertex.colB = vec4(1.0_f);
+				// auto& vertex = rayVerticesSsbo[vertexIndex];
+				 rayVerticesSsbo[vertexIndex].colA = vec4(1.0_f);
+				 rayVerticesSsbo[vertexIndex].colB = vec4(1.0_f);
 			}
 			ELSE
 			{
@@ -751,7 +751,7 @@ void LightTransport::createShaderModules()
 				FOR(writer, UInt, i, vertexIndex, i < vertexIndex + bumpsCount, i++)
 				{
 					//auto& previousVertex = rayVerticesSsbo[i - 1_u];
-					auto& vertex = rayVerticesSsbo[i];
+					// auto vertex = rayVerticesSsbo[i];
 
 					tMin = 1.0e-4_f;
 					tMax = 1.0e30_f;
@@ -762,8 +762,8 @@ void LightTransport::createShaderModules()
 					Locale(polarNormal, 0.0_f);
 					Locale(polarDirection, 0.0_f);
 					Locale(cartesianDirection, vec2(0.0_f));
-					Locale(rayPosition, ray.position);
-					Locale(rayDirection, ray.direction);
+					Locale(rayPosition, raysSsbo[rayIndex].position);
+					Locale(rayDirection, raysSsbo[rayIndex].direction);
 
 					auto a = writer.declLocale<Vec2>("a", vec2(0.0_f, 0.0_f));
 					auto b = writer.declLocale<Vec2>(
@@ -780,38 +780,38 @@ void LightTransport::createShaderModules()
 
 					IF(writer, tMax == 1.0e30_f)
 					{
-						vertex.posA = rayPosition;
-						vertex.posB = rayPosition + rayDirection * tMax;
-						vertex.dirA = rayDirection;
-						vertex.dirB = rayDirection;
+						rayVerticesSsbo[i].posA = rayPosition;
+						rayVerticesSsbo[i].posB = rayPosition + rayDirection * tMax;
+						rayVerticesSsbo[i].dirA = rayDirection;
+						rayVerticesSsbo[i].dirB = rayDirection;
 					}
 					ELSE
 					{
-						vertex.posA = rayPosition;
-						vertex.posB = rayPosition + rayDirection * tMax;
-						vertex.dirA = rayDirection;
-						vertex.dirB = rayDirection;
-						vertex.colA = vec4(1.0_f);//vertex.colA;// * 0.9_f;
-						vertex.colB = vec4(1.0_f);//vertex.colB;// * 0.9_f;
+						rayVerticesSsbo[i].posA = rayPosition;
+						rayVerticesSsbo[i].posB = rayPosition + rayDirection * tMax;
+						rayVerticesSsbo[i].dirA = rayDirection;
+						rayVerticesSsbo[i].dirB = rayDirection;
+						rayVerticesSsbo[i].colA = vec4(1.0_f);//rayVerticesSsbo[i].colA;// * 0.9_f;
+						rayVerticesSsbo[i].colB = vec4(1.0_f);//rayVerticesSsbo[i].colB;// * 0.9_f;
 
-						ray.position = vertex.posB;
+						raysSsbo[rayIndex].position = rayVerticesSsbo[i].posB;
 
 						polarNormal = atan2(normal.y(), normal.x());
 						//polarDirection = atan2(rayDirection.y(), rayDirection.x());
-						polarDirection = ray.polarDirection;
+						polarDirection = raysSsbo[rayIndex].polarDirection;
 						polarDirection = polarDirection - polarNormal;
 						cartesianDirection = vec2(cos(polarDirection), sin(polarDirection));
 
-						Float r = writer.declLocale<Float>("r", ray.rng);
+						Float r = writer.declLocale<Float>("r", raysSsbo[rayIndex].rng);
 
 						Locale(newDirection, sampleRoughMirror(cartesianDirection, s, r));
 						polarDirection = atan2(newDirection.y(), newDirection.x());
 						polarDirection = polarDirection + polarNormal;
 
-						ray.direction = vec2(cos(polarDirection), sin(polarDirection));
-						ray.polarDirection = polarDirection;
+						raysSsbo[rayIndex].direction = vec2(cos(polarDirection), sin(polarDirection));
+						raysSsbo[rayIndex].polarDirection = polarDirection;
 
-						ray.rng = r;
+						raysSsbo[rayIndex].rng = r;
 					}
 					FI;
 				}

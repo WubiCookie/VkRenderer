@@ -630,8 +630,8 @@ inline T FragmentWriter::declOutput(std::string const& name, uint32_t location)
 		m_outputAttachments[location] = VK_FORMAT_R32G32B32A32_SFLOAT;
 	else if constexpr (std::is_same_v<T, sdw::UInt>)
 		m_outputAttachments[location] = VK_FORMAT_R32_UINT;
-	else if constexpr (std::is_same_v<T, sdw::Int>)
-		m_outputAttachments[location] = VK_FORMAT_R32_INT;
+	// else if constexpr (std::is_same_v<T, sdw::Int>)
+	// 	m_outputAttachments[location] = VK_FORMAT_R32_INT;
 	else
 		abort();
 
@@ -652,8 +652,8 @@ inline T FragmentWriter::declOutput(std::string const& name, uint32_t location,
 		m_outputAttachments[location] = VK_FORMAT_R32G32B32A32_SFLOAT;
 	else if constexpr (std::is_same_v<T, sdw::UInt>)
 		m_outputAttachments[location] = VK_FORMAT_R32_UINT;
-	else if constexpr (std::is_same_v<T, sdw::Int>)
-		m_outputAttachments[location] = VK_FORMAT_R32_INT;
+	// else if constexpr (std::is_same_v<T, sdw::Int>)
+	// 	m_outputAttachments[location] = VK_FORMAT_R32_INT;
 	else
 		abort();
 
@@ -675,8 +675,8 @@ inline sdw::Array<T> FragmentWriter::declOutputArray(std::string const& name,
 		m_outputAttachments[location] = VK_FORMAT_R32G32B32A32_SFLOAT;
 	else if constexpr (std::is_same_v<T, sdw::UInt>)
 		m_outputAttachments[location] = VK_FORMAT_R32_UINT;
-	else if constexpr (std::is_same_v<T, sdw::Int>)
-		m_outputAttachments[location] = VK_FORMAT_R32_INT;
+	// else if constexpr (std::is_same_v<T, sdw::Int>)
+	// 	m_outputAttachments[location] = VK_FORMAT_R32_INT;
 	else
 		abort();
 
@@ -699,8 +699,8 @@ inline sdw::Array<T> FragmentWriter::declOutputArray(std::string const& name,
 		m_outputAttachments[location] = VK_FORMAT_R32G32B32A32_SFLOAT;
 	else if constexpr (std::is_same_v<T, sdw::UInt>)
 		m_outputAttachments[location] = VK_FORMAT_R32_UINT;
-	else if constexpr (std::is_same_v<T, sdw::Int>)
-		m_outputAttachments[location] = VK_FORMAT_R32_INT;
+	// else if constexpr (std::is_same_v<T, sdw::Int>)
+	// 	m_outputAttachments[location] = VK_FORMAT_R32_INT;
 	else
 		abort();
 
@@ -725,8 +725,8 @@ inline sdw::Optional<T> FragmentWriter::declOutput(std::string const& name,
 			m_outputAttachments[location] = VK_FORMAT_R32G32B32A32_SFLOAT;
 		else if constexpr (std::is_same_v<T, sdw::UInt>)
 			m_outputAttachments[location] = VK_FORMAT_R32_UINT;
-		else if constexpr (std::is_same_v<T, sdw::Int>)
-			m_outputAttachments[location] = VK_FORMAT_R32_INT;
+		// else if constexpr (std::is_same_v<T, sdw::Int>)
+		// 	m_outputAttachments[location] = VK_FORMAT_R32_INT;
 		else
 			abort();
 	}
@@ -752,8 +752,8 @@ inline sdw::Optional<T> FragmentWriter::declOutput(std::string const& name,
 			m_outputAttachments[location] = VK_FORMAT_R32G32B32A32_SFLOAT;
 		else if constexpr (std::is_same_v<T, sdw::UInt>)
 			m_outputAttachments[location] = VK_FORMAT_R32_UINT;
-		else if constexpr (std::is_same_v<T, sdw::Int>)
-			m_outputAttachments[location] = VK_FORMAT_R32_INT;
+		// else if constexpr (std::is_same_v<T, sdw::Int>)
+		// 	m_outputAttachments[location] = VK_FORMAT_R32_INT;
 		else
 			abort();
 	}
@@ -779,8 +779,8 @@ inline sdw::Optional<sdw::Array<T>> FragmentWriter::declOutputArray(
 			m_outputAttachments[location] = VK_FORMAT_R32G32B32A32_SFLOAT;
 		else if constexpr (std::is_same_v<T, sdw::UInt>)
 			m_outputAttachments[location] = VK_FORMAT_R32_UINT;
-		else if constexpr (std::is_same_v<T, sdw::Int>)
-			m_outputAttachments[location] = VK_FORMAT_R32_INT;
+		// else if constexpr (std::is_same_v<T, sdw::Int>)
+		// 	m_outputAttachments[location] = VK_FORMAT_R32_INT;
 		else
 			abort();
 	}
@@ -806,8 +806,8 @@ inline sdw::Optional<sdw::Array<T>> FragmentWriter::declOutputArray(
 			m_outputAttachments[location] = VK_FORMAT_R32G32B32A32_SFLOAT;
 		else if constexpr (std::is_same_v<T, sdw::UInt>)
 			m_outputAttachments[location] = VK_FORMAT_R32_UINT;
-		else if constexpr (std::is_same_v<T, sdw::Int>)
-			m_outputAttachments[location] = VK_FORMAT_R32_INT;
+		// else if constexpr (std::is_same_v<T, sdw::Int>)
+		// 	m_outputAttachments[location] = VK_FORMAT_R32_INT;
 		else
 			abort();
 	}

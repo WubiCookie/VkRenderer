@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 
+if("${CMAKE_BUILD_TYPE}" STREQUAL "")
+	set(CMAKE_BUILD_TYPE "Release")
+endif()
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(VkRenderer)
@@ -7,25 +11,35 @@ project(VkRenderer)
 find_package(Vulkan REQUIRED)
 
 set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "")
-set(ASSIMP_INSTALL OFF CACHE BOOL "")
-set(ASSIMP_INSTALL_PDB OFF CACHE BOOL "")
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT CACHE INTERNAL FALSE)
+set(ASSIMP_BUILD_FBX_IMPORTER ON)
+set(ASSIMP_BUILD_OBJ_IMPORTER ON)
+set(ASSIMP_BUILD_GLTF_IMPORTER ON)
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "")
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "")
+set(ASSIMP_INSTALL OFF CACHE BOOL "")
+set(ASSIMP_INSTALL_PDB OFF CACHE BOOL "")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "")
 set(GLFW_BUILD_INSTALL OFF CACHE BOOL "")
 set(GLFW_INSTALL OFF CACHE BOOL "")
-set(SDW_BUILD_EXPORTERS ON CACHE BOOL "")
+set(OPTION_ASTC_TESTS OFF CACHE BOOL "")
+if(MSVC)
+	set(PROJECTS_USE_PRECOMPILED_HEADERS ON CACHE BOOL "")
+else()
+	set(PROJECTS_USE_PRECOMPILED_HEADERS OFF CACHE BOOL "")
+endif()
 set(SDW_BUILD_EXPORTER_GLSL OFF CACHE BOOL "")
 set(SDW_BUILD_EXPORTER_GLSL_STATIC OFF CACHE BOOL "")
 set(SDW_BUILD_EXPORTER_HLSL OFF CACHE BOOL "")
 set(SDW_BUILD_EXPORTER_HLSL_STATIC OFF CACHE BOOL "")
 set(SDW_BUILD_EXPORTER_SPIRV ON CACHE BOOL "")
 set(SDW_BUILD_EXPORTER_SPIRV_STATIC ON CACHE BOOL "")
+set(SDW_BUILD_EXPORTERS ON CACHE BOOL "")
 set(SDW_BUILD_STATIC_SDW ON CACHE BOOL "")
 set(SDW_BUILD_TESTS OFF CACHE BOOL "")
 set(SDW_BUILD_VULKAN_LAYER OFF CACHE BOOL "")
 set(SDW_GENERATE_SOURCE ON CACHE BOOL "")
-set(OPTION_ASTC_TESTS OFF CACHE BOOL "")
 set(TEXAS_ENABLE_KTX_SAVE OFF CACHE BOOL "")
 set(TEXAS_ENABLE_PNG_READ OFF CACHE BOOL "")
 
@@ -151,8 +165,10 @@ set_target_properties(IrrXML PROPERTIES FOLDER "Third Party")
 # set_target_properties(spirv-tools-shared-pkg-config PROPERTIES FOLDER "Third Party")
 # set_target_properties(testdata PROPERTIES FOLDER "Third Party")
 set_target_properties(uninstall PROPERTIES FOLDER "Third Party")
-set_target_properties(UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER "Third Party")
-set_target_properties(zlibstatic PROPERTIES FOLDER "Third Party")
+if(MSVC)
+	set_target_properties(UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER "Third Party")
+	set_target_properties(zlibstatic PROPERTIES FOLDER "Third Party")
+endif()
 set_target_properties(astc_inspector_cli PROPERTIES FOLDER "Third Party/astc-codec")
 set_target_properties(astc_utils PROPERTIES FOLDER "Third Party/astc-codec")
 set_target_properties(astc-codec PROPERTIES FOLDER "Third Party/astc-codec")
@@ -266,8 +282,6 @@ set(SOURCE_FILES
 
 add_library(VkRenderer STATIC
 	src/third_party/stb_image.cpp
-	src/third_party/astc_dec/astc_decomp.cpp
-	src/third_party/astc_dec/astc_decomp.h
 
 	${SOURCE_FILES}
 	${MATERIAL_FILES}

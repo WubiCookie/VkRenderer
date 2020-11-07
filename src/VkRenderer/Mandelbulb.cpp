@@ -95,7 +95,7 @@ public:
 
 		randomFloat = implementFunction<Float>(
 		    "randomFloat",
-		    [&](Float& seed) {
+		    [&](Float seed) {
 			    auto res = declLocale("res", fract(sin(seed) * 43758.5453_f));
 			    seed = seed + 1.0_f;
 			    returnStmt(res);
@@ -138,7 +138,7 @@ public:
 
 		randomDir = implementFunction<Vec3>(
 		    "randomDir",
-		    [&](Float& seed) {
+		    [&](Float seed) {
 			    returnStmt(
 			        vec3(1.0_f, 0.0_f, 0.0_f) *
 			        rotationMatrix(vec3(randomFloat(seed) * 2.0_f * Pi, 0.0_f,
@@ -152,7 +152,7 @@ public:
 
 		distanceEstimation = implementFunction<Float>(
 		    "distanceEstimation",
-		    [&](const Vec3& pos_arg, Vec3& volumeColor, Vec3& emissionColor) {
+		    [&](const Vec3& pos_arg, Vec3 volumeColor, Vec3 emissionColor) {
 			    // Vec3 pos = declLocale<Vec3>*this, ("pos_local");
 			    auto pos = declLocale("pos", pos_arg);
 			    auto basePos = declLocale("basePos", vec3(0.0_f));
@@ -257,7 +257,7 @@ public:
 
 		directLight = implementFunction<Vec3>(
 		    "directLight",
-		    [&](const Vec3& pos_arg, Float& seed) {
+		    [&](const Vec3& pos_arg, Float seed) {
 			    auto pos = declLocale("pos", pos_arg);
 
 			    auto absorption = declLocale("absorption", vec3(1.0_f));
@@ -324,7 +324,7 @@ public:
 
 		pathTrace = implementFunction<Vec3>(
 		    "pathTrace",
-		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg, Float& seed) {
+		    [&](const Vec3& rayPos_arg, const Vec3& rayDir_arg, Float seed) {
 			    auto rayPos = declLocale("rayPos", rayPos_arg);
 			    auto rayDir = declLocale("rayDir", rayDir_arg);
 
@@ -427,7 +427,7 @@ public:
 		// n-blade aperture
 		sampleAperture = implementFunction<Vec2>(
 		    "sampleAperture",
-		    [&](const Int& nbBlades, const Float& rotation, Float& seed) {
+		    [&](const Int& nbBlades, const Float& rotation, Float seed) {
 			    auto alpha =
 			        declLocale("alpha", 2.0_f * Pi / cast<Float>(nbBlades));
 			    auto side = declLocale("side", sin(alpha / 2.0_f));

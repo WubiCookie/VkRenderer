@@ -10,9 +10,7 @@ namespace cdm
 StandardMesh::StandardMesh(RenderWindow& renderWindow,
                            const std::vector<Vertex>& vertices,
                            const std::vector<uint32_t>& indices)
-    : rw(&renderWindow)//,
-      //m_vertices(std::move(vertices)),
-      //indices(std::move(indices))
+    : rw(&renderWindow)
 {
 	auto& vk = rw.get()->device();
 
@@ -27,10 +25,9 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 #pragma region vertexBuffer
 	m_verticesCount = vertices.size();
 
-	auto vertexStagingBuffer =
-	    Buffer(vk, sizeof(Vertex) * vertices.size(),
-	           VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
-	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	auto vertexStagingBuffer = Buffer(
+	    vk, sizeof(Vertex) * vertices.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	m_vertexBuffer = Buffer(
 	    vk, sizeof(Vertex) * vertices.size(),
@@ -126,7 +123,7 @@ void StandardMesh::draw(CommandBuffer& cb)
 void StandardMesh::drawPositions(CommandBuffer& cb)
 {
 	cb.bindVertexBuffer(m_positionBuffer.get());
-	if (m_indicesCount == 0)
+	if (m_indicesCount != 0)
 	{
 		cb.bindIndexBuffer(m_indexBuffer.get(), 0, VK_INDEX_TYPE_UINT32);
 		cb.drawIndexed(m_indicesCount);

@@ -464,6 +464,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	std::vector<uint32_t> indices;
 
 	{
+		vertices.clear();
+		indices.clear();
+
 		auto& mesh = bunnyScene->mMeshes[0];
 		vertices.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
@@ -793,12 +796,12 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	}
 	//*/
 
-	vertices.clear();
-	indices.clear();
-
 	m_sponzaMeshes.reserve(std::min(sponzaScene->mNumMeshes, 100u));
 	for (size_t i = 0; i < std::min(sponzaScene->mNumMeshes, 100u); i++)
 	{
+		vertices.clear();
+		indices.clear();
+
 		auto& mesh = sponzaScene->mMeshes[i];
 		vertices.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
@@ -896,10 +899,10 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 	// assert(sphereScene->mNumMeshes == 1);
 
-	vertices.clear();
-	indices.clear();
-
 	{
+		vertices.clear();
+		indices.clear();
+
 		auto& mesh = sphereScene->mMeshes[0];
 		vertices.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
@@ -2426,7 +2429,7 @@ void ShaderBall::standaloneDraw()
 	////if (vk.queueSubmit(vk.graphicsQueue(), imguiCB) != VK_SUCCESS)
 	// if (vk.queueSubmit(vk.graphicsQueue(), drawSubmit) != VK_SUCCESS)
 
-	if (vk.queueSubmit(vk.graphicsQueue(), cb, frame.semaphore, frame.fence) !=
+	if (vk.queueSubmit(vk.graphicsQueue(), cb, VkSemaphore(frame.semaphore), VkFence(frame.fence)) !=
 	    VK_SUCCESS)
 	{
 		std::cerr << "error: failed to submit ShaderBall command buffer"

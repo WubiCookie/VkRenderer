@@ -411,11 +411,11 @@ public:
                                                                                                                             \
 	PFN_vkCreate##ObjectName Create##ObjectName;                                                                            \
 public:                                                                                                                     \
-	VkResult create##ObjectName(const vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const      \
+	VkResult create##ObjectName(const vk:: ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const      \
 	{                                                                                                                       \
 		return Create##ObjectName(vkDevice(), &createInfo, nullptr, &out##ObjectName);                                      \
 	}                                                                                                                       \
-	VkResult create(const vk::##ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const                  \
+	VkResult create(const vk:: ObjectName##CreateInfo& createInfo, Vk##ObjectName& out##ObjectName) const                  \
 	{                                                                                                                       \
 		return create##ObjectName(createInfo, out##ObjectName);                                                             \
 	}
