@@ -1834,6 +1834,21 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	// m_meshes[2].materialData.vShift = 0.5f;
 #pragma endregion
 
+#pragma region LTC lut
+	{
+		TextureFactory f(vk);
+		f.setUsage(VK_IMAGE_USAGE_SAMPLED_BIT |
+		           VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+		CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+
+		m_ltcMat = texture_loadDDS("../runtime_cache/ltc_mat.dds", f, pool);
+		m_ltcAmp = texture_loadDDS("../runtime_cache/ltc_amp.dds", f, pool);
+
+		pool.waitForAllCommandBuffers();
+	}
+#pragma endregion
+
 #pragma region bunny
 	m_bunnySceneObject = &m_scene.instantiateSceneObject();
 	m_bunnySceneObject->setMesh(m_bunnyMesh);
@@ -1904,9 +1919,35 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		brdfLutTextureWrite.dstSet = m_shadingModel.m_descriptorSet;
 		brdfLutTextureWrite.pImageInfo = &brdfLutImageInfo;
 
-		vk.updateDescriptorSets({ irradianceMapTextureWrite,
-		                          prefilteredMapTextureWrite,
-		                          brdfLutTextureWrite });
+		VkDescriptorImageInfo ltcMatImageInfo{};
+		ltcMatImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		ltcMatImageInfo.imageView = m_ltcMat.view();
+		ltcMatImageInfo.sampler = m_ltcMat.sampler();
+
+		vk::WriteDescriptorSet ltcMatTextureWrite;
+		ltcMatTextureWrite.descriptorCount = 1;
+		ltcMatTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		ltcMatTextureWrite.dstArrayElement = 0;
+		ltcMatTextureWrite.dstBinding = 6;
+		ltcMatTextureWrite.dstSet = m_shadingModel.m_descriptorSet;
+		ltcMatTextureWrite.pImageInfo = &ltcMatImageInfo;
+
+		VkDescriptorImageInfo ltcAmpImageInfo{};
+		ltcAmpImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		ltcAmpImageInfo.imageView = m_ltcAmp.view();
+		ltcAmpImageInfo.sampler = m_ltcAmp.sampler();
+
+		vk::WriteDescriptorSet ltcAmpTextureWrite;
+		ltcAmpTextureWrite.descriptorCount = 1;
+		ltcAmpTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		ltcAmpTextureWrite.dstArrayElement = 0;
+		ltcAmpTextureWrite.dstBinding = 7;
+		ltcAmpTextureWrite.dstSet = m_shadingModel.m_descriptorSet;
+		ltcAmpTextureWrite.pImageInfo = &ltcAmpImageInfo;
+
+		vk.updateDescriptorSets(
+		    { irradianceMapTextureWrite, prefilteredMapTextureWrite,
+		      brdfLutTextureWrite, ltcMatTextureWrite, ltcAmpTextureWrite });
 	}
 #pragma endregion
 

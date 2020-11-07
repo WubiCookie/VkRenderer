@@ -125,6 +125,8 @@ class ShaderBall final
 	IrradianceMap m_irradianceMap;
 	PrefilteredCubemap m_prefilteredMap;
 	BrdfLut m_brdfLut;
+	Texture2D m_ltcMat;
+	Texture2D m_ltcAmp;
 
 	Texture2D m_defaultTexture;
 
