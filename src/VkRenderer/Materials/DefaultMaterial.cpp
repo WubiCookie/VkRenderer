@@ -386,7 +386,7 @@ MaterialVertexFunction DefaultMaterial::vertexFunction(
 	return writer.implementFunction<Float>(
 	    "DefaultVertex",
 	    [&](Vec3 inOutPosition, Vec3 inOutNormal) {
-		    inOutPosition = inOutPosition;
+		    //inOutPosition = inOutPosition;
 		    writer.returnStmt(0.0_f);
 	    },
 	    InOutVec3{ writer, "inOutPosition" },

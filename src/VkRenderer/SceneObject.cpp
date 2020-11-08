@@ -60,8 +60,8 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			                    vec3(model[1][0], model[1][1], model[1][2]),
 			                    vec3(model[2][0], model[2][1], model[2][2])));
 
-			//Locale(normalMatrix, transpose(inverse(model3)));
-			Locale(normalMatrix, transpose((model3)));
+			Locale(normalMatrix, transpose(inverse(model3)));
+			//Locale(normalMatrix, transpose((model3)));
 
 			fragNormal = shaderVertexInput.inNormal;
 
@@ -70,6 +70,10 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			fragNormal = normalize(normalMatrix * fragNormal);
 			fragTangent =
 			    normalize(normalMatrix * shaderVertexInput.inTangent);
+
+			//fragNormal = normalize((model * vec4(fragNormal, 0.0_f)).xyz());
+			//fragTangent = normalize(
+			//    (model * vec4(shaderVertexInput.inTangent, 0.0_f)).xyz());
 
 			fragTangent = normalize(fragTangent -
 			                        dot(fragTangent, fragNormal) * fragNormal);

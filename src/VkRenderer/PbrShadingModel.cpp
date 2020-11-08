@@ -176,6 +176,7 @@ using GeometryBeckmann_Signature =
 using fresnelSchlick_Signature = Function<Vec4, InFloat, InVec4>;
 using fresnelSchlickRoughness_Signature =
     Function<Vec4, InFloat, InVec4, InFloat>;
+using LTC_Evaluate_Signature = Function<Vec3, InVec3, InVec3, InVec3, InMat3>;
 
 struct FragmentShaderBuildData : PbrShadingModel::FragmentShaderBuildDataBase
 {
@@ -202,6 +203,8 @@ struct FragmentShaderBuildData : PbrShadingModel::FragmentShaderBuildDataBase
 	GeometryBeckmann_Signature GeometryBeckmann;
 	fresnelSchlick_Signature fresnelSchlick;
 	fresnelSchlickRoughness_Signature fresnelSchlickRoughness;
+	LTC_Evaluate_Signature LTC_Evaluate;
+	//LTC_Evaluate_Signature LTC_Evaluate_spec;
 };
 
 PbrShadingModel::PbrShadingModel(const VulkanDevice& vulkanDevice,
@@ -676,6 +679,246 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	    InFloat{ writer, "cosTheta" }, InVec4{ writer, "F0" },
 	    InFloat{ writer, "roughness" });
 
+	buildData->LTC_Evaluate = writer.implementFunction<Vec3>(
+	    "LTC_Evaluate",
+	    [&writer, buildData, &sceneUbo](const Vec3& N, const Vec3& V,
+	                                    const Vec3& P, const Mat3& Minv) {
+		    Locale(T1, normalize(V - N * dot(V, N)));
+		    Locale(T2, normalize(cross(N, T1)));
+		    // Locale(T1, normalize(O - wsNormal * dot(O, wsNormal)));
+		    // Locale(T2, cross(wsNormal, T1));
+
+		    Locale(M, Minv * transpose(mat3(T1, T2, N)));
+
+		    Locale(sigma, sceneUbo.getSigma());
+
+		    Locale(lightRotx,
+		           transpose(mat3(vec3(1.0_f, 0.0_f, 0.0_f),
+		                          vec3(0.0_f, cos(sigma), -sin(sigma)),
+		                          vec3(0.0_f, sin(sigma), cos(sigma)))));
+
+		    // Locale(lightRoty,
+		    //       transpose(mat3(vec3(cos(M[0][1]), 0.0_f, sin(M[0][1])),
+		    //                      vec3(0.0_f, 1.0_f, 0.0_f),
+		    //                      vec3(-sin(M[0][1]), 0.0_f,
+		    //                      cos(M[0][1])))));
+
+		    Locale(lightRotz,
+		           transpose(mat3(vec3(cos(sigma), -sin(sigma), 0.0_f),
+		                          vec3(sin(sigma), cos(sigma), 0.0_f),
+		                          vec3(0.0_f, 0.0_f, 1.0_f))));
+
+		    // Locale(lightTr, lightRotz * lightRotx * lightRoty);
+		    Locale(lightTr, lightRotz);
+
+		    Locale(P1, vec3(10.0_f, 0.0_f, 10.0_f));
+		    Locale(P2, vec3(-10.0_f, 0.0_f, 10.0_f));
+		    Locale(P3, vec3(-10.0_f, 0.0_f, -10.0_f));
+		    Locale(P4, vec3(10.0_f, 0.0_f, -10.0_f));
+
+		    Locale(L0, M * ((buildData->pointLights->operator[](0).position +
+		                     (lightTr * P1)) -
+		                    P));
+		    Locale(L1, M * ((buildData->pointLights->operator[](0).position +
+		                     (lightTr * P2)) -
+		                    P));
+		    Locale(L2, M * ((buildData->pointLights->operator[](0).position +
+		                     (lightTr * P3)) -
+		                    P));
+		    Locale(L3, M * ((buildData->pointLights->operator[](0).position +
+		                     (lightTr * P4)) -
+		                    P));
+		    Locale(L4, L3);
+
+		    Locale(numVertices, 0_u);
+
+#pragma region ClipQuadToHorizon
+		    // detect clipping config
+		    Locale(config, 0_u);
+		    IF(writer, L0.z() > 0.0_f) { config += 1_u; }
+		    FI;
+		    IF(writer, L1.z() > 0.0_f) { config += 2_u; }
+		    FI;
+		    IF(writer, L2.z() > 0.0_f) { config += 4_u; }
+		    FI;
+		    IF(writer, L3.z() > 0.0_f) { config += 8_u; }
+		    FI;
+
+		    // clip
+		    numVertices = 0_u;
+
+		    IF(writer, config == 0_u)
+		    {
+			    // clip all
+		    }
+		    ELSEIF(config == 1_u)  // V1 clip V2 V3 V4
+		    {
+			    numVertices = 3_u;
+			    L1 = -L1.z() * L0 + L0.z() * L1;
+			    L2 = -L3.z() * L0 + L0.z() * L3;
+		    }
+		    ELSEIF(config == 2_u)  // V2 clip V1 V3 V4
+		    {
+			    numVertices = 3_u;
+			    L0 = -L0.z() * L1 + L1.z() * L0;
+			    L2 = -L2.z() * L1 + L1.z() * L2;
+		    }
+		    ELSEIF(config == 3_u)  // V1 V2 clip V3 V4
+		    {
+			    numVertices = 4_u;
+			    L2 = -L2.z() * L1 + L1.z() * L2;
+			    L3 = -L3.z() * L0 + L0.z() * L3;
+		    }
+		    ELSEIF(config == 4_u)  // V3 clip V1 V2 V4
+		    {
+			    numVertices = 3_u;
+			    L0 = -L3.z() * L2 + L2.z() * L3;
+			    L1 = -L1.z() * L2 + L2.z() * L1;
+		    }
+		    ELSEIF(config == 5_u)  // V1 V3 clip V2 V4) impossible
+		    {
+			    numVertices = 0_u;
+		    }
+		    ELSEIF(config == 6_u)  // V2 V3 clip V1 V4
+		    {
+			    numVertices = 4_u;
+			    L0 = -L0.z() * L1 + L1.z() * L0;
+			    L3 = -L3.z() * L2 + L2.z() * L3;
+		    }
+		    ELSEIF(config == 7_u)  // V1 V2 V3 clip V4
+		    {
+			    numVertices = 5_u;
+			    L4 = -L3.z() * L0 + L0.z() * L3;
+			    L3 = -L3.z() * L2 + L2.z() * L3;
+		    }
+		    ELSEIF(config == 8_u)  // V4 clip V1 V2 V3
+		    {
+			    numVertices = 3_u;
+			    L0 = -L0.z() * L3 + L3.z() * L0;
+			    L1 = -L2.z() * L3 + L3.z() * L2;
+			    L2 = L3;
+		    }
+		    ELSEIF(config == 9_u)  // V1 V4 clip V2 V3
+		    {
+			    numVertices = 4_u;
+			    L1 = -L1.z() * L0 + L0.z() * L1;
+			    L2 = -L2.z() * L3 + L3.z() * L2;
+		    }
+		    ELSEIF(config == 10_u)  // V2 V4 clip V1 V3) impossible
+		    {
+			    numVertices = 0_u;
+		    }
+		    ELSEIF(config == 11_u)  // V1 V2 V4 clip V3
+		    {
+			    numVertices = 5_u;
+			    L4 = L3;
+			    L3 = -L2.z() * L3 + L3.z() * L2;
+			    L2 = -L2.z() * L1 + L1.z() * L2;
+		    }
+		    ELSEIF(config == 12_u)  // V3 V4 clip V1 V2
+		    {
+			    numVertices = 4_u;
+			    L1 = -L1.z() * L2 + L2.z() * L1;
+			    L0 = -L0.z() * L3 + L3.z() * L0;
+		    }
+		    ELSEIF(config == 13_u)  // V1 V3 V4 clip V2
+		    {
+			    numVertices = 5_u;
+			    L4 = L3;
+			    L3 = L2;
+			    L2 = -L1.z() * L2 + L2.z() * L1;
+			    L1 = -L1.z() * L0 + L0.z() * L1;
+		    }
+		    ELSEIF(config == 14_u)  // V2 V3 V4 clip V1
+		    {
+			    numVertices = 5_u;
+			    L4 = -L0.z() * L3 + L3.z() * L0;
+			    L0 = -L0.z() * L1 + L1.z() * L0;
+		    }
+		    ELSEIF(config == 15_u)  // V1 V2 V3 V4
+		    {
+			    numVertices = 4_u;
+		    }
+		    FI;
+
+		    IF(writer, numVertices == 3_u) { L3 = L0; }
+		    FI;
+		    IF(writer, numVertices == 4_u) { L4 = L0; }
+		    FI;
+#pragma endregion
+
+		    Locale(schlick, vec2(0.0_f));
+
+		    IF(writer, numVertices == 0_u) { writer.returnStmt(vec3(0.0_f)); }
+		    FI;
+
+			    L0 = normalize(L0);
+			    L1 = normalize(L1);
+			    L2 = normalize(L2);
+			    L3 = normalize(L3);
+			    L4 = normalize(L4);
+
+			    Locale(sum, 0.0_f);
+			    Locale(cosTheta, 0.0_f);
+			    Locale(theta_2, 0.0_f);
+			    Locale(res, 0.0_f);
+
+			    Locale(v1, L0);
+			    Locale(v2, L1);
+
+			    cosTheta = dot(v1, v2);
+			    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+			    theta_2 = acos(cosTheta);
+			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
+
+			    v1 = L1;
+			    v2 = L2;
+
+			    cosTheta = dot(v1, v2);
+			    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+			    theta_2 = acos(cosTheta);
+			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
+
+			    v1 = L2;
+			    v2 = L3;
+
+			    cosTheta = dot(v1, v2);
+			    // cosTheta = sdw::clamp(cosTheta, -0.9999_f, 0.9999_f);
+			    theta_2 = acos(cosTheta);
+			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
+
+			    IF(writer, numVertices >= 4_u)
+			    {
+				    v1 = L3;
+				    v2 = L4;
+
+				    cosTheta = dot(v1, v2);
+				    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+				    theta_2 = acos(cosTheta);
+				    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
+			    }
+			    FI;
+
+			    IF(writer, numVertices == 5_u)
+			    {
+				    v1 = L4;
+				    v2 = L0;
+
+				    cosTheta = dot(v1, v2);
+				    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+				    theta_2 = acos(cosTheta);
+				    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
+			    }
+			    FI;
+
+			    // sum = abs(sum);
+			    sum = max(0.0_f, -sum);
+
+			    writer.returnStmt(vec3(sum));
+	    },
+	    InVec3{ writer, "N" }, InVec3{ writer, "V" }, InVec3{ writer, "P" },
+	    InMat3{ writer, "Minv" });
+
 	return writer.implementFunction<Vec4>(
 	    "combinedMaterialShading",
 	    [&writer, &materialFunction, &sceneUbo, buildData](
@@ -843,16 +1086,18 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 			    //			    Locale(x, log(clampledRoughnessX));
 			    //			    Locale(distributionAlphaX, 1.062142_f +
 			    // 0.819955_f
-			    //* x + 			                                   0.1734_f *
-			    //x
+			    //* x + 			                                   0.1734_f
+			    //*
+			    // x
 			    //* x + 0.0171201_f * x
 			    //* x * x + 0.000640711_f * x * x * x * x);
 			    //
 			    //			    Locale(y, log(clampledRoughnessY));
 			    //			    Locale(distributionAlphaY, 1.062142_f +
 			    // 0.819955_f
-			    //* y + 			                                   0.1734_f *
-			    //y
+			    //* y + 			                                   0.1734_f
+			    //*
+			    // y
 			    //* y + 0.0171201_f * y
 			    //* y * y + 0.000640711_f * y * y * y * y);
 			    //
@@ -1101,35 +1346,55 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    Locale(color, ambient + Lo);
 
 		    // =============== RTPLS with LTC ===============
-		    Locale(Lo_i, vec3(0.0_f));
-		    Locale(P1, buildData->pointLights->operator[](0).position +
-		                   vec3(-10.0_f + 20.0_f, 5.0_f + 0.0_f, 0.0_f));
-		    Locale(P2, buildData->pointLights->operator[](0).position +
-		                   vec3(-10.0_f + 20.0_f, 5.0_f + 20.0_f, 0.0_f));
-		    Locale(P3, buildData->pointLights->operator[](0).position +
-		                   vec3(10.0_f + 20.0_f, 5.0_f + 20.0_f, 0.0_f));
-		    Locale(P4, buildData->pointLights->operator[](0).position +
-		                   vec3(10.0_f + 20.0_f, 5.0_f + 0.0_f, 0.0_f));
+		    Locale(Lo_i_diff, vec3(0.0_f));
+		    Locale(Lo_i_spec, vec3(0.0_f));
+		    Locale(schlick, vec2(0.0_f));
 
-		    // Locale(P1, vec3(-10.0_f + 20.0_f, 5.0_f + 0.0_f, 0.0_f));
-		    // Locale(P2, vec3(-10.0_f + 20.0_f, 5.0_f + 20.0_f, 0.0_f));
-		    // Locale(P3, vec3( 10.0_f + 20.0_f, 5.0_f + 20.0_f, 0.0_f));
-		    // Locale(P4, vec3( 10.0_f + 20.0_f, 5.0_f + 0.0_f, 0.0_f));
+		    Locale(P1, vec3(10.0_f, 0.0_f, 10.0_f));
+		    Locale(P2, vec3(-10.0_f, 0.0_f, 10.0_f));
+		    Locale(P3, vec3(-10.0_f, 0.0_f, -10.0_f));
+		    Locale(P4, vec3(10.0_f, 0.0_f, -10.0_f));
+
+			//*
+		    Locale(sigma, sceneUbo.getSigma());
+
+		    Locale(lightRotx,
+		           transpose(mat3(vec3(1.0_f, 0.0_f, 0.0_f),
+		                          vec3(0.0_f, cos(sigma), -sin(sigma)),
+		                          vec3(0.0_f, sin(sigma), cos(sigma)))));
+
+		    // Locale(lightRoty,
+		    //       transpose(mat3(vec3(cos(M[0][1]), 0.0_f, sin(M[0][1])),
+		    //                      vec3(0.0_f, 1.0_f, 0.0_f),
+		    //                      vec3(-sin(M[0][1]), 0.0_f,
+		    //                      cos(M[0][1])))));
+
+		    Locale(lightRotz,
+		           transpose(mat3(vec3(cos(sigma), -sin(sigma), 0.0_f),
+		                          vec3(sin(sigma), cos(sigma), 0.0_f),
+		                          vec3(0.0_f, 0.0_f, 1.0_f))));
+
+		    // Locale(lightTr, lightRotz * lightRotx * lightRoty);
+		    Locale(lightTr, lightRotz);
+			//*/
 
 		    Locale(P, wsPosition);
 		    Locale(O, wsViewPosition - P);
 
-		     Locale(bg, cross(wsNormal, wsTangent));
-		     Locale(t2w, transpose(mat3(wsTangent, bg, wsNormal)));
+		    // Locale(bg, cross(wsNormal, wsTangent));
+		    // Locale(t2w, transpose(mat3(wsTangent, bg, wsNormal)));
 
-		     Locale(n, normalize(t2w * wsNormal));
-		     O = normalize(t2w * O);
-		    //Locale(n, wsNormal);
+		    // Locale(n, normalize(t2w * wsNormal));
+		    // O = normalize(t2w * O);
+		    Locale(n, wsNormal);
 		    // IF (writer, dot(n, O) < 0.0_f)
 		    //{
 		    // n = normalize(n - 1.01_f * O * dot(n, O));
 		    //}
 		    // FI;
+
+
+		    metalness = 0.3_f;
 
 		    Locale(diffColor, albedo * (1.0_f - metalness));
 		    Locale(specColor,
@@ -1142,33 +1407,62 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    Locale(coords, vec2(alpha / 0.7_f, theta / (0.5_f * pi)));
 
 		    // Locale(LUTSize, 32.0_f);
-		    //   coords = coords * (LUTSize - 1.0_f) / LUTSize + 0.5_f /
-		    //   LUTSize;
+		    // coords = coords * (LUTSize - 1.0_f) / LUTSize + 0.5_f / LUTSize;
 
 		    // ======= LTC Minv
-		    Locale(Minv,
-		           mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, 1.0_f, 0.0_f),
-		                vec3(0.0_f, 0.0_f, 1.0_f)));
-		    // Locale(t, buildData->ltcMat->sample(coords));
-		    // Locale(Minv, transpose(mat3(vec3(1.0_f, 0.0_f, t.y()),
-		    //                            vec3(0.0_f, t.z(), 0.0_f),
-		    //                            vec3(t.w(), 0.0_f, t.x()))));
+
+		     Locale(Minv,
+		          mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, 1.0_f, 0.0_f),
+		               vec3(0.0_f, 0.0_f, 1.0_f)));
+
+			Lo_i_diff = buildData->LTC_Evaluate(n, O, P, Minv);
+		     Lo_i_diff *= R;
+		    Lo_i_diff *= diffColor.rgb();
+		     Lo_i_diff /= (2.0_f * pi);
+
+		    // Locale(Minv,
+		    //      mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, 1.0_f, 0.0_f),
+		    //           vec3(0.0_f, 0.0_f, 1.0_f)));
+		    Locale(t, buildData->ltcMat->sample(coords));
+		    Minv = transpose(mat3(vec3(1.0_f, 0.0_f, t.y()),
+		                                 vec3(0.0_f, t.z(), 0.0_f),
+		                                 vec3(t.w(), 0.0_f, t.x())));
+
+		    Lo_i_spec = buildData->LTC_Evaluate(n, O, P, Minv);
+		    Lo_i_spec *= R;
+
+		    schlick = buildData->ltcAmp->sample(coords).rg();
+		    Lo_i_spec *=
+		        specColor * schlick.r() + (1.0_f - specColor) * schlick.g();
+		    Lo_i_spec /= (2.0_f * pi);
 
 		    // ======= LTC Evaluation
 		    Locale(T1, normalize(O - n * dot(O, n)));
-		    Locale(T2, cross(n, T1));
+		    Locale(T2, normalize(cross(n, T1)));
 		    // Locale(T1, normalize(O - wsNormal * dot(O, wsNormal)));
 		    // Locale(T2, cross(wsNormal, T1));
 
 		    Minv = Minv * transpose(mat3(T1, T2, n));
 
-		    Locale(L0, Minv * (P1 - P));
-		    Locale(L1, Minv * (P2 - P));
-		    Locale(L2, Minv * (P3 - P));
-		    Locale(L3, Minv * (P4 - P));
+		    Locale(L0,
+		           Minv * ((buildData->pointLights->operator[](0).position +
+		                    (lightTr * P1)) -
+		                   P));
+		    Locale(L1,
+		           Minv * ((buildData->pointLights->operator[](0).position +
+		                    (lightTr * P2)) -
+		                   P));
+		    Locale(L2,
+		           Minv * ((buildData->pointLights->operator[](0).position +
+		                    (lightTr * P3)) -
+		                   P));
+		    Locale(L3,
+		           Minv * ((buildData->pointLights->operator[](0).position +
+		                    (lightTr * P4)) -
+		                   P));
 		    Locale(L4, L3);
 
-		    Locale(numFaces, 0_u);
+		    Locale(numVertices, 0_u);
 
 #pragma region ClipQuadToHorizon
 		    // detect clipping config
@@ -1183,7 +1477,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    FI;
 
 		    // clip
-		    numFaces = 0_u;
+		    numVertices = 0_u;
 
 		    IF(writer, config == 0_u)
 		    {
@@ -1191,77 +1485,77 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    }
 		    ELSEIF(config == 1_u)  // V1 clip V2 V3 V4
 		    {
-			    numFaces = 3_u;
+			    numVertices = 3_u;
 			    L1 = -L1.z() * L0 + L0.z() * L1;
 			    L2 = -L3.z() * L0 + L0.z() * L3;
 		    }
 		    ELSEIF(config == 2_u)  // V2 clip V1 V3 V4
 		    {
-			    numFaces = 3_u;
+			    numVertices = 3_u;
 			    L0 = -L0.z() * L1 + L1.z() * L0;
 			    L2 = -L2.z() * L1 + L1.z() * L2;
 		    }
 		    ELSEIF(config == 3_u)  // V1 V2 clip V3 V4
 		    {
-			    numFaces = 4_u;
+			    numVertices = 4_u;
 			    L2 = -L2.z() * L1 + L1.z() * L2;
 			    L3 = -L3.z() * L0 + L0.z() * L3;
 		    }
 		    ELSEIF(config == 4_u)  // V3 clip V1 V2 V4
 		    {
-			    numFaces = 3_u;
+			    numVertices = 3_u;
 			    L0 = -L3.z() * L2 + L2.z() * L3;
 			    L1 = -L1.z() * L2 + L2.z() * L1;
 		    }
 		    ELSEIF(config == 5_u)  // V1 V3 clip V2 V4) impossible
 		    {
-			    numFaces = 0_u;
+			    numVertices = 0_u;
 		    }
 		    ELSEIF(config == 6_u)  // V2 V3 clip V1 V4
 		    {
-			    numFaces = 4_u;
+			    numVertices = 4_u;
 			    L0 = -L0.z() * L1 + L1.z() * L0;
 			    L3 = -L3.z() * L2 + L2.z() * L3;
 		    }
 		    ELSEIF(config == 7_u)  // V1 V2 V3 clip V4
 		    {
-			    numFaces = 5_u;
+			    numVertices = 5_u;
 			    L4 = -L3.z() * L0 + L0.z() * L3;
 			    L3 = -L3.z() * L2 + L2.z() * L3;
 		    }
 		    ELSEIF(config == 8_u)  // V4 clip V1 V2 V3
 		    {
-			    numFaces = 3_u;
+			    numVertices = 3_u;
 			    L0 = -L0.z() * L3 + L3.z() * L0;
 			    L1 = -L2.z() * L3 + L3.z() * L2;
 			    L2 = L3;
 		    }
 		    ELSEIF(config == 9_u)  // V1 V4 clip V2 V3
 		    {
-			    numFaces = 4_u;
+			    numVertices = 4_u;
 			    L1 = -L1.z() * L0 + L0.z() * L1;
 			    L2 = -L2.z() * L3 + L3.z() * L2;
 		    }
 		    ELSEIF(config == 10_u)  // V2 V4 clip V1 V3) impossible
 		    {
-			    numFaces = 0_u;
+			    numVertices = 0_u;
 		    }
 		    ELSEIF(config == 11_u)  // V1 V2 V4 clip V3
 		    {
-			    numFaces = 5_u;
+			    numVertices = 5_u;
 			    L4 = L3;
 			    L3 = -L2.z() * L3 + L3.z() * L2;
 			    L2 = -L2.z() * L1 + L1.z() * L2;
 		    }
 		    ELSEIF(config == 12_u)  // V3 V4 clip V1 V2
 		    {
-			    numFaces = 4_u;
+			    numVertices = 4_u;
 			    L1 = -L1.z() * L2 + L2.z() * L1;
 			    L0 = -L0.z() * L3 + L3.z() * L0;
 		    }
 		    ELSEIF(config == 13_u)  // V1 V3 V4 clip V2
 		    {
-			    numFaces = 5_u;
+			    numVertices = 5_u;
 			    L4 = L3;
 			    L3 = L2;
 			    L2 = -L1.z() * L2 + L2.z() * L1;
@@ -1269,23 +1563,24 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    }
 		    ELSEIF(config == 14_u)  // V2 V3 V4 clip V1
 		    {
-			    numFaces = 5_u;
+			    numVertices = 5_u;
 			    L4 = -L0.z() * L3 + L3.z() * L0;
 			    L0 = -L0.z() * L1 + L1.z() * L0;
 		    }
 		    ELSEIF(config == 15_u)  // V1 V2 V3 V4
 		    {
-			    numFaces = 4_u;
+			    numVertices = 4_u;
 		    }
 		    FI;
 
-		    IF(writer, numFaces == 3_u) { L3 = L0; }
+		    IF(writer, numVertices == 3_u) { L3 = L0; }
 		    FI;
-		    IF(writer, numFaces == 4_u) { L4 = L0; }
+		    IF(writer, numVertices == 4_u) { L4 = L0; }
 		    FI;
 #pragma endregion
 
-		    IF(writer, numFaces == 0_u) { Lo_i = vec3(0.0_f); }
+			/*
+		    IF(writer, numVertices == 0_u) { Lo_i = vec3(0.0_f); }
 		    ELSE
 		    {
 			    L0 = normalize(L0);
@@ -1303,7 +1598,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 			    Locale(v2, L1);
 
 			    cosTheta = dot(v1, v2);
-			    cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+			    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
 			    theta_2 = acos(cosTheta);
 			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
 
@@ -1311,7 +1606,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 			    v2 = L2;
 
 			    cosTheta = dot(v1, v2);
-			    cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+			    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
 			    theta_2 = acos(cosTheta);
 			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
 
@@ -1319,48 +1614,49 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 			    v2 = L3;
 
 			    cosTheta = dot(v1, v2);
-			    cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+			    // cosTheta = sdw::clamp(cosTheta, -0.9999_f, 0.9999_f);
 			    theta_2 = acos(cosTheta);
 			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
 
-			    IF(writer, numFaces >= 4_u)
+			    IF(writer, numVertices >= 4_u)
 			    {
 				    v1 = L3;
 				    v2 = L4;
 
 				    cosTheta = dot(v1, v2);
-				    cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+				    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
 				    theta_2 = acos(cosTheta);
 				    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
 			    }
 			    FI;
 
-			    IF(writer, numFaces == 5_u)
+			    IF(writer, numVertices == 5_u)
 			    {
 				    v1 = L4;
 				    v2 = L0;
 
 				    cosTheta = dot(v1, v2);
-				    cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
+				    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
 				    theta_2 = acos(cosTheta);
 				    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
 			    }
 			    FI;
 
-			     sum = abs(sum);
-			    //sum = max(0.0_f, -sum);
+			    // sum = abs(sum);
+			    sum = max(0.0_f, -sum);
 
 			    Lo_i = vec3(sum * R);
 
-			    Locale(schlick, buildData->ltcAmp->sample(coords).rg());
+			    // schlick = buildData->ltcAmp->sample(coords).rg();
 
-			    Lo_i *= diffColor.rgb();
+			    //// Lo_i *= diffColor.rgb();
 			    // Lo_i *= specColor * schlick.r() +
 			    //        (1.0_f - specColor) * schlick.g();
 
 			    Lo_i /= (2.0_f * pi);
 		    }
 		    FI;
+			//*/
 
 		    /*
 		    Locale(E, 0.0_f);
@@ -1408,7 +1704,10 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    // writer.returnStmt(color);
 		    // writer.returnStmt(vec4(wsTangent, 1.0_f));
-		    writer.returnStmt(vec4(Lo_i, 1.0_f));
+		    //writer.returnStmt(vec4(Lo_i, 1.0_f));
+		    writer.returnStmt(vec4(Lo_i_diff + Lo_i_spec, 1.0_f));
+		    // writer.returnStmt(vec4(n, 1.0_f));
+		    // writer.returnStmt(vec4(schlick, 0.0_f, 1.0_f));
 		    // writer.returnStmt(vec4(vec3(coords.y()), 1.0_f));
 		    // writer.returnStmt(vec4(I));
 	    },

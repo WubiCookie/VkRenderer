@@ -80,9 +80,9 @@ public:
 	Scene& operator=(Scene&&) = default;
 
 	float shadowBias = -0.4096f;
-	float R = 1.0f;
-	float sigma = 1.0f;
-	float roughness = 0.3f;
+	float R = 2.0f;
+	float sigma = 0.0f;
+	float roughness = 0.1f;
 	matrix3 LTDM = matrix3::identity();
 
 	const VkDescriptorSetLayout& descriptorSetLayout() const

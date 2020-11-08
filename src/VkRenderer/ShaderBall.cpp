@@ -2142,7 +2142,7 @@ void ShaderBall::imgui(CommandBuffer& cb)
 
 		ImGui::DragFloat("shadow bias", &m_scene.shadowBias, 0.0001f);
 		ImGui::DragFloat("R", &m_scene.R, 0.01f);
-		ImGui::SliderFloat("sigma", &m_scene.sigma, 0.0f, Pi / 2.0f);
+		ImGui::SliderFloat("sigma", &m_scene.sigma, -Pi/2.0f, Pi/2.0f);
 		ImGui::SliderFloat("roughness", &m_scene.roughness, 0.0f, 0.7f);
 		ImGui::DragFloat3("LTDM 0", &m_scene.LTDM.m00, 0.01f);
 		ImGui::DragFloat3("LTDM 1", &m_scene.LTDM.m01, 0.01f);
