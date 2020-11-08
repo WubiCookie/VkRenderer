@@ -1394,7 +1394,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    // FI;
 
 
-		    metalness = 0.3_f;
+		    //metalness = 0.3_f;
 
 		    Locale(diffColor, albedo * (1.0_f - metalness));
 		    Locale(specColor,
@@ -1403,13 +1403,11 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    // ======= LTC Coords
 		    Locale(theta, acos(dot(n, O)));
 		    // Locale(theta, acos(dot(wsNormal, O)));
-		    // Locale(coords, vec2(roughness, theta/(0.5_f * pi)));
-		    Locale(coords, vec2(alpha / 0.7_f, theta / (0.5_f * pi)));
+		     Locale(coords, vec2(roughness, theta/(0.5_f * pi)));
+		    //Locale(coords, vec2(alpha / 0.7_f, theta / (0.5_f * pi)));
 
 		    // Locale(LUTSize, 32.0_f);
 		    // coords = coords * (LUTSize - 1.0_f) / LUTSize + 0.5_f / LUTSize;
-
-		    // ======= LTC Minv
 
 		     Locale(Minv,
 		          mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, 1.0_f, 0.0_f),
@@ -1420,9 +1418,6 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    Lo_i_diff *= diffColor.rgb();
 		     Lo_i_diff /= (2.0_f * pi);
 
-		    // Locale(Minv,
-		    //      mat3(vec3(1.0_f, 0.0_f, 0.0_f), vec3(0.0_f, 1.0_f, 0.0_f),
-		    //           vec3(0.0_f, 0.0_f, 1.0_f)));
 		    Locale(t, buildData->ltcMat->sample(coords));
 		    Minv = transpose(mat3(vec3(1.0_f, 0.0_f, t.y()),
 		                                 vec3(0.0_f, t.z(), 0.0_f),
@@ -1435,272 +1430,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    Lo_i_spec *=
 		        specColor * schlick.r() + (1.0_f - specColor) * schlick.g();
 		    Lo_i_spec /= (2.0_f * pi);
-
-		    // ======= LTC Evaluation
-		    Locale(T1, normalize(O - n * dot(O, n)));
-		    Locale(T2, normalize(cross(n, T1)));
-		    // Locale(T1, normalize(O - wsNormal * dot(O, wsNormal)));
-		    // Locale(T2, cross(wsNormal, T1));
-
-		    Minv = Minv * transpose(mat3(T1, T2, n));
-
-		    Locale(L0,
-		           Minv * ((buildData->pointLights->operator[](0).position +
-		                    (lightTr * P1)) -
-		                   P));
-		    Locale(L1,
-		           Minv * ((buildData->pointLights->operator[](0).position +
-		                    (lightTr * P2)) -
-		                   P));
-		    Locale(L2,
-		           Minv * ((buildData->pointLights->operator[](0).position +
-		                    (lightTr * P3)) -
-		                   P));
-		    Locale(L3,
-		           Minv * ((buildData->pointLights->operator[](0).position +
-		                    (lightTr * P4)) -
-		                   P));
-		    Locale(L4, L3);
-
-		    Locale(numVertices, 0_u);
-
-#pragma region ClipQuadToHorizon
-		    // detect clipping config
-		    Locale(config, 0_u);
-		    IF(writer, L0.z() > 0.0_f) { config += 1_u; }
-		    FI;
-		    IF(writer, L1.z() > 0.0_f) { config += 2_u; }
-		    FI;
-		    IF(writer, L2.z() > 0.0_f) { config += 4_u; }
-		    FI;
-		    IF(writer, L3.z() > 0.0_f) { config += 8_u; }
-		    FI;
-
-		    // clip
-		    numVertices = 0_u;
-
-		    IF(writer, config == 0_u)
-		    {
-			    // clip all
-		    }
-		    ELSEIF(config == 1_u)  // V1 clip V2 V3 V4
-		    {
-			    numVertices = 3_u;
-			    L1 = -L1.z() * L0 + L0.z() * L1;
-			    L2 = -L3.z() * L0 + L0.z() * L3;
-		    }
-		    ELSEIF(config == 2_u)  // V2 clip V1 V3 V4
-		    {
-			    numVertices = 3_u;
-			    L0 = -L0.z() * L1 + L1.z() * L0;
-			    L2 = -L2.z() * L1 + L1.z() * L2;
-		    }
-		    ELSEIF(config == 3_u)  // V1 V2 clip V3 V4
-		    {
-			    numVertices = 4_u;
-			    L2 = -L2.z() * L1 + L1.z() * L2;
-			    L3 = -L3.z() * L0 + L0.z() * L3;
-		    }
-		    ELSEIF(config == 4_u)  // V3 clip V1 V2 V4
-		    {
-			    numVertices = 3_u;
-			    L0 = -L3.z() * L2 + L2.z() * L3;
-			    L1 = -L1.z() * L2 + L2.z() * L1;
-		    }
-		    ELSEIF(config == 5_u)  // V1 V3 clip V2 V4) impossible
-		    {
-			    numVertices = 0_u;
-		    }
-		    ELSEIF(config == 6_u)  // V2 V3 clip V1 V4
-		    {
-			    numVertices = 4_u;
-			    L0 = -L0.z() * L1 + L1.z() * L0;
-			    L3 = -L3.z() * L2 + L2.z() * L3;
-		    }
-		    ELSEIF(config == 7_u)  // V1 V2 V3 clip V4
-		    {
-			    numVertices = 5_u;
-			    L4 = -L3.z() * L0 + L0.z() * L3;
-			    L3 = -L3.z() * L2 + L2.z() * L3;
-		    }
-		    ELSEIF(config == 8_u)  // V4 clip V1 V2 V3
-		    {
-			    numVertices = 3_u;
-			    L0 = -L0.z() * L3 + L3.z() * L0;
-			    L1 = -L2.z() * L3 + L3.z() * L2;
-			    L2 = L3;
-		    }
-		    ELSEIF(config == 9_u)  // V1 V4 clip V2 V3
-		    {
-			    numVertices = 4_u;
-			    L1 = -L1.z() * L0 + L0.z() * L1;
-			    L2 = -L2.z() * L3 + L3.z() * L2;
-		    }
-		    ELSEIF(config == 10_u)  // V2 V4 clip V1 V3) impossible
-		    {
-			    numVertices = 0_u;
-		    }
-		    ELSEIF(config == 11_u)  // V1 V2 V4 clip V3
-		    {
-			    numVertices = 5_u;
-			    L4 = L3;
-			    L3 = -L2.z() * L3 + L3.z() * L2;
-			    L2 = -L2.z() * L1 + L1.z() * L2;
-		    }
-		    ELSEIF(config == 12_u)  // V3 V4 clip V1 V2
-		    {
-			    numVertices = 4_u;
-			    L1 = -L1.z() * L2 + L2.z() * L1;
-			    L0 = -L0.z() * L3 + L3.z() * L0;
-		    }
-		    ELSEIF(config == 13_u)  // V1 V3 V4 clip V2
-		    {
-			    numVertices = 5_u;
-			    L4 = L3;
-			    L3 = L2;
-			    L2 = -L1.z() * L2 + L2.z() * L1;
-			    L1 = -L1.z() * L0 + L0.z() * L1;
-		    }
-		    ELSEIF(config == 14_u)  // V2 V3 V4 clip V1
-		    {
-			    numVertices = 5_u;
-			    L4 = -L0.z() * L3 + L3.z() * L0;
-			    L0 = -L0.z() * L1 + L1.z() * L0;
-		    }
-		    ELSEIF(config == 15_u)  // V1 V2 V3 V4
-		    {
-			    numVertices = 4_u;
-		    }
-		    FI;
-
-		    IF(writer, numVertices == 3_u) { L3 = L0; }
-		    FI;
-		    IF(writer, numVertices == 4_u) { L4 = L0; }
-		    FI;
-#pragma endregion
-
-			/*
-		    IF(writer, numVertices == 0_u) { Lo_i = vec3(0.0_f); }
-		    ELSE
-		    {
-			    L0 = normalize(L0);
-			    L1 = normalize(L1);
-			    L2 = normalize(L2);
-			    L3 = normalize(L3);
-			    L4 = normalize(L4);
-
-			    Locale(sum, 0.0_f);
-			    Locale(cosTheta, 0.0_f);
-			    Locale(theta_2, 0.0_f);
-			    Locale(res, 0.0_f);
-
-			    Locale(v1, L0);
-			    Locale(v2, L1);
-
-			    cosTheta = dot(v1, v2);
-			    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
-			    theta_2 = acos(cosTheta);
-			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
-
-			    v1 = L1;
-			    v2 = L2;
-
-			    cosTheta = dot(v1, v2);
-			    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
-			    theta_2 = acos(cosTheta);
-			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
-
-			    v1 = L2;
-			    v2 = L3;
-
-			    cosTheta = dot(v1, v2);
-			    // cosTheta = sdw::clamp(cosTheta, -0.9999_f, 0.9999_f);
-			    theta_2 = acos(cosTheta);
-			    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
-
-			    IF(writer, numVertices >= 4_u)
-			    {
-				    v1 = L3;
-				    v2 = L4;
-
-				    cosTheta = dot(v1, v2);
-				    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
-				    theta_2 = acos(cosTheta);
-				    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
-			    }
-			    FI;
-
-			    IF(writer, numVertices == 5_u)
-			    {
-				    v1 = L4;
-				    v2 = L0;
-
-				    cosTheta = dot(v1, v2);
-				    // cosTheta = clamp(cosTheta, -0.9999_f, 0.9999_f);
-				    theta_2 = acos(cosTheta);
-				    sum += cross(v1, v2).z() * theta_2 / sin(theta_2);
-			    }
-			    FI;
-
-			    // sum = abs(sum);
-			    sum = max(0.0_f, -sum);
-
-			    Lo_i = vec3(sum * R);
-
-			    // schlick = buildData->ltcAmp->sample(coords).rg();
-
-			    //// Lo_i *= diffColor.rgb();
-			    // Lo_i *= specColor * schlick.r() +
-			    //        (1.0_f - specColor) * schlick.g();
-
-			    Lo_i /= (2.0_f * pi);
-		    }
-		    FI;
-			//*/
-
-		    /*
-		    Locale(E, 0.0_f);
-
-		    Locale(Pi, P1);
-		    Locale(Pj, P2);
-
-		    Locale(dotPiPj, sdw::dot(Pi, Pj));
-		    Locale(acosdotPiPj, sdw::acos(dotPiPj));
-
-		    Locale(normalizedcrossPiPj, normalize(cross(Pi, Pj)));
-		    Locale(dotnormalizedcrossPiPjZ, dot(normalizedcrossPiPj,
-		    vec3(0.0_f, 0.0_f, 1.0_f))); E += acosdotPiPj *
-		    dotnormalizedcrossPiPjZ;
-
-
-		    Pi = P2;
-		    Pj = P3;
-
-		    dotPiPj = sdw::dot(Pi, Pj);
-		    acosdotPiPj = sdw::acos(dotPiPj);
-
-		    normalizedcrossPiPj = normalize(cross(Pi, Pj));
-		    dotnormalizedcrossPiPjZ =
-		           dot(normalizedcrossPiPj, vec3(0.0_f, 0.0_f, 1.0_f));
-		    E += acosdotPiPj * dotnormalizedcrossPiPjZ;
-
-		    Pi = P3;
-		    Pj = P1;
-
-		    dotPiPj = sdw::dot(Pi, Pj);
-		    acosdotPiPj = sdw::acos(dotPiPj);
-
-		    normalizedcrossPiPj = normalize(cross(Pi, Pj));
-		    dotnormalizedcrossPiPjZ =
-		        dot(normalizedcrossPiPj, vec3(0.0_f, 0.0_f, 1.0_f));
-		    E += acosdotPiPj * dotnormalizedcrossPiPjZ;
-
-		    E = E / (2.0_f * pi);
-
-		    // polygon irradiance
-		    Locale(I, E);
-		    //*/
-		    // ==============================================
+			// ==============================================
 
 		    // writer.returnStmt(color);
 		    // writer.returnStmt(vec4(wsTangent, 1.0_f));
