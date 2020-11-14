@@ -107,6 +107,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
 		auto fragID = writer.declOutput<UInt>("fragID", 1);
+		auto fragNormalDepth = writer.declOutput<Vec4>("fragNormalDepth", 2);
 
 		auto environmentMap =
 		    writer.declSampledImage<FImgCubeRgba32>("environmentMap", 1, 0);
@@ -124,6 +125,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 
 			fragColor = envColor;
 			fragID = -1_u;
+			fragNormalDepth = vec4(0.0_f);
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -397,6 +399,18 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 	objectIDBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	objectIDBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
+	VkPipelineColorBlendAttachmentState normalDepthBlendAttachment = {};
+	normalDepthBlendAttachment.colorWriteMask =
+	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	normalDepthBlendAttachment.blendEnable = false;
+	normalDepthBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	normalDepthBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	normalDepthBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	normalDepthBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	normalDepthBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	normalDepthBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
 	// colorHDRBlendAttachment.blendEnable = true;
 	// colorHDRBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	// colorHDRBlendAttachment.dstColorBlendFactor =
@@ -407,7 +421,8 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 	// colorHDRBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	std::array colorBlendAttachments{ colorBlendAttachment,
-		                              objectIDBlendAttachment };
+		                              objectIDBlendAttachment,
+		                              normalDepthBlendAttachment };
 
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
 	colorBlending.logicOpEnable = false;

@@ -139,6 +139,9 @@ class ShaderBall final
 	Texture2D m_objectIDResolveTexture;
 
 	Texture2D m_highlightColorAttachmentTexture;
+	Texture2D m_normalDepthTexture;
+	Texture2D m_normalDepthResolveTexture;
+	Texture2D m_noiseTexture;
 
 	std::unique_ptr<Skybox> m_skybox;
 
