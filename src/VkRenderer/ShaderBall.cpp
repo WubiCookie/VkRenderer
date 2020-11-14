@@ -2414,9 +2414,9 @@ void ShaderBall::rebuild()
 	for (vector4& noiseSample : noise)
 	{
 		// Random rotations around z-axis
-		noiseSample = vector4{ randomFloats(generator) * 2.0f - 1.0f,
-			                   randomFloats(generator) * 2.0f - 1.0f,
-			                   randomFloats(generator), 0 };
+		noiseSample =
+		    vector4{ randomFloats(generator) * 2.0f - 1.0f,
+			         randomFloats(generator) * 2.0f - 1.0f, 0.f, 0.f };
 	}
 	// uint8_t* imageData = stbi_load(filename.data(), &w, &h, &c, 4);
 
@@ -2995,9 +2995,9 @@ void ShaderBall::rebuild()
 
 		writer.implementMain([&]() {
 			Locale(uv,
-				in.fragCoord.xy() /
-				vec2(Float(float(rw.get().swapchainExtent().width)),
-					Float(float(rw.get().swapchainExtent().height))));
+			       in.fragCoord.xy() /
+			           vec2(Float(float(rw.get().swapchainExtent().width)),
+			                Float(float(rw.get().swapchainExtent().height))));
 			Locale(sceneColor, sceneColorTexture.sample(uv));
 			Locale(sceneID, sceneIDTexture.sample(uv));
 
@@ -3012,10 +3012,13 @@ void ShaderBall::rebuild()
 			Locale(normal, normalize(normalDepthTexture.sample(uv).rgb()));
 
 			Locale(noiseScale, vec2(800.0_f / 4.0_f, 600.0_f / 4.0_f));
-			Locale(randomVec, normalize(noiseTexture.sample(uv * noiseScale).rgb()));
+			Locale(randomVec,
+			       normalize(noiseTexture.sample(uv * noiseScale).rgb()));
 
-			// create TBN change-of-basis matrix: from tangent-space to view-space
-			Locale(tangent, normalize(randomVec - normal * dot(randomVec, normal)));
+			// create TBN change-of-basis matrix: from tangent-space to
+			// view-space
+			Locale(tangent,
+			       normalize(randomVec - normal * dot(randomVec, normal)));
 			Locale(bitangent, cross(normal, tangent));
 			Locale(TBN, mat3(tangent, bitangent, normal));
 
@@ -3024,37 +3027,36 @@ void ShaderBall::rebuild()
 			Locale(bias, 0.01_f);
 			Locale(occlusion, 0.0_f);
 
-			
 			// iterate over the sample kernel and calculate occlusion factor
 			for (int i = 0; i < kernelSize; ++i)
 			{
 				/*
 				// get sample position
-				vec3 samplePos = TBN * samples[i]; // from tangent to view-space
-				samplePos = fragPos + samplePos * radius;
+				vec3 samplePos = TBN * samples[i]; // from tangent to
+				view-space samplePos = fragPos + samplePos * radius;
 
-				// project sample position (to sample texture) (to get position on screen/texture)
-				vec4 offset = vec4(samplePos, 1.0);
-				offset = projection * offset; // from view to clip-space
-				offset.xyz /= offset.w; // perspective divide
-				offset.xyz = offset.xyz * 0.5 + 0.5; // transform to range 0.0 - 1.0
+				// project sample position (to sample texture) (to get position
+				on screen/texture) vec4 offset = vec4(samplePos, 1.0); offset =
+				projection * offset; // from view to clip-space offset.xyz /=
+				offset.w; // perspective divide offset.xyz = offset.xyz * 0.5 +
+				0.5; // transform to range 0.0 - 1.0
 
 				// get sample depth
-				float sampleDepth = texture(gPosition, offset.xy).z; // get depth value of kernel sample
+				float sampleDepth = texture(gPosition, offset.xy).z; // get
+				depth value of kernel sample
 
 				// range check & accumulate
-				float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
-				occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;
+				float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z
+				- sampleDepth)); occlusion += (sampleDepth >= samplePos.z +
+				bias ? 1.0 : 0.0) * rangeCheck;
 				*/
 			}
-			
 
 			IF(writer, sceneID == id || id == 4294967294_u)
 			{
 				fragColor = sceneColor;
 			}
-			ELSE {
-				fragColor = sceneColor / 10.0_f; }
+			ELSE { fragColor = sceneColor / 10.0_f; }
 			FI;
 		});
 
