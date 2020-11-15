@@ -67,6 +67,15 @@ struct ShaderBallMesh
 
 class ShaderBall final
 {
+	struct alignas(16) UBOStruct
+	{
+		vector4 samples[64];
+		matrix4 proj = matrix4::identity();
+	};
+
+	Buffer m_uniformBuffer;
+	UBOStruct m_uboStruct;
+
 	std::reference_wrapper<RenderWindow> rw;
 
 	UniqueRenderPass m_renderPass;

@@ -1093,11 +1093,17 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		layoutBindingpositionTexture.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		std::array highlightLayoutBindings{ layoutBindingHighlightInputColor,
-			                                layoutBindingHighlightInputID,
-			                                layoutBindingNormalDepthTexture,
-			                                layoutBindingNoiseTexture,
-			                                layoutBindingpositionTexture };
+		VkDescriptorSetLayoutBinding layoutBindingUbo{};
+		layoutBindingUbo.binding = 5;
+		layoutBindingUbo.descriptorCount = 1;
+		layoutBindingUbo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		layoutBindingUbo.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		std::array highlightLayoutBindings{
+			layoutBindingHighlightInputColor, layoutBindingHighlightInputID,
+			layoutBindingNormalDepthTexture,  layoutBindingNoiseTexture,
+			layoutBindingpositionTexture,     layoutBindingUbo
+		};
 
 		vk::DescriptorSetLayoutCreateInfo highlightSetLayoutInfo;
 		highlightSetLayoutInfo.bindingCount =
@@ -1152,6 +1158,59 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 #pragma endregion
 
 #pragma region UBO
+	m_uniformBuffer =
+	    Buffer(vk, sizeof(UBOStruct), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	           VMA_MEMORY_USAGE_CPU_ONLY,
+	           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+	               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	m_uniformBuffer.setName("UBO");
+
+	std::uniform_real_distribution<float> randomFloats(
+	    0.0, 1.0);  // random floats between [0.0, 1.0]
+	std::default_random_engine generator;
+
+	for (uint32_t i = 0; i < 64; ++i)
+	{
+		vector3 sample(randomFloats(generator) * 2.0f - 1.0f,
+		               randomFloats(generator) * 2.0f - 1.0f,
+		               randomFloats(generator));
+
+		sample = cdm::normalized(sample);   // Snap to surface of hemisphere
+		sample *= randomFloats(generator);  // Space out linearly
+
+		float scale = (float)i / (float)64;
+		scale = cdm::lerp(
+		    0.1f, 1.0f,
+		    scale * scale);  // Bring distribution of samples closer to origin
+
+		m_uboStruct.samples[i] = vector4(sample * scale, 0.0f);
+	}
+	m_uboStruct.proj =
+	    matrix4::perspective(90_deg,
+	                         float(rw.get().swapchainExtent().width) /
+	                             float(rw.get().swapchainExtent().height),
+	                         0.01f, 1000.0f)
+	        .get_transposed();
+
+	void* ptr = m_uniformBuffer.map<UBOStruct>();
+	std::memcpy(ptr, &m_uboStruct, sizeof(UBOStruct));
+	m_uniformBuffer.unmap();
+
+	VkDescriptorBufferInfo setBufferInfo{};
+	setBufferInfo.buffer = m_uniformBuffer;
+	setBufferInfo.range = sizeof(UBOStruct);
+	setBufferInfo.offset = 0;
+
+	vk::WriteDescriptorSet uboWrite;
+	uboWrite.descriptorCount = 1;
+	uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboWrite.dstArrayElement = 0;
+	uboWrite.dstBinding = 5;
+	uboWrite.dstSet = m_highlightDescriptorSet;
+	uboWrite.pBufferInfo = &setBufferInfo;
+
+	vk.updateDescriptorSets(uboWrite);
+
 	/*
 	m_matricesUBO = Buffer(
 	    rw, sizeof(m_config), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -1705,9 +1764,11 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		VkClearValue clearDepth{};
 		clearDepth.depthStencil.depth = 1.0f;
 
-		std::array clearValues = { clearColor,      clearID, clearDepth,
-			                       clearColor,      clearID, clearNormalDepth,
-			                       clearNormalDepth, clearColor, clearColor };
+		std::array clearValues = { clearColor,       clearID,
+			                       clearDepth,       clearColor,
+			                       clearID,          clearNormalDepth,
+			                       clearNormalDepth, clearColor,
+			                       clearColor };
 
 		vk::RenderPassBeginInfo rpInfo;
 		rpInfo.framebuffer = m_framebuffer;
@@ -2166,6 +2227,17 @@ void ShaderBall::standaloneDraw()
 	// pointLights->position = vector3(0, 10, 0);
 	m_shadingModel.m_directionalLightsStaging.unmap();
 	m_shadingModel.uploadDirectionalLightsStaging();
+
+	m_uboStruct.proj =
+	    matrix4::perspective(90_deg,
+	                         float(rw.get().swapchainExtent().width) /
+	                             float(rw.get().swapchainExtent().height),
+	                         0.01f, 1000.0f)
+	        .get_transposed();
+
+	void* ptr = m_uniformBuffer.map<UBOStruct>();
+	std::memcpy(ptr, &m_uboStruct, sizeof(UBOStruct));
+	m_uniformBuffer.unmap();
 
 	m_scene.uploadTransformMatrices(
 	    cameraTr, m_config.proj,
@@ -2717,7 +2789,7 @@ void ShaderBall::rebuild()
 		auto roughnesses = writer.declSampledImageArray<FImg2DRgba32>(
 		    "roughnesses", 5, 0, 16);
 
-		//auto fragPosition = writer.declInput<Vec3>("fragPosition", 0);
+		// auto fragPosition = writer.declInput<Vec3>("fragPosition", 0);
 		auto fragDistance = writer.declInput<Float>("fragDistance", 7);
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
 		auto fragID = writer.declOutput<UInt>("fragID", 1);
@@ -2810,8 +2882,7 @@ void ShaderBall::rebuild()
 			fragID = pc.getMember<UInt>("objectID");
 			fragNormalDepth.xyz() = N;
 			fragNormalDepth.w() = fragDistance;
-			fragPos = N;
-			//fragPositionOut = fragPosition;
+			fragPos = writer.fragPosition;
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -3104,7 +3175,12 @@ void ShaderBall::rebuild()
 		auto noiseTexture =
 		    writer.declSampledImage<FImg2DRgba32>("noiseTexture", 3, 0);
 		auto positionTexture =
-			writer.declSampledImage<FImg2DRgba32>("positionTexture", 4, 0);
+		    writer.declSampledImage<FImg2DRgba32>("positionTexture", 4, 0);
+
+		sdw::Ubo ubo = sdw::Ubo(writer, "UBO", 5, 0);
+		ubo.declMember<Vec4>("samples", uint32_t(64));
+		ubo.declMember<Mat4>("proj");
+		ubo.end();
 
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
 
@@ -3126,56 +3202,106 @@ void ShaderBall::rebuild()
 			// Todo : get depthTexture
 			Locale(depth, normalDepthTexture.sample(uv).a());
 
-			// Todo : get position
+			IF(writer, depth == 0.0f)
+			{
+				fragColor = vec4(1.0_f);
+				writer.returnStmt();
+			}
+			FI;
+
 			Locale(position, positionTexture.sample(uv).rgb());
 			Locale(normal, normalize(normalDepthTexture.sample(uv).rgb()));
 
-			Locale(noiseScale, vec2(800.0_f / 4.0_f, 600.0_f / 4.0_f));
-			Locale(randomVec,
-			       normalize(noiseTexture.sample(uv * noiseScale).rgb()));
+			Locale(depthTexSize, normalDepthTexture.getSize(0_i));
+			Locale(noiseTexSize, noiseTexture.getSize(0_i));
+			Locale(renderScale, 0.5_f);
+
+			Locale(noiseUV, vec2(writer.cast<Float>(depthTexSize.x()) /
+			                         writer.cast<Float>(noiseTexSize.x()),
+			                     writer.cast<Float>(depthTexSize.y()) /
+			                         writer.cast<Float>(noiseTexSize.y())) *
+			                    uv * renderScale);
+			// Locale(noiseScale, vec2(uv.x() / 4.0_f, uv.y() / 4.0_f));
+			Locale(randomVec, noiseTexture.sample(noiseUV).rgb());
 
 			// create TBN change-of-basis matrix: from tangent-space to
 			// view-space
 			Locale(tangent,
 			       normalize(randomVec - normal * dot(randomVec, normal)));
-			Locale(bitangent, cross(normal, tangent));
+			Locale(bitangent, cross(tangent, normal));
 			Locale(TBN, mat3(tangent, bitangent, normal));
 
 			Locale(kernelSize, 64_u);
-			Locale(radius, 0.5_f);
+			Locale(radius, 100.0_f);
 			Locale(bias, 0.01_f);
 			Locale(occlusion, 0.0_f);
+			Locale(sampleCount, 0_u);
 
 			// iterate over the sample kernel and calculate occlusion factor
-			for (int i = 0; i < kernelSize; ++i)
+			FOR(writer, UInt, i, 0_u, i < kernelSize, ++i)
 			{
-				/*
-				// get sample position
-				vec3 samplePos = TBN * samples[i]; // from tangent to
-				view-space samplePos = fragPos + samplePos * radius;
+				// from tangent to view - space
+				Locale(samplePos,
+				       TBN * ubo.getMemberArray<Vec4>("samples")[i].xyz());
+				samplePos = position + samplePos * radius;
 
 				// project sample position (to sample texture) (to get position
-				on screen/texture) vec4 offset = vec4(samplePos, 1.0); offset =
-				projection * offset; // from view to clip-space offset.xyz /=
-				offset.w; // perspective divide offset.xyz = offset.xyz * 0.5 +
-				0.5; // transform to range 0.0 - 1.0
+				// on screen / texture)
+				Locale(offset, vec4(samplePos, 1.0_f));
+				offset = ubo.getMember<Mat4>("proj") * offset;
+				offset.xy() /= offset.w();
+				offset.xy() = offset.xy() * 0.5_f + 0.5_f;
+				offset.y() = 1.0_f - offset.y();
+				// offset.xyz() /= offset.w();
+				// offset.xyz() = offset.xyz() * 0.5_f + 0.5_f;
+
+				Locale(reconstructedPos, positionTexture.sample(offset.xy()).rgb());
+				Locale(sampledNormal,
+				       normalize(normalDepthTexture.sample(offset.xy()).rgb()));
+
+				IF(writer, dot(sampledNormal, normal) > 0.99_f)
+				{
+					++sampleCount;
+				}
+				ELSE
+				{
+					Locale(rangeCheck,
+					       smoothStep(0.0_f, 1.0_f,
+					                  radius / abs(reconstructedPos.z() -
+					                               samplePos.z() - bias)));
+					occlusion +=
+					    TERNARY(writer, Float,
+					            reconstructedPos.z() <= samplePos.z() - bias,
+					            1.0_f, 0.0_f) *
+					    rangeCheck;
+					++sampleCount;
+				}
+				FI;
 
 				// get sample depth
-				float sampleDepth = texture(gPosition, offset.xy).z; // get
-				depth value of kernel sample
+				/*Locale(sampleDepth, positionTexture.sample(offset.xy()));
 
 				// range check & accumulate
-				float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z
-				- sampleDepth)); occlusion += (sampleDepth >= samplePos.z +
-				bias ? 1.0 : 0.0) * rangeCheck;
-				*/
+				Locale(rangeCheck,
+				       smoothStep(0.0_f, 1.0_f,
+				                  radius / abs(position.z() - sampleDepth)));
+
+				occlusion =
+				    TERNARY(writer, Float, sampleDepth >= samplePos.z() + bias,
+				            5.0_f, 0.0_f) *
+				    rangeCheck;*/
 			}
+			ROF;
+			// occlusion = 1.0_f - (occlusion /
+			// writer.cast<Float>(kernelSize));
+			occlusion =
+			    1.0 - (occlusion / writer.cast<Float>(max(sampleCount, 1_u)));
 
 			IF(writer, sceneID == id || id == 4294967294_u)
 			{
-				fragColor = sceneColor;
+				fragColor = vec4(occlusion);
 			}
-			ELSE { fragColor = sceneColor / 10.0_f; }
+			ELSE { fragColor = sceneColor * occlusion / 10.0_f; }
 			FI;
 		});
 
