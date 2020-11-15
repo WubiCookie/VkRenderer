@@ -643,6 +643,17 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	normalDepthAttachment.finalLayout =
 	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentDescription positionAttachment = {};
+	positionAttachment.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	positionAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
+	positionAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	positionAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	positionAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	positionAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	positionAttachment.initialLayout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	positionAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	VkAttachmentDescription depthAttachment = {};
 	depthAttachment.format = rw.get().depthImageFormat();
 	depthAttachment.samples = VK_SAMPLE_COUNT_4_BIT;
@@ -695,13 +706,28 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	normalDepthResolveAttachment.finalLayout =
 	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentDescription positionResolveAttachment = {};
+	positionResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	positionResolveAttachment.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	positionResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	positionResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	positionResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	positionResolveAttachment.stencilStoreOp =
+	    VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	positionResolveAttachment.initialLayout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	positionResolveAttachment.finalLayout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	std::array colorAttachments{ colorAttachment,
 		                         objectIDAttachment,
 		                         depthAttachment,
 		                         colorResolveAttachment,
 		                         objectIDResolveAttachment,
 		                         normalDepthAttachment,
-		                         normalDepthResolveAttachment };
+		                         normalDepthResolveAttachment,
+		                         positionAttachment,
+		                         positionResolveAttachment };
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment = 0;
@@ -735,14 +761,25 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	normalDepthResolveAttachmentRef.layout =
 	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentReference positionAttachmentRef = {};
+	positionAttachmentRef.attachment = 7;
+	positionAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference positionResolveAttachmentRef = {};
+	positionResolveAttachmentRef.attachment = 8;
+	positionResolveAttachmentRef.layout =
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	std::array colorAttachmentRefs{ colorAttachmentRef  //, depthAttachmentRef
 		                            ,
 		                            objectIDAttachmentRef,
-		                            normalDepthAttachmentRef };
+		                            normalDepthAttachmentRef,
+		                            positionAttachmentRef };
 
 	std::array resolveAttachmentRefs{ colorResolveAttachmentRef,
 		                              objectIDResolveAttachmentRef,
-		                              normalDepthResolveAttachmentRef };
+		                              normalDepthResolveAttachmentRef,
+		                              positionResolveAttachmentRef };
 
 	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -1049,10 +1086,18 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		layoutBindingNoiseTexture.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+		VkDescriptorSetLayoutBinding layoutBindingpositionTexture{};
+		layoutBindingpositionTexture.binding = 4;
+		layoutBindingpositionTexture.descriptorCount = 1;
+		layoutBindingpositionTexture.descriptorType =
+		    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		layoutBindingpositionTexture.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
 		std::array highlightLayoutBindings{ layoutBindingHighlightInputColor,
 			                                layoutBindingHighlightInputID,
 			                                layoutBindingNormalDepthTexture,
-			                                layoutBindingNoiseTexture };
+			                                layoutBindingNoiseTexture,
+			                                layoutBindingpositionTexture };
 
 		vk::DescriptorSetLayoutCreateInfo highlightSetLayoutInfo;
 		highlightSetLayoutInfo.bindingCount =
@@ -1662,7 +1707,7 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 
 		std::array clearValues = { clearColor,      clearID, clearDepth,
 			                       clearColor,      clearID, clearNormalDepth,
-			                       clearNormalDepth };
+			                       clearNormalDepth, clearColor, clearColor };
 
 		vk::RenderPassBeginInfo rpInfo;
 		rpInfo.framebuffer = m_framebuffer;
@@ -1742,6 +1787,10 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 		                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, barrier);
 
+		barrier.image = m_positionResolveTexture;
+		cb.pipelineBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, barrier);
+
 		VkClearValue clearColor{};
 		clearColor.color.float32[0] = 0X27 / 255.0f;
 		clearColor.color.float32[1] = 0X28 / 255.0f;
@@ -1799,6 +1848,10 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 		                   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, barrier);
 
 		barrier.image = m_normalDepthResolveTexture;
+		cb.pipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		                   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, barrier);
+
+		barrier.image = m_positionResolveTexture;
 		cb.pipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		                   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, barrier);
 
@@ -2367,6 +2420,51 @@ void ShaderBall::rebuild()
 	}
 #pragma endregion
 
+#pragma region position resolve texture
+	f.setExtent(rw.get().swapchainExtent());
+	f.setFormat(VK_FORMAT_R32G32B32A32_SFLOAT);
+	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+	           // VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	f.setFilters(VK_FILTER_LINEAR, VK_FILTER_LINEAR);
+	f.setSamples(VK_SAMPLE_COUNT_4_BIT);
+
+	m_positionTexture = f.createTexture2D();
+
+	vk.debugMarkerSetObjectName(m_positionTexture.image(), "positionTexture");
+
+	m_positionTexture.transitionLayoutImmediate(
+	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+	f.setSamples(VK_SAMPLE_COUNT_1_BIT);
+
+	m_positionResolveTexture = f.createTexture2D();
+
+	vk.debugMarkerSetObjectName(m_positionResolveTexture.image(),
+	                            "positionResolveTexture");
+
+	m_positionResolveTexture.transitionLayoutImmediate(
+	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+	{
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = m_positionResolveTexture.view();
+		imageInfo.sampler = m_positionResolveTexture.sampler();
+
+		vk::WriteDescriptorSet textureWrite;
+		textureWrite.descriptorCount = 1;
+		textureWrite.descriptorType =
+		    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		textureWrite.dstArrayElement = 0;
+		textureWrite.dstBinding = 4;
+		textureWrite.dstSet = m_highlightDescriptorSet;
+		textureWrite.pImageInfo = &imageInfo;
+
+		vk.updateDescriptorSets(textureWrite);
+	}
+#pragma endregion
+
 #pragma region color resolve texture
 	f.setExtent(rw.get().swapchainExtent());
 	f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
@@ -2477,7 +2575,9 @@ void ShaderBall::rebuild()
 			                       m_colorResolveTexture.view(),
 			                       m_objectIDResolveTexture.view(),
 			                       m_normalDepthTexture.view(),
-			                       m_normalDepthResolveTexture.view() };
+			                       m_normalDepthResolveTexture.view(),
+			                       m_positionTexture.view(),
+			                       m_positionResolveTexture.view() };
 		framebufferInfo.attachmentCount = uint32_t(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = m_colorAttachmentTexture.width();
@@ -2617,10 +2717,12 @@ void ShaderBall::rebuild()
 		auto roughnesses = writer.declSampledImageArray<FImg2DRgba32>(
 		    "roughnesses", 5, 0, 16);
 
+		//auto fragPosition = writer.declInput<Vec3>("fragPosition", 0);
 		auto fragDistance = writer.declInput<Float>("fragDistance", 7);
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
 		auto fragID = writer.declOutput<UInt>("fragID", 1);
 		auto fragNormalDepth = writer.declOutput<Vec4>("fragNormalDepth", 2);
+		auto fragPos = writer.declOutput<Vec3>("fragPos", 3);
 
 		auto toneMapping = writer.implementFunction<Vec4>(
 		    "toneMapping",
@@ -2708,6 +2810,8 @@ void ShaderBall::rebuild()
 			fragID = pc.getMember<UInt>("objectID");
 			fragNormalDepth.xyz() = N;
 			fragNormalDepth.w() = fragDistance;
+			fragPos = N;
+			//fragPositionOut = fragPosition;
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -2870,6 +2974,18 @@ void ShaderBall::rebuild()
 	normalDepthBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	normalDepthBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
+	VkPipelineColorBlendAttachmentState positionBlendAttachment = {};
+	positionBlendAttachment.colorWriteMask =
+	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	positionBlendAttachment.blendEnable = false;
+	positionBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	positionBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	positionBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	positionBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	positionBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	positionBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
 	// colorHDRBlendAttachment.blendEnable = true;
 	// colorHDRBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	// colorHDRBlendAttachment.dstColorBlendFactor =
@@ -2881,7 +2997,8 @@ void ShaderBall::rebuild()
 
 	std::array colorBlendAttachments{ colorBlendAttachment,
 		                              objectIDBlendAttachment,
-		                              normalDepthBlendAttachment };
+		                              normalDepthBlendAttachment,
+		                              positionBlendAttachment };
 
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
 	colorBlending.logicOpEnable = false;
@@ -2986,6 +3103,8 @@ void ShaderBall::rebuild()
 		    writer.declSampledImage<FImg2DRgba32>("normaldepthTexture", 2, 0);
 		auto noiseTexture =
 		    writer.declSampledImage<FImg2DRgba32>("noiseTexture", 3, 0);
+		auto positionTexture =
+			writer.declSampledImage<FImg2DRgba32>("positionTexture", 4, 0);
 
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
 
@@ -3008,7 +3127,7 @@ void ShaderBall::rebuild()
 			Locale(depth, normalDepthTexture.sample(uv).a());
 
 			// Todo : get position
-			//  Locale(fragPos, wsPosition);
+			Locale(position, positionTexture.sample(uv).rgb());
 			Locale(normal, normalize(normalDepthTexture.sample(uv).rgb()));
 
 			Locale(noiseScale, vec2(800.0_f / 4.0_f, 600.0_f / 4.0_f));

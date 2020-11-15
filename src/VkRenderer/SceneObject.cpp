@@ -81,7 +81,8 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			fragTanLightPos = TBN * sceneUbo.getLightPos();
 			fragTanViewPos = TBN * sceneUbo.getViewPos();
 			fragTanFragPos = TBN * fragPosition;
-			fragDistance = (view * model * vec4(shaderVertexInput.inPosition, 1.0_f)).z();
+			fragDistance =
+			    (view * model * vec4(shaderVertexInput.inPosition, 1.0_f)).z();
 
 			out.vtx.position = proj * view * model *
 			                   vec4(shaderVertexInput.inPosition, 1.0_f);
@@ -125,6 +126,7 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
 		auto fragID = writer.declOutput<UInt>("fragID", 1);
 		auto fragNormalDepth = writer.declOutput<Vec4>("fragNormalDepth", 2);
+		auto fragPos = writer.declOutput<Vec3>("fragPos", 3);
 
 		auto fragmentShaderBuildData =
 		    material.material().instantiateFragmentShaderBuildData();
@@ -151,6 +153,7 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			fragID = modelPcb.getModelId();
 			fragNormalDepth.xyz() = fragNormal;
 			fragNormalDepth.w() = fragDistance;
+			fragPos = fragPosition;
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -310,6 +313,18 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 	normalDepthBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	normalDepthBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
+	VkPipelineColorBlendAttachmentState positionhBlendAttachment = {};
+	positionhBlendAttachment.colorWriteMask =
+	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	positionhBlendAttachment.blendEnable = false;
+	positionhBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	positionhBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	positionhBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	positionhBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	positionhBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	positionhBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
 	// colorHDRBlendAttachment.blendEnable = true;
 	// colorHDRBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	// colorHDRBlendAttachment.dstColorBlendFactor =
@@ -321,7 +336,8 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 
 	std::array colorBlendAttachments{ colorBlendAttachment,
 		                              objectIDBlendAttachment,
-		                              normalDepthBlendAttachment };
+		                              normalDepthBlendAttachment,
+		                              positionhBlendAttachment };
 
 	/// TODO get from render pass
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
