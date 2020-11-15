@@ -3198,8 +3198,7 @@ void ShaderBall::rebuild()
 
 			Locale(id, pc.getMember<UInt>("id"));
 
-			// add SSAO
-			// Todo : get depthTexture
+			// SSAO
 			Locale(depth, normalDepthTexture.sample(uv).a());
 
 			IF(writer, depth == 0.0f)
@@ -3221,7 +3220,6 @@ void ShaderBall::rebuild()
 			                     writer.cast<Float>(depthTexSize.y()) /
 			                         writer.cast<Float>(noiseTexSize.y())) *
 			                    uv * renderScale);
-			// Locale(noiseScale, vec2(uv.x() / 4.0_f, uv.y() / 4.0_f));
 			Locale(randomVec, noiseTexture.sample(noiseUV).rgb());
 
 			// create TBN change-of-basis matrix: from tangent-space to
@@ -3252,8 +3250,6 @@ void ShaderBall::rebuild()
 				offset.xy() /= offset.w();
 				offset.xy() = offset.xy() * 0.5_f + 0.5_f;
 				offset.y() = 1.0_f - offset.y();
-				// offset.xyz() /= offset.w();
-				// offset.xyz() = offset.xyz() * 0.5_f + 0.5_f;
 
 				Locale(reconstructedPos, positionTexture.sample(offset.xy()).rgb());
 				Locale(sampledNormal,
@@ -3277,23 +3273,9 @@ void ShaderBall::rebuild()
 					++sampleCount;
 				}
 				FI;
-
-				// get sample depth
-				/*Locale(sampleDepth, positionTexture.sample(offset.xy()));
-
-				// range check & accumulate
-				Locale(rangeCheck,
-				       smoothStep(0.0_f, 1.0_f,
-				                  radius / abs(position.z() - sampleDepth)));
-
-				occlusion =
-				    TERNARY(writer, Float, sampleDepth >= samplePos.z() + bias,
-				            5.0_f, 0.0_f) *
-				    rangeCheck;*/
 			}
 			ROF;
-			// occlusion = 1.0_f - (occlusion /
-			// writer.cast<Float>(kernelSize));
+
 			occlusion =
 			    1.0 - (occlusion / writer.cast<Float>(max(sampleCount, 1_u)));
 
