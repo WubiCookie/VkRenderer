@@ -667,20 +667,16 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 				f.setDepth(baseDimensions.depth);
 				// f.setFormat(Texas::toVkFormat(pixelFormat));
 				f.setFormat(VK_FORMAT_R8G8B8A8_SRGB);
-				f.setMipLevels(1);
-
-				std::vector<uint8_t> rgbaData(baseDimensions.width *
-				                              baseDimensions.height * 4);
-
-				Texas::ConstByteSpan mipSpan = tex.mipSpan(0);
-
-				astc_codec::ASTCDecompressToRGBA(
-				    reinterpret_cast<const uint8_t*>(mipSpan.data()),
-				    mipSpan.size(), baseDimensions.width,
-				    baseDimensions.height, astc_codec::FootprintType::k8x8,
-				    rgbaData.data(), rgbaData.size(),
-				    baseDimensions.width * 4);
-
+				//f.setMipLevels(1);
+				f.setMipLevels(uint32_t(mipCount));
+				f.setLod(0.0f, float(mipCount));
+				VkImageSubresourceRange range{};
+				range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				range.baseMipLevel = 0;
+				range.levelCount = uint32_t(mipCount);
+				range.baseArrayLayer = 0;
+				range.layerCount = 1;
+				f.setViewSubresourceRange(range);
 				//for (size_t i = 0; i < mipSpan.size()/16; i++)
 				//{
 				//	    rgbaData.data() + i,
@@ -696,9 +692,27 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 				int32_t mipWidth = int32_t(baseDimensions.width);
 				int32_t mipHeight = int32_t(baseDimensions.height);
 
-				//for (uint32_t i = 0; i < mipCount; i++)
-				uint32_t i = 0;
+				for (uint32_t i = 0; i < mipCount; i++)
+				//uint32_t i = 0;
 				{
+					std::vector<uint8_t> rgbaData(
+						//baseDimensions.width * baseDimensions.height
+					    mipWidth * mipHeight
+						* 4);
+
+					Texas::ConstByteSpan mipSpan = tex.mipSpan(i);
+
+					astc_codec::ASTCDecompressToRGBA(
+					    reinterpret_cast<const uint8_t*>(mipSpan.data()),
+					    mipSpan.size(),
+						//baseDimensions.width, baseDimensions.height,
+					    mipWidth, mipHeight,
+						astc_codec::FootprintType::k8x8,
+					    rgbaData.data(), rgbaData.size(),
+						//baseDimensions.width * 4
+						mipWidth * 4
+					);
+
 					//Texas::ConstByteSpan layerSpan = tex.layerSpan(i, 0);
 
 					// Texas::Dimensions mipDimensions =
@@ -735,6 +749,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 		m_sponzaMaterialInstances[i]->setTextureParameter(
 		    "", *m_sponzaTextures[path]);
+		m_sponzaMaterialInstances[i]->setFloatParameter("roughness", 0.9f);
+		m_sponzaMaterialInstances[i]->setFloatParameter("metalness", 0.0f);
 
 		if (i % 16 == 15)
 			sponzaPool.waitForAllCommandBuffers();
@@ -2121,8 +2137,10 @@ void ShaderBall::renderOpaque(CommandBuffer& cb)
 	}
 }
 
-vector3 lightDir{ 0, -1, 0 };
-bool directionalEnabled = false;
+vector3 lightDir{ 0.42f, -0.9f, -0.116f };
+transform3d lightTr =
+    transform3d(vector3(-43, 222, 16), {}, { 1, 1, 1 });
+bool directionalEnabled = true;
 
 vector3 lightPos{ 0, 20, 0 };
 bool pointEnabled = true;
@@ -2147,12 +2165,14 @@ void ShaderBall::imgui(CommandBuffer& cb)
 		ImGui::DragFloat3("LTDM 0", &m_scene.LTDM.m00, 0.01f);
 		ImGui::DragFloat3("LTDM 1", &m_scene.LTDM.m01, 0.01f);
 		ImGui::DragFloat3("LTDM 2", &m_scene.LTDM.m02, 0.01f);
+		ImGui::DragFloat("param0", &m_scene.param0, 0.01f);
 
 		ImGui::Checkbox("directional", &directionalEnabled);
 
 		if (directionalEnabled)
 		{
 			ImGui::DragFloat3("direction", &lightDir.x, 0.01f);
+			ImGui::DragFloat3("position", &lightTr.position.x, 0.01f);
 		}
 
 		ImGui::Checkbox("point", &pointEnabled);
@@ -2402,7 +2422,6 @@ void ShaderBall::standaloneDraw()
 		obj->transform.rotation = quaternion(vector3(1, 0, 0), 90.0_deg);
 	}
 
-	static transform3d lightTr;
 	lightTr.scale = { 1, 1, 1 };
 
 	if (pointAtCameraEnabled)
@@ -2435,7 +2454,7 @@ void ShaderBall::standaloneDraw()
 	        .map<PbrShadingModel::DirectionalLightUboStruct>();
 	directionalLights->color = vector4(1.0f, 1.0f, 1.0f, 1.0f) * 2.0f;
 	directionalLights->intensity = 1.0f;
-	directionalLights->direction = lightDir;
+	directionalLights->direction = lightDir.get_normalized();
 	// pointLights->position = vector3(0, 10, 0);
 	m_shadingModel.m_directionalLightsStaging.unmap();
 	m_shadingModel.uploadDirectionalLightsStaging();

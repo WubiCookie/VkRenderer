@@ -46,11 +46,10 @@ using MaterialFragmentFunction =
 //                              Vec3 wsPosition,
 //                              Vec2 uv,
 //                              Vec3 wsNormal,
-//                              Vec3 wsTangent,
-//                              Vec3 wsViewPosition);
+//                              Vec3 wsTangent);
 using CombinedMaterialShadingFragmentFunction =
     sdw::Function<sdw::Vec4, sdw::InUInt, sdw::InVec3, sdw::InVec2,
-                  sdw::InVec3, sdw::InVec3, sdw::InVec3>;
+                  sdw::InVec3, sdw::InVec3>;
 
 struct VertexShaderHelperResult
 {

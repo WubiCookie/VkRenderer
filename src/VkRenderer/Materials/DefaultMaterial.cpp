@@ -373,6 +373,8 @@ void DefaultMaterial::setTextureParameter(const std::string& name,
 		textureIndex = std::distance(m_textures.begin(), found);
 	}
 
+	m_uboStructs[instanceIndex].textureIndex = textureIndex;
+
 	UBOStruct* ptr = m_uniformBuffer.map<UBOStruct>();
 	ptr[instanceIndex].textureIndex = textureIndex;
 	m_uniformBuffer.unmap();

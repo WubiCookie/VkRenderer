@@ -293,6 +293,10 @@ void Scene::uploadTransformMatrices(const transform3d& cameraTr,
 	sceneUBOPtr->sigma = sigma;
 	sceneUBOPtr->roughness = roughness;
 	sceneUBOPtr->LTDM = LTDM;
+	sceneUBOPtr->param0 = param0;
+	sceneUBOPtr->param1 = param1;
+	sceneUBOPtr->param2 = param2;
+	sceneUBOPtr->param3 = param3;
 
 	sceneUniformBuffer().unmap();
 
@@ -306,27 +310,6 @@ void Scene::uploadTransformMatrices(const transform3d& cameraTr,
 
 	modelUniformBuffer().unmap();
 }
-
-// sdw::Ubo Scene::buildSceneUbo(sdw::ShaderWriter& writer, uint32_t binding,
-//                              uint32_t set)
-//{
-//	sdw::Ubo ubo(writer, "SceneUBO", binding, set);
-//	ubo.declMember<sdw::Mat4>("view");
-//	ubo.declMember<sdw::Mat4>("proj");
-//	ubo.declMember<sdw::Vec3>("viewPos");
-//	ubo.declMember<sdw::Vec3>("lightPos");
-//	ubo.end();
-//	return ubo;
-//}
-//
-// sdw::Ubo Scene::buildModelUbo(sdw::ShaderWriter& writer, uint32_t binding,
-//                              uint32_t set)
-//{
-//	sdw::Ubo ubo(writer, "ModelUBO", binding, set);
-//	ubo.declMember<sdw::Mat4>("model", uint32_t(MaxSceneObjectCountPerPool));
-//	ubo.end();
-//	return ubo;
-//}
 
 Scene::SceneUbo::SceneUbo(sdw::ShaderWriter& writer)
     : sdw::Ubo(writer, "SceneUBO", 0, 0)
@@ -342,6 +325,10 @@ Scene::SceneUbo::SceneUbo(sdw::ShaderWriter& writer)
 	declMember<sdw::Float>("sigma");
 	declMember<sdw::Float>("roughness");
 	declMember<sdw::Mat3>("LTDM");
+	declMember<sdw::Float>("param0");
+	declMember<sdw::Float>("param1");
+	declMember<sdw::Float>("param2");
+	declMember<sdw::Float>("param3");
 	end();
 }
 
@@ -377,6 +364,10 @@ sdw::Float Scene::SceneUbo::getRoughness()
 	return getMember<sdw::Float>("roughness");
 }
 sdw::Mat3 Scene::SceneUbo::getLTDM() { return getMember<sdw::Mat3>("LTDM"); }
+sdw::Float Scene::SceneUbo::getParam0(){ return getMember<sdw::Float>("param0"); }
+sdw::Float Scene::SceneUbo::getParam1(){ return getMember<sdw::Float>("param1"); }
+sdw::Float Scene::SceneUbo::getParam2(){ return getMember<sdw::Float>("param2"); }
+sdw::Float Scene::SceneUbo::getParam3(){ return getMember<sdw::Float>("param3"); }
 
 Scene::ModelUbo::ModelUbo(sdw::ShaderWriter& writer)
     : sdw::Ubo(writer, "ModelUBO", 1, 0)

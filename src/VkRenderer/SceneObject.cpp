@@ -149,8 +149,7 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			Locale(normal, normalize(fragNormal));
 			Locale(tangent, normalize(fragTangent));
 			fragColor = combinedMaterialFragmentFunction(
-			    materialInstanceId, fragPosition, fragUV, normal, tangent,
-			    sceneUbo.getViewPos());
+			    materialInstanceId, fragPosition, fragUV, normal, tangent);
 			fragID = modelPcb.getModelId();
 		});
 

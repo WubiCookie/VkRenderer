@@ -46,6 +46,14 @@ private:
 		float roughness;
 
 		matrix3 LTDM;
+		float _2 = 0xcccc;
+		float _3 = 0xcccc;
+		float _4 = 0xcccc;
+
+		float param0;
+		float param1;
+		float param2;
+		float param3;
 	};
 
 	struct alignas(16) ModelUboStruct
@@ -83,6 +91,10 @@ public:
 	float R = 2.0f;
 	float sigma = 0.0f;
 	float roughness = 0.1f;
+	float param0 = 0.0f;
+	float param1 = 1.0f;
+	float param2 = 2.0f;
+	float param3 = 3.0f;
 	matrix3 LTDM = matrix3::identity();
 
 	const VkDescriptorSetLayout& descriptorSetLayout() const
@@ -117,6 +129,10 @@ public:
 		sdw::Float getSigma();
 		sdw::Float getRoughness();
 		sdw::Mat3 getLTDM();
+		sdw::Float getParam0();
+		sdw::Float getParam1();
+		sdw::Float getParam2();
+		sdw::Float getParam3();
 	};
 
 	class ModelUbo : private sdw::Ubo

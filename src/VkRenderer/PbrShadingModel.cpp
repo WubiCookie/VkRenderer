@@ -924,7 +924,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 	    [&writer, &materialFunction, &sceneUbo, buildData](
 	        const UInt& inMaterialInstanceIndex, const Vec3& wsPosition_arg,
 	        const Vec2& uv_arg, const Vec3& wsNormal_arg,
-	        const Vec3& wsTangent_arg, const Vec3& wsViewPosition_arg) {
+	        const Vec3& wsTangent_arg) {
 		    Locale(pi, *buildData->PI);
 		    Locale(pointLightsCount,
 		           buildData->shadingModelData->getMember<UInt>(
@@ -938,7 +938,7 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    Locale(wsPosition, wsPosition_arg);
 		    Locale(wsNormal, wsNormal_arg);
 		    Locale(wsTangent, wsTangent_arg);
-		    Locale(wsViewPosition, wsViewPosition_arg);
+		    Locale(wsViewPosition, sceneUbo.getViewPos());
 
 		    // Locale(B, cross(wsNormal, wsTangent));
 		    Locale(TBN, transpose(mat3(wsTangent, cross(wsNormal, wsTangent),
@@ -1403,7 +1403,10 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 		    // ======= LTC Coords
 		    Locale(theta, acos(dot(n, O)));
 		    // Locale(theta, acos(dot(wsNormal, O)));
-		     Locale(coords, vec2(roughness, theta/(0.5_f * pi)));
+		    Locale(coords,
+		           //vec2(roughness, theta / (0.5_f * pi) + sceneUbo.getParam0()));
+		           vec2(alpha, theta / (0.5_f * pi) + sceneUbo.getParam0()));
+		    //Locale(coords, vec2(roughness, 1.0_f - (dot(n, O) / (0.5_f * pi))));
 		    //Locale(coords, vec2(alpha / 0.7_f, theta / (0.5_f * pi)));
 
 		    // Locale(LUTSize, 32.0_f);
@@ -1420,31 +1423,32 @@ PbrShadingModel::combinedMaterialFragmentFunction(
 
 		    Locale(t, buildData->ltcMat->sample(coords));
 		    Minv = transpose(mat3(vec3(1.0_f, 0.0_f, t.y()),
-		                                 vec3(0.0_f, t.z(), 0.0_f),
-		                                 vec3(t.w(), 0.0_f, t.x())));
+		                          vec3(0.0_f, t.z(), 0.0_f),
+		                          vec3(t.w(), 0.0_f, t.x())));
 
 		    Lo_i_spec = buildData->LTC_Evaluate(n, O, P, Minv);
 		    Lo_i_spec *= R;
 
 		    schlick = buildData->ltcAmp->sample(coords).rg();
-		    Lo_i_spec *=
-		        specColor * schlick.r() + (1.0_f - specColor) * schlick.g();
+		    Lo_i_spec *= specColor * schlick.r();//		    +(1.0_f - specColor) * schlick.g();
 		    Lo_i_spec /= (2.0_f * pi);
 			// ==============================================
 
 		    // writer.returnStmt(color);
 		    // writer.returnStmt(vec4(wsTangent, 1.0_f));
 		    //writer.returnStmt(vec4(Lo_i, 1.0_f));
-		    writer.returnStmt(vec4(Lo_i_diff + Lo_i_spec, 1.0_f));
-		    // writer.returnStmt(vec4(n, 1.0_f));
+		    //writer.returnStmt(vec4(Lo_i_diff + Lo_i_spec, 1.0_f));
+		    writer.returnStmt(vec4(Lo_i_spec + color.rgb(), 1.0_f));
+		     //writer.returnStmt(vec4(n, 1.0_f));
+		    //writer.returnStmt(vec4(
+		        //vec3(dot(n, normalize(wsViewPosition - wsPosition))), 1.0_f));
 		    // writer.returnStmt(vec4(schlick, 0.0_f, 1.0_f));
-		    // writer.returnStmt(vec4(vec3(coords.y()), 1.0_f));
+		     //writer.returnStmt(vec4(vec3(coords.y()), 1.0_f));
 		    // writer.returnStmt(vec4(I));
 	    },
 	    InUInt{ writer, "inMaterialInstanceIndex" },
 	    InVec3{ writer, "wsPosition_arg" }, InVec2{ writer, "uv_arg" },
-	    InVec3{ writer, "wsNormal_arg" }, InVec3{ writer, "wsTangent_arg" },
-	    InVec3{ writer, "wsViewPosition_arg" });
+	    InVec3{ writer, "wsNormal_arg" }, InVec3{ writer, "wsTangent_arg" });
 }
 
 std::unique_ptr<PbrShadingModel::FragmentShaderBuildDataBase>
