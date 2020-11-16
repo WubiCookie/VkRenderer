@@ -364,10 +364,22 @@ sdw::Float Scene::SceneUbo::getRoughness()
 	return getMember<sdw::Float>("roughness");
 }
 sdw::Mat3 Scene::SceneUbo::getLTDM() { return getMember<sdw::Mat3>("LTDM"); }
-sdw::Float Scene::SceneUbo::getParam0(){ return getMember<sdw::Float>("param0"); }
-sdw::Float Scene::SceneUbo::getParam1(){ return getMember<sdw::Float>("param1"); }
-sdw::Float Scene::SceneUbo::getParam2(){ return getMember<sdw::Float>("param2"); }
-sdw::Float Scene::SceneUbo::getParam3(){ return getMember<sdw::Float>("param3"); }
+sdw::Float Scene::SceneUbo::getParam0()
+{
+	return getMember<sdw::Float>("param0");
+}
+sdw::Float Scene::SceneUbo::getParam1()
+{
+	return getMember<sdw::Float>("param1");
+}
+sdw::Float Scene::SceneUbo::getParam2()
+{
+	return getMember<sdw::Float>("param2");
+}
+sdw::Float Scene::SceneUbo::getParam3()
+{
+	return getMember<sdw::Float>("param3");
+}
 
 Scene::ModelUbo::ModelUbo(sdw::ShaderWriter& writer)
     : sdw::Ubo(writer, "ModelUBO", 1, 0)

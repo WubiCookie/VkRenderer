@@ -67,6 +67,15 @@ struct ShaderBallMesh
 
 class ShaderBall final
 {
+	struct alignas(16) UBOStruct
+	{
+		vector4 samples[64];
+		matrix4 proj = matrix4::identity();
+	};
+
+	Buffer m_uniformBuffer;
+	UBOStruct m_uboStruct;
+
 	std::reference_wrapper<RenderWindow> rw;
 
 	UniqueRenderPass m_renderPass;
@@ -145,6 +154,11 @@ class ShaderBall final
 	Texture2D m_objectIDResolveTexture;
 
 	Texture2D m_highlightColorAttachmentTexture;
+	Texture2D m_normalDepthTexture;
+	Texture2D m_normalDepthResolveTexture;
+	Texture2D m_positionTexture;
+	Texture2D m_positionResolveTexture;
+	Texture2D m_noiseTexture;
 
 	std::unique_ptr<Skybox> m_skybox;
 

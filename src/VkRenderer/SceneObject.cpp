@@ -34,11 +34,9 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 
 		auto fragPosition = writer.declOutput<Vec3>("fragPosition", 0);
 		auto fragUV = writer.declOutput<Vec2>("fragUV", 1);
-		//auto fragTanLightPos = writer.declOutput<Vec3>("fragTanLightPos", 2);
-		//auto fragTanViewPos = writer.declOutput<Vec3>("fragTanViewPos", 3);
-		//auto fragTanFragPos = writer.declOutput<Vec3>("fragTanFragPos", 4);
 		auto fragNormal = writer.declOutput<Vec3>("fragNormal", 2);
 		auto fragTangent = writer.declOutput<Vec3>("fragTangent", 3);
+		auto fragDistance = writer.declOutput<sdw::Float>("fragDistance", 4);
 
 		auto out = writer.getOut();
 
@@ -61,7 +59,7 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			                    vec3(model[2][0], model[2][1], model[2][2])));
 
 			Locale(normalMatrix, transpose(inverse(model3)));
-			//Locale(normalMatrix, transpose((model3)));
+			// Locale(normalMatrix, transpose((model3)));
 
 			fragNormal = shaderVertexInput.inNormal;
 
@@ -71,20 +69,23 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			fragTangent =
 			    normalize(normalMatrix * shaderVertexInput.inTangent);
 
-			//fragNormal = normalize((model * vec4(fragNormal, 0.0_f)).xyz());
-			//fragTangent = normalize(
+			// fragNormal = normalize((model * vec4(fragNormal, 0.0_f)).xyz());
+			// fragTangent = normalize(
 			//    (model * vec4(shaderVertexInput.inTangent, 0.0_f)).xyz());
 
 			fragTangent = normalize(fragTangent -
 			                        dot(fragTangent, fragNormal) * fragNormal);
 
-			//Locale(B, cross(fragNormal, fragTangent));
+			// Locale(B, cross(fragNormal, fragTangent));
 
-			//Locale(TBN, transpose(mat3(fragTangent, B, fragNormal)));
+			// Locale(TBN, transpose(mat3(fragTangent, B, fragNormal)));
 
-			//fragTanLightPos = TBN * sceneUbo.getLightPos();
-			//fragTanViewPos = TBN * sceneUbo.getViewPos();
-			//fragTanFragPos = TBN * fragPosition;
+			// fragTanLightPos = TBN * sceneUbo.getLightPos();
+			// fragTanViewPos = TBN * sceneUbo.getViewPos();
+			// fragTanFragPos = TBN * fragPosition;
+
+			fragDistance =
+			    (view * model * vec4(shaderVertexInput.inPosition, 1.0_f)).z();
 
 			out.vtx.position = proj * view * model *
 			                   vec4(shaderVertexInput.inPosition, 1.0_f);
@@ -117,15 +118,14 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 
 		auto fragPosition = writer.declInput<sdw::Vec3>("fragPosition", 0);
 		auto fragUV = writer.declInput<sdw::Vec2>("fragUV", 1);
-		//auto fragTanLightPos =
-		//    writer.declInput<sdw::Vec3>("fragTanLightPos", 2);
-		//auto fragTanViewPos = writer.declInput<sdw::Vec3>("fragTanViewPos", 3);
-		//auto fragTanFragPos = writer.declInput<sdw::Vec3>("fragTanFragPos", 4);
 		auto fragNormal = writer.declInput<sdw::Vec3>("fragNormal", 2);
 		auto fragTangent = writer.declInput<sdw::Vec3>("fragTangent", 3);
+		auto fragDistance = writer.declInput<sdw::Float>("fragDistance", 4);
 
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
 		auto fragID = writer.declOutput<UInt>("fragID", 1);
+		auto fragNormalDepth = writer.declOutput<Vec4>("fragNormalDepth", 2);
+		auto fragPos = writer.declOutput<Vec3>("fragPos", 3);
 
 		auto fragmentShaderBuildData =
 		    material.material().instantiateFragmentShaderBuildData();
@@ -151,6 +151,9 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			fragColor = combinedMaterialFragmentFunction(
 			    materialInstanceId, fragPosition, fragUV, normal, tangent);
 			fragID = modelPcb.getModelId();
+			fragNormalDepth.xyz() = fragNormal;
+			fragNormalDepth.w() = fragDistance;
+			fragPos = fragPosition;
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -298,6 +301,30 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 	objectIDBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	objectIDBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
+	VkPipelineColorBlendAttachmentState normalDepthBlendAttachment = {};
+	normalDepthBlendAttachment.colorWriteMask =
+	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	normalDepthBlendAttachment.blendEnable = false;
+	normalDepthBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	normalDepthBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	normalDepthBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	normalDepthBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	normalDepthBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	normalDepthBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendAttachmentState positionhBlendAttachment = {};
+	positionhBlendAttachment.colorWriteMask =
+	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	positionhBlendAttachment.blendEnable = false;
+	positionhBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	positionhBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	positionhBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	positionhBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	positionhBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	positionhBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
 	// colorHDRBlendAttachment.blendEnable = true;
 	// colorHDRBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	// colorHDRBlendAttachment.dstColorBlendFactor =
@@ -308,7 +335,9 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 	// colorHDRBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	std::array colorBlendAttachments{ colorBlendAttachment,
-		                              objectIDBlendAttachment };
+		                              objectIDBlendAttachment,
+		                              normalDepthBlendAttachment,
+		                              positionhBlendAttachment };
 
 	/// TODO get from render pass
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
@@ -384,10 +413,7 @@ void SceneObject::Pipeline::bindDescriptorSet(CommandBuffer& cb)
 	                      descriptorSets.data());
 }
 
-void SceneObject::Pipeline::draw(CommandBuffer& cb)
-{
-	mesh.get()->draw(cb);
-}
+void SceneObject::Pipeline::draw(CommandBuffer& cb) { mesh.get()->draw(cb); }
 
 SceneObject::ShadowmapPipeline::ShadowmapPipeline(Scene& s, StandardMesh& mesh,
                                                   MaterialInterface& material,
@@ -775,10 +801,8 @@ void SceneObject::drawShadowmapPass(CommandBuffer& cb, VkRenderPass renderPass,
 		pcbStruct.modelIndex = id;
 		pcbStruct.materialInstanceIndex = m_material.get()->index();
 
-		cb.pushConstants(
-		    pipeline->pipelineLayout,
-		    VK_SHADER_STAGE_VERTEX_BIT, 0,
-		    &pcbStruct);
+		cb.pushConstants(pipeline->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+		                 0, &pcbStruct);
 
 		pipeline->draw(cb);
 	}
