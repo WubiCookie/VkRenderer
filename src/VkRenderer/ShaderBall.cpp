@@ -12,16 +12,18 @@
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 
-#include <Texas/Texas.hpp>
-#include <Texas/VkTools.hpp>
+#include "TextureLoaderFrontend.hpp"
+
+//#include <Texas/Texas.hpp>
+//#include <Texas/VkTools.hpp>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "my_imgui_impl_vulkan.h"
 
-#include "astc-codec/astc-codec.h"
-#include "load_dds.hpp"
-#include "stb_image.h"
+//#include "astc-codec/astc-codec.h"
+//#include "load_dds.hpp"
+//#include "stb_image.h"
 
 #include <array>
 #include <iostream>
@@ -621,7 +623,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 		auto found = m_sponzaTextures.find(path);
 
-		if (found == m_sponzaTextures.end() || found->second == nullptr ||
+		/// TODO
+		/*if (found == m_sponzaTextures.end() || found->second == nullptr ||
 		    found->second->image() == nullptr)
 		{
 			Texas::ResultValue<Texas::Texture> res =
@@ -743,6 +746,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 			// texture_loadDDS(path.c_str(), f, sponzaPool));
 		}
+		//*/
 
 		m_sponzaMaterialInstances[i]->setTextureParameter(
 		    "", *m_sponzaTextures[path]);
@@ -1648,6 +1652,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	TextureFactory f(vk);
 
 #pragma region equirectangularHDR
+	/// TODO
+	/*
 	int w, h, c;
 	float* imageData = stbi_loadf(
 	    //"../resources/illumination_assets/PaperMill_Ruins_E/PaperMill_E_3k.hdr",
@@ -1686,6 +1692,7 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 	    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	stbi_image_free(imageData);
+	//*/
 
 	// VkDescriptorImageInfo imageInfo{};
 	// imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1861,6 +1868,8 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 		else
 			return;
 
+		/// TODO
+		/*
 		int w, h, c;
 		uint8_t* imageData = stbi_load(filename.data(), &w, &h, &c, 4);
 
@@ -1913,11 +1922,17 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 			vk.updateDescriptorSets(textureWrite);
 		}
+		//*/
 	};
 
 	auto createTexture = [&](std::string_view filename) {
-		int w, h, c;
-		uint8_t* imageData = stbi_load(filename.data(), &w, &h, &c, 4);
+		int w = 1, h = 1, c = 4;
+
+		/// TODO
+		//uint8_t* imageData = stbi_load(filename.data(), &w, &h, &c, 4);
+		uint8_t* imageData = nullptr;
+
+		Texture2D tex;
 
 		if (imageData)
 		{
@@ -1928,8 +1943,6 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 			           VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 			f.setMipLevels(-1);
-
-			Texture2D tex;
 
 			tex = f.createTexture2D();
 
@@ -1955,31 +1968,16 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 			                        copy, VK_IMAGE_LAYOUT_UNDEFINED,
 			                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-			stbi_image_free(imageData);
+			/// TODO
+			//stbi_image_free(imageData);
 
 			tex.generateMipmapsImmediate(
 			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-			/*VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = m_singleTexture.view();
-			imageInfo.sampler = m_singleTexture.sampler();
-
-			vk::WriteDescriptorSet textureWrite;
-			textureWrite.descriptorCount = 1;
-			textureWrite.descriptorType =
-			    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			textureWrite.dstArrayElement = 0;
-			textureWrite.dstBinding = 1;
-			textureWrite.dstSet = m_defaultMaterial.descriptorSet();
-			textureWrite.pImageInfo = &imageInfo;
-
-			vk.updateDescriptorSets(textureWrite);*/
-
 			// m_singleTexture = &tex;
-			return tex;
 		}
-		assert(false);
+		return tex;
+		//assert(false);
 	};
 
 	// create texture2D
@@ -2034,8 +2032,9 @@ ShaderBall::ShaderBall(RenderWindow& renderWindow)
 
 		CommandBufferPool pool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 
-		m_ltcMat = texture_loadDDS("../runtime_cache/ltc_mat.dds", f, pool);
-		m_ltcAmp = texture_loadDDS("../runtime_cache/ltc_amp.dds", f, pool);
+		/// TODO
+		//m_ltcMat = texture_loadDDS("../runtime_cache/ltc_mat.dds", f, pool);
+		//m_ltcAmp = texture_loadDDS("../runtime_cache/ltc_amp.dds", f, pool);
 
 		pool.waitForAllCommandBuffers();
 	}

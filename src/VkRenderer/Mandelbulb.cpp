@@ -476,7 +476,7 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 #pragma region renderPass
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = VkFormat::VK_FORMAT_B8G8R8A8_UNORM;
+	colorAttachment.format = VkFormat::VK_FORMAT_R8G8B8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -727,11 +727,11 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 
 		writer.inputLayout(8, 8);
 
-		auto kernelImage =
-		    writer.declImage<RWFImg2DRgba32>("kernelImage", 0, 0);
-
 		auto kernelSampledImage =
 		    writer.declSampledImage<FImg2DRgba32>("kernelSampledImage", 2, 0);
+
+		auto kernelImage =
+		    writer.declImage<RWFImg2DRgba32>("kernelImage", 0, 0);
 
 		writer.implementMain([&]() {
 			Float x = writer.declLocale(
@@ -742,9 +742,10 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 			Vec2 xy = writer.declLocale("xy", vec2(x, y));
 
 			IVec2 iuv = writer.declLocale(
-			    "iuv",
-			    ivec2(writer.cast<Int>(xy.x()), writer.cast<Int>(xy.y())));
+			    "iuv", ivec2(writer.cast<Int>(in.globalInvocationID.x()),
+			                 writer.cast<Int>(in.globalInvocationID.y())));
 
+			//*
 			Vec4 previousColor = writer.declLocale("previousColor", kernelImage.load(iuv));
 
 			Float samples = writer.declLocale(
@@ -818,6 +819,9 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 				//           vec4(uv, 0.0_f, 0.0_f));
 			}
 			FI;
+			//*/
+
+			//kernelImage.store(iuv, vec4(1.0_f));
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -1170,13 +1174,15 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 #pragma region outputImage
 	f.setWidth(width);
 	f.setHeight(height);
-	f.setFormat(VK_FORMAT_B8G8R8A8_UNORM);
+	f.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
 	f.setUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 	           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 	//f.setMipLevels(-1);
 
 	m_outputImage = f.createTexture2D();
+
+	vk.debugMarkerSetObjectName(m_outputImage.image(), "outputImage");
 
 	//m_outputImage = Texture2D(
 	//    rw, width, height, VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
@@ -1196,9 +1202,13 @@ Mandelbulb::Mandelbulb(RenderWindow& renderWindow)
 	           VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 	           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 	           VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-	f.setMipLevels(-1);
+	f.setMipLevels(11);
+	f.setLod(0, 10);
+	f.setMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR);
 
 	m_outputImageHDR = f.createTexture2D();
+
+	vk.debugMarkerSetObjectName(m_outputImageHDR.image(), "outputImageHDR");
 
 	//m_outputImageHDR = Texture2D(
 	//    rw, width, height, VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -1403,6 +1413,9 @@ void Mandelbulb::standaloneDraw()
 		mustClear = false;
 		m_config.samples = -1.0f;
 
+		outputTexture().transitionLayoutImmediate(
+		    VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
 		cb.reset();
 		cb.begin();
 
@@ -1445,6 +1458,10 @@ void Mandelbulb::standaloneDraw()
 		}
 
 		vk.wait(vk.graphicsQueue());
+
+		outputTexture().transitionLayoutImmediate(
+		    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL);
+
 		m_config.samples += 1.0f;
 	}
 
@@ -1465,6 +1482,9 @@ void Mandelbulb::standaloneDraw()
 	vk.wait(vk.graphicsQueue());
 
 	outputTextureHDR().generateMipmapsImmediate(VK_IMAGE_LAYOUT_GENERAL);
+
+	outputTexture().transitionLayoutImmediate(
+	    VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 	imguiCB.reset();
 	imguiCB.begin();
@@ -1492,6 +1512,11 @@ void Mandelbulb::standaloneDraw()
 
 	rw.get().present(m_outputImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, nullptr);
+
+	vk.wait();
+
+	outputTexture().transitionLayoutImmediate(
+	    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 	/*
 	copyHDRCB.reset();

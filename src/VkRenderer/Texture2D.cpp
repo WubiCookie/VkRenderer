@@ -52,6 +52,7 @@ Texture2D::Texture2D(const VulkanDevice& vulkanDevice,
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
+	viewInfo.subresourceRange.levelCount = m_mipLevels;
 
 	m_imageView = vk.create(viewInfo);
 	if (!m_imageView)

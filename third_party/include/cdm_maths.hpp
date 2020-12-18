@@ -150,7 +150,20 @@ struct radian
 	radian(const radian& r);
 	radian(const degree& d);
 
-	operator float() const;
+	explicit operator float() const;
+
+	float sin() const;
+	float cos() const;
+	float tan() const;
+	float asin() const;
+	float acos() const;
+	float atan() const;
+	float sinh() const;
+	float cosh() const;
+	float tanh() const;
+	float asinh() const;
+	float acosh() const;
+	float atanh() const;
 
 	radian& operator+=(float f);
 	radian& operator+=(const radian& r);
@@ -172,7 +185,27 @@ radian operator-(const radian&, const radian&);
 radian operator*(const radian&, const radian&);
 radian operator/(const radian&, const radian&);
 radian operator*(const radian&, float);
+radian operator/(const radian&, float);
 radian operator*(float, const radian&);
+radian operator/(float, const radian&);
+bool operator<(float, const radian&);
+bool operator>(float, const radian&);
+bool operator==(float, const radian&);
+bool operator!=(float, const radian&);
+bool operator>=(float, const radian&);
+bool operator<=(float, const radian&);
+bool operator<(const radian&, float);
+bool operator>(const radian&, float);
+bool operator==(const radian&, float);
+bool operator!=(const radian&, float);
+bool operator>=(const radian&, float);
+bool operator<=(const radian&, float);
+bool operator<(const radian&, const radian&);
+bool operator>(const radian&, const radian&);
+bool operator==(const radian&, const radian&);
+bool operator!=(const radian&, const radian&);
+bool operator>=(const radian&, const radian&);
+bool operator<=(const radian&, const radian&);
 
 struct degree
 {
@@ -183,7 +216,20 @@ struct degree
 	degree(const degree& d);
 	degree(const radian& r);
 
-	operator float() const;
+	explicit operator float() const;
+
+	float sin() const;
+	float cos() const;
+	float tan() const;
+	float asin() const;
+	float acos() const;
+	float atan() const;
+	float sinh() const;
+	float cosh() const;
+	float tanh() const;
+	float asinh() const;
+	float acosh() const;
+	float atanh() const;
 
 	degree& operator+=(float f);
 	degree& operator+=(const degree& d);
@@ -205,7 +251,27 @@ degree operator-(const degree&, const degree&);
 degree operator*(const degree&, const degree&);
 degree operator/(const degree&, const degree&);
 degree operator*(const degree&, float);
+degree operator/(const degree&, float);
 degree operator*(float, const degree&);
+degree operator/(float, const degree&);
+bool operator<(float, const degree&);
+bool operator>(float, const degree&);
+bool operator==(float, const degree&);
+bool operator!=(float, const degree&);
+bool operator>=(float, const degree&);
+bool operator<=(float, const degree&);
+bool operator<(const degree&, float);
+bool operator>(const degree&, float);
+bool operator==(const degree&, float);
+bool operator!=(const degree&, float);
+bool operator>=(const degree&, float);
+bool operator<=(const degree&, float);
+bool operator<(const degree&, const degree&);
+bool operator>(const degree&, const degree&);
+bool operator==(const degree&, const degree&);
+bool operator!=(const degree&, const degree&);
+bool operator>=(const degree&, const degree&);
+bool operator<=(const degree&, const degree&);
 
 struct vector2
 {
@@ -257,6 +323,7 @@ struct vector2
 };
 
 vector2 operator*(float f, const vector2& v);
+float dot(const vector2& lhs, const vector2& rhs);
 
 struct vector3
 {
@@ -302,6 +369,7 @@ struct vector3
 };
 
 vector3 operator*(float f, const vector3& v);
+float dot(const vector3& lhs, const vector3& rhs);
 
 struct vector4
 {
@@ -347,6 +415,8 @@ struct vector4
 	bool operator==(const vector4& v) const;
 	bool operator!=(const vector4& v) const;
 };
+
+float dot(const vector4& lhs, const vector4& rhs);
 
 template<typename T>
 class normalized
@@ -655,11 +725,11 @@ struct cartesian_direction2d
 	cartesian_direction2d(const polar_direction2d& direction);
 	cartesian_direction2d(const radian& angle);
 	cartesian_direction2d(const cartesian_direction2d&) = default;
-	cartesian_direction2d(cartesian_direction2d&&) = default;
+	cartesian_direction2d(cartesian_direction2d&&) noexcept = default;
 	~cartesian_direction2d() = default;
 
 	cartesian_direction2d& operator=(const cartesian_direction2d&) = default;
-	cartesian_direction2d& operator=(cartesian_direction2d&&) = default;
+	cartesian_direction2d& operator=(cartesian_direction2d&&) noexcept = default;
 
 	cartesian_direction2d& rotate(const radian& angle);
 	cartesian_direction2d get_rotated(const radian& angle);
@@ -675,11 +745,11 @@ struct polar_direction2d
 	polar_direction2d(const cartesian_direction2d& direction);
 	polar_direction2d(const radian& angle);
 	polar_direction2d(const polar_direction2d&) = default;
-	polar_direction2d(polar_direction2d&&) = default;
+	polar_direction2d(polar_direction2d&&) noexcept = default;
 	~polar_direction2d() = default;
 
 	polar_direction2d& operator=(const polar_direction2d&) = default;
-	polar_direction2d& operator=(polar_direction2d&&) = default;
+	polar_direction2d& operator=(polar_direction2d&&) noexcept = default;
 
 	polar_direction2d& rotate(const radian& angle);
 	polar_direction2d get_rotated(const radian& angle);
@@ -920,7 +990,7 @@ constexpr int signnum(T val)
 }
 
 inline complex::complex(float real, float imaginary) : r(real), i(imaginary) {}
-inline complex::complex(const radian& angle) : r(cosf(angle)), i(sinf(angle)) {}
+inline complex::complex(const radian& angle) : r(angle.cos()), i(angle.sin()) {}
 
 inline float complex::norm() const { return sqrtf(norm_squared()); }
 inline float complex::norm_squared() const { return r * r + i * i; }
@@ -995,6 +1065,19 @@ inline radian::radian(const degree& d) : angle(d.angle * constants<float>::deg_t
 
 inline radian::operator float() const { return angle; }
 
+inline float radian::sin() const { return std::sinf(angle); }
+inline float radian::cos() const { return std::cosf(angle); }
+inline float radian::tan() const { return std::tanf(angle); }
+inline float radian::asin() const { return std::asinf(angle); }
+inline float radian::acos() const { return std::acosf(angle); }
+inline float radian::atan() const { return std::atanf(angle); }
+inline float radian::sinh() const { return std::sinhf(angle); }
+inline float radian::cosh() const { return std::coshf(angle); }
+inline float radian::tanh() const { return std::tanhf(angle); }
+inline float radian::asinh() const { return std::asinhf(angle); }
+inline float radian::acosh() const { return std::acoshf(angle); }
+inline float radian::atanh() const { return std::atanhf(angle); }
+
 inline radian& radian::operator+=(float f) { angle += f; return *this; }
 inline radian& radian::operator+=(const radian& r) { angle += r.angle; return *this; }
 inline radian& radian::operator-=(float f) { angle -= f; return *this; }
@@ -1015,6 +1098,19 @@ inline degree::degree(const radian& r) : angle(r.angle * constants<float>::rad_t
 
 inline degree::operator float() const { return angle; }
 
+inline float degree::sin() const { return radian(*this).sin(); }
+inline float degree::cos() const { return radian(*this).cos(); }
+inline float degree::tan() const { return radian(*this).tan(); }
+inline float degree::asin() const { return radian(*this).asin(); }
+inline float degree::acos() const { return radian(*this).acos(); }
+inline float degree::atan() const { return radian(*this).atan(); }
+inline float degree::sinh() const { return radian(*this).sinh(); }
+inline float degree::cosh() const { return radian(*this).cosh(); }
+inline float degree::tanh() const { return radian(*this).tanh(); }
+inline float degree::asinh() const { return radian(*this).asinh(); }
+inline float degree::acosh() const { return radian(*this).acosh(); }
+inline float degree::atanh() const { return radian(*this).atanh(); }
+
 inline degree& degree::operator+=(float f) { angle += f; return *this; }
 inline degree& degree::operator+=(const degree& d) { angle += d.angle; return *this; }
 inline degree& degree::operator-=(float f) { angle -= f; return *this; }
@@ -1034,14 +1130,54 @@ inline radian operator-(const radian& r1, const radian& r2) { return radian(r1.a
 inline radian operator*(const radian& r1, const radian& r2) { return radian(r1.angle * r2.angle); }
 inline radian operator/(const radian& r1, const radian& r2) { return radian(r1.angle / r2.angle); }
 inline radian operator*(const radian& r, float f) { return radian(r.angle * f); }
-inline radian operator*(float f, const radian& r) { return radian(r.angle * f); }
+inline radian operator/(const radian& r, float f) { return radian(r.angle / f); }
+inline radian operator*(float f, const radian& r) { return radian(f * r.angle); }
+inline radian operator/(float f, const radian& r) { return radian(f / r.angle); }
+inline bool operator<(float lhs, const radian& rhs) { return float(lhs) < float(rhs); }
+inline bool operator>(float lhs, const radian& rhs) { return float(lhs) > float(rhs); }
+inline bool operator==(float lhs, const radian& rhs) { return float(lhs) == float(rhs); }
+inline bool operator!=(float lhs, const radian& rhs) { return float(lhs) != float(rhs); }
+inline bool operator>=(float lhs, const radian& rhs) { return float(lhs) >= float(rhs); }
+inline bool operator<=(float lhs, const radian& rhs) { return float(lhs) <= float(rhs); }
+inline bool operator<(const radian& lhs, float rhs) { return float(lhs) < float(rhs); }
+inline bool operator>(const radian& lhs, float rhs) { return float(lhs) > float(rhs); }
+inline bool operator==(const radian& lhs, float rhs) { return float(lhs) == float(rhs); }
+inline bool operator!=(const radian& lhs, float rhs) { return float(lhs) != float(rhs); }
+inline bool operator>=(const radian& lhs, float rhs) { return float(lhs) >= float(rhs); }
+inline bool operator<=(const radian& lhs, float rhs) { return float(lhs) <= float(rhs); }
+inline bool operator<(const radian& lhs, const radian& rhs) { return float(lhs) < float(rhs); }
+inline bool operator>(const radian& lhs, const radian& rhs) { return float(lhs) > float(rhs); }
+inline bool operator==(const radian& lhs, const radian& rhs) { return float(lhs) == float(rhs); }
+inline bool operator!=(const radian& lhs, const radian& rhs) { return float(lhs) != float(rhs); }
+inline bool operator>=(const radian& lhs, const radian& rhs) { return float(lhs) >= float(rhs); }
+inline bool operator<=(const radian& lhs, const radian& rhs) { return float(lhs) <= float(rhs); }
 
 inline degree operator+(const degree& d1, const degree& d2) { return degree(d1.angle + d2.angle); }
 inline degree operator-(const degree& d1, const degree& d2) { return degree(d1.angle - d2.angle); }
 inline degree operator*(const degree& d1, const degree& d2) { return degree(d1.angle * d2.angle); }
 inline degree operator/(const degree& d1, const degree& d2) { return degree(d1.angle / d2.angle); }
 inline degree operator*(const degree& d, float f) { return degree(d.angle * f); }
-inline degree operator*(float f, const degree& d) { return degree(d.angle * f); }
+inline degree operator/(const degree& d, float f) { return degree(d.angle / f); }
+inline degree operator*(float f, const degree& d) { return degree(f * d.angle); }
+inline degree operator/(float f, const degree& d) { return degree(f / d.angle); }
+inline bool operator<(float lhs, const degree& rhs) { return float(lhs) < float(rhs); }
+inline bool operator>(float lhs, const degree& rhs) { return float(lhs) > float(rhs); }
+inline bool operator==(float lhs, const degree& rhs) { return float(lhs) == float(rhs); }
+inline bool operator!=(float lhs, const degree& rhs) { return float(lhs) != float(rhs); }
+inline bool operator>=(float lhs, const degree& rhs) { return float(lhs) >= float(rhs); }
+inline bool operator<=(float lhs, const degree& rhs) { return float(lhs) <= float(rhs); }
+inline bool operator<(const degree& lhs, float rhs) { return float(lhs) < float(rhs); }
+inline bool operator>(const degree& lhs, float rhs) { return float(lhs) > float(rhs); }
+inline bool operator==(const degree& lhs, float rhs) { return float(lhs) == float(rhs); }
+inline bool operator!=(const degree& lhs, float rhs) { return float(lhs) != float(rhs); }
+inline bool operator>=(const degree& lhs, float rhs) { return float(lhs) >= float(rhs); }
+inline bool operator<=(const degree& lhs, float rhs) { return float(lhs) <= float(rhs); }
+inline bool operator<(const degree& lhs, const degree& rhs) { return float(lhs) < float(rhs); }
+inline bool operator>(const degree& lhs, const degree& rhs) { return float(lhs) > float(rhs); }
+inline bool operator==(const degree& lhs, const degree& rhs) { return float(lhs) == float(rhs); }
+inline bool operator!=(const degree& lhs, const degree& rhs) { return float(lhs) != float(rhs); }
+inline bool operator>=(const degree& lhs, const degree& rhs) { return float(lhs) >= float(rhs); }
+inline bool operator<=(const degree& lhs, const degree& rhs) { return float(lhs) <= float(rhs); }
 
 inline vector2::vector2(float x_, float y_) : x(x_), y(y_) {}
 
@@ -1089,9 +1225,9 @@ inline vector2 vector2::lerp(const vector2& begin, const vector2& end, float per
 inline vector2 vector2::nlerp(const vector2& begin, const vector2& end, float percent) { return lerp(begin, end, percent).get_normalized(); }
 inline vector2 vector2::slerp(const vector2& begin, const vector2& end, float percent)
 {
-	float angle = vector2::angle(begin, end) * percent;
-	float s = sinf(angle);
-	float c = cosf(angle);
+	const radian angle = vector2::angle(begin, end) * percent;
+	const float s = angle.sin();
+	const float c = angle.cos();
 
 	/*vector2 res{
 		c * begin.x - s * begin.y,
@@ -1143,6 +1279,8 @@ inline bool vector2::operator==(const vector2& v) const { return x == v.x && y =
 inline bool vector2::operator!=(const vector2& v) const { return !operator==(v); }
 
 inline vector2 operator*(float f, const vector2& v) { return v * f; }
+
+inline float dot(const vector2& lhs, const vector2& rhs) { return lhs.dot(rhs); }
 
 inline vector3::vector3(float x_, float y_, float z_) : x(x_), y(y_), z(z_) {}
 inline vector3::vector3(vector2 v, float z_) : vector3(v.x, v.y, z_) {}
@@ -1234,6 +1372,8 @@ inline bool vector3::operator!=(const vector3& v) const { return !operator==(v);
 
 inline vector3 operator*(float f, const vector3& v) { return v * f; }
 
+inline float dot(const vector3& lhs, const vector3& rhs) { return lhs.dot(rhs); }
+
 inline vector4::vector4(float x_, float y_, float z_, float w_) : x(x_), y(y_), z(z_), w(w_) {}
 inline vector4::vector4(vector2 v, float z_, float w_) : vector4(v.x, v.y, z_, w_) {}
 inline vector4::vector4(vector3 v, float w_) : vector4(v.x, v.y, v.z, w_) {}
@@ -1308,6 +1448,8 @@ inline vector4 vector4::operator-() const { return get_negated(); }
 
 inline bool vector4::operator==(const vector4& v) const { return x == v.x && y == v.y && z == v.z && w == v.w; }
 inline bool vector4::operator!=(const vector4& v) const { return !operator==(v); }
+
+inline float dot(const vector4& lhs, const vector4& rhs) { return lhs.dot(rhs); }
 
 template<typename T>
 normalized<T>::normalized(const T& t) : vector(t) { vector.normalize(); }
@@ -1385,8 +1527,8 @@ inline matrix2 matrix2::zero() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
 inline matrix2 matrix2::identity() { return {1.0f, 0.0f, 0.0f, 1.0f}; }
 inline matrix2 matrix2::rotation(const radian& angle)
 {
-	float c = cosf(angle);
-	float s = sinf(angle);
+	float c = angle.cos();
+	float s = angle.sin();
 	return {
 		c, -s,
 		s, c
@@ -1483,22 +1625,22 @@ inline matrix3 matrix3::identity() { return {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
 inline matrix3 matrix3::rotation(const euler_angles& r)
 {
 	matrix3 RX = matrix3::identity();
-	RX.m11 = cosf(r.x);
-	RX.m12 = -sinf(r.x);
-	RX.m21 = sinf(r.x);
-	RX.m22 = cosf(r.x);
+	RX.m11 = r.x.cos();
+	RX.m12 = -r.x.sin();
+	RX.m21 = r.x.sin();
+	RX.m22 = r.x.cos();
 
 	matrix3 RY = matrix3::identity();
-	RY.m00 = cosf(r.y);
-	RY.m02 = sinf(r.y);
-	RY.m20 = -sinf(r.y);
-	RY.m22 = cosf(r.y);
+	RY.m00 = r.y.cos();
+	RY.m02 = r.y.sin();
+	RY.m20 = -r.y.sin();
+	RY.m22 = r.y.cos();
 
 	matrix3 RZ = matrix3::identity();
-	RZ.m00 = cosf(r.z);
-	RZ.m01 = -sinf(r.z);
-	RZ.m10 = sinf(r.z);
-	RZ.m11 = cosf(r.z);
+	RZ.m00 = r.z.cos();
+	RZ.m01 = -r.z.sin();
+	RZ.m10 = r.z.sin();
+	RZ.m11 = r.z.cos();
 
 	//return RZ * RX * RY;
 	//return RZ * RY * RX;
@@ -1517,8 +1659,8 @@ inline matrix3 matrix3::rotation(const quaternion& q)
 }
 inline matrix3 matrix3::rotation_around_x(const radian& angle)
 {
-	float c = cosf(angle);
-	float s = sinf(angle);
+	float c = angle.cos();
+	float s = angle.sin();
 	return {
 		1.0f, 0.0f, 0.0f,
 		0.0f, c,    s,
@@ -1527,8 +1669,8 @@ inline matrix3 matrix3::rotation_around_x(const radian& angle)
 }
 inline matrix3 matrix3::rotation_around_y(const radian& angle)
 {
-	float c = cosf(angle);
-	float s = sinf(angle);
+	float c = angle.cos();
+	float s = angle.sin();
 	return {
 		c,    0.0f, s,
 		0.0f, 1.0f, 0.0f,
@@ -1537,8 +1679,8 @@ inline matrix3 matrix3::rotation_around_y(const radian& angle)
 }
 inline matrix3 matrix3::rotation_around_z(const radian& angle)
 {
-	float c = cosf(angle);
-	float s = sinf(angle);
+	float c = angle.cos();
+	float s = angle.sin();
 	return {
 		c,    -s,   0.0f,
 		s,    c,    0.0f,
@@ -2114,7 +2256,7 @@ inline matrix4 matrix4::rotation(const quaternion& q) { return matrix3::rotation
 inline matrix4 matrix4::translation(const vector3& t) { return {1.0f, 0.0f, 0.0f, t.x, 0.0f, 1.0f, 0.0f, t.y, 0.0f, 0.0f, 1.0f, t.z, 0.0f, 0.0f, 0.0f, 1.0f}; }
 inline matrix4 matrix4::perspective(const radian& angle, float ratio, float near_plane, float far_plane)
 {
-	float tanHalfFovy = tan(angle / 2.0f);
+	float tanHalfFovy = (angle / 2.0f).tan();
 
 	return {
 		1.0f / (ratio * tanHalfFovy), 0.0f,                  0.0f,                                 0.0f,
@@ -2489,8 +2631,8 @@ inline quaternion::quaternion(const normalized<vector3>& axis, const radian& ang
 	/*vector3 tmpAxis = vector3_get_normalized(axis);
 	tmpAxis = vector3_times_float(&tmpAxis, sinf(angle / 2.0f));*/
 
-	vector3 tmpAxis = axis * sinf(angle / 2.0f);
-	*this = {tmpAxis.x, tmpAxis.y, tmpAxis.z, cosf(angle / 2.0f)};
+	vector3 tmpAxis = axis * (angle / 2.0f).sin();
+	*this = {tmpAxis.x, tmpAxis.y, tmpAxis.z, (angle / 2.0f).cos()};
 }
 
 inline quaternion quaternion::zero() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
@@ -2646,12 +2788,12 @@ inline bool quaternion::operator!=(const quaternion& q) const { return !operator
 inline cartesian_direction2d::cartesian_direction2d(float x_, float y_) : cartesian_direction2d(normalized<vector2>({ x_, y_ })) {}
 inline cartesian_direction2d::cartesian_direction2d(const normalized<vector2>& direction) : x(direction->x), y(direction->y) {}
 inline cartesian_direction2d::cartesian_direction2d(const polar_direction2d& direction) : cartesian_direction2d(direction.angle) {}
-inline cartesian_direction2d::cartesian_direction2d(const radian& angle) : cartesian_direction2d(cos(angle), sin(angle)) {}
+inline cartesian_direction2d::cartesian_direction2d(const radian& angle) : cartesian_direction2d(angle.cos(), angle.sin()) {}
 
 inline cartesian_direction2d& cartesian_direction2d::rotate(const radian& angle)
 {
-	const float c = cos(angle);
-	const float s = sin(angle);
+	const float c = angle.cos();
+	const float s = angle.sin();
     x = x * c - y * s;
     y = x * s + y * c;
 
@@ -2682,10 +2824,10 @@ inline polar_direction2d polar_direction2d::get_rotated(const radian& angle)
 }
 inline polar_direction2d& polar_direction2d::wrap()
 {
-	int s = -sign(angle);
-	while (angle > constants<float>::Pi() ||
-		angle <= -constants<float>::Pi())
-		angle -= constants<float>::Pi() * s;
+	int s = sign(float(angle));
+	while (angle > constants<radian>::Pi() ||
+		angle <= -constants<radian>::Pi())
+		angle -= constants<radian>::Pi() * s;
 	return *this;
 }
 inline polar_direction2d polar_direction2d::get_wrapped()

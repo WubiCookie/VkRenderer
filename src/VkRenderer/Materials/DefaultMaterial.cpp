@@ -11,8 +11,8 @@ namespace shader
 {
 struct DefaultMaterialData : public StructInstance
 {
-	DefaultMaterialData(ast::Shader* shader, ast::expr::ExprPtr expr)
-	    : StructInstance{ shader, std::move(expr) },
+	DefaultMaterialData(ShaderWriter& writer, ast::expr::ExprPtr expr)
+	    : StructInstance{ writer, std::move(expr) },
 	      color{ getMember<Vec4>("color") },
 	      metalness{ getMember<Float>("metalness") },
 	      roughness{ getMember<Float>("roughness") },

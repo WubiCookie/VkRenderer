@@ -29,8 +29,8 @@ namespace shader
 {
 struct Ray : public sdw::StructInstance
 {
-	Ray(ast::Shader* shader, ast::expr::ExprPtr expr)
-		: StructInstance{ shader, std::move(expr) },
+	Ray(sdw::ShaderWriter& writer, ast::expr::ExprPtr expr)
+		: StructInstance{ writer, std::move(expr) },
 		  position{ getMember<sdw::Vec2>("position") },
 		  direction{ getMember<sdw::Vec2>("direction") },
 		  polarDirection{ getMember<sdw::Float>("polarDirection") },
@@ -77,8 +77,8 @@ private:
 
 struct RayVertices : public sdw::StructInstance
 {
-	RayVertices(ast::Shader* shader, ast::expr::ExprPtr expr)
-		: StructInstance{ shader, std::move(expr) },
+	RayVertices(sdw::ShaderWriter& writer, ast::expr::ExprPtr expr)
+		: StructInstance{ writer, std::move(expr) },
 		  posA{ getMember<sdw::Vec2>("posA") },
 		  dirA{ getMember<sdw::Vec2>("dirA") },
 		  colA{ getMember<sdw::Vec4>("colA") },
@@ -127,8 +127,8 @@ private:
 struct SceneStruct : public sdw::StructInstance
 {
 	// Mandatory members
-	SceneStruct(ast::Shader* shader, ast::expr::ExprPtr expr)
-		: StructInstance{ shader, std::move(expr) },
+	SceneStruct(sdw::ShaderWriter& writer, ast::expr::ExprPtr expr)
+		: StructInstance{ writer, std::move(expr) },
 		  spherePos{ getMember<sdw::Vec2>("spherePos") },
 		  sphereRadius{ getMember<sdw::Float>("sphereRadius") },
 		  seed{ getMember<sdw::Float>("seed") },

@@ -4,7 +4,7 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 
-#include <libloaderapi.h>
+// #include <libloaderapi.h>
 
 #define VK_NO_PROTOTYPES
 #define VK_USE_PLATFORM_WIN32_KHR

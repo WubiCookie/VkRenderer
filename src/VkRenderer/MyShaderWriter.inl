@@ -823,4 +823,139 @@ ComputeWriter::getDescriptors() const
 {
 	return m_descriptors;
 }
+
+#pragma region Sampled Image declaration
+/**
+ *name
+ *  Sampled Image declaration.
+ */
+/**@{*/
+template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+          bool ArrayedT, bool DepthT, bool MsT>
+inline sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>
+ComputeWriter::declSampledImage(std::string const& name, uint32_t binding,
+                                 uint32_t set)
+{
+	VkDescriptorSetLayoutBinding b{};
+	b.binding = binding;
+	b.descriptorCount = 1;
+	b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	m_descriptors.push_back({ set, b });
+
+	return sdw::ComputeWriter::declSampledImage<FormatT, DimT, ArrayedT,
+	                                             DepthT, MsT>(name, binding,
+	                                                          set);
+}
+
+template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+          bool ArrayedT, bool DepthT, bool MsT>
+inline sdw::Optional<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>
+ComputeWriter::declSampledImage(std::string const& name, uint32_t binding,
+                                 uint32_t set, bool enabled)
+{
+	VkDescriptorSetLayoutBinding b{};
+	b.binding = binding;
+	b.descriptorCount = 1;
+	b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	m_descriptors.push_back({ set, b });
+
+	return sdw::ComputeWriter::declSampledImage<FormatT, DimT, ArrayedT,
+	                                             DepthT, MsT>(name, binding,
+	                                                          set, enabled);
+}
+
+template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+          bool ArrayedT, bool DepthT, bool MsT>
+inline sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>
+ComputeWriter::declSampledImageArray(std::string const& name,
+                                      uint32_t binding, uint32_t set,
+                                      uint32_t dimension)
+{
+	VkDescriptorSetLayoutBinding b{};
+	b.binding = binding;
+	b.descriptorCount = dimension;
+	b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	m_descriptors.push_back({ set, b });
+
+	return sdw::ComputeWriter::declSampledImageArray<FormatT, DimT, ArrayedT,
+	                                                  DepthT, MsT>(
+	    name, binding, set, dimension);
+}
+
+template <ast::type::ImageFormat FormatT, ast::type::ImageDim DimT,
+          bool ArrayedT, bool DepthT, bool MsT>
+inline sdw::Optional<
+    sdw::Array<sdw::SampledImageT<FormatT, DimT, ArrayedT, DepthT, MsT>>>
+ComputeWriter::declSampledImageArray(std::string const& name,
+                                      uint32_t binding, uint32_t set,
+                                      uint32_t dimension, bool enabled)
+{
+	VkDescriptorSetLayoutBinding b{};
+	b.binding = binding;
+	b.descriptorCount = dimension;
+	b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	m_descriptors.push_back({ set, b });
+
+	return sdw::ComputeWriter::declSampledImageArray<FormatT, DimT, ArrayedT,
+	                                                  DepthT, MsT>(
+	    name, binding, set, dimension, enabled);
+}
+/**@}*/
+#pragma endregion
+#pragma region Image declaration
+/**
+ *name
+ *  Image declaration.
+ */
+/**@{*/
+template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+inline sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>
+ComputeWriter::declImage(std::string const& name, uint32_t binding,
+                          uint32_t set)
+{
+	return sdw::ComputeWriter::declImage<FormatT, AccessT, DimT, ArrayedT,
+	                                      DepthT, MsT>(name, binding, set);
+}
+
+template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+inline sdw::Optional<
+    sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>
+ComputeWriter::declImage(std::string const& name, uint32_t binding,
+                          uint32_t set, bool enabled)
+{
+	return sdw::ComputeWriter::declImage<FormatT, AccessT, DimT, ArrayedT,
+	                                      DepthT, MsT>(name, binding, set,
+	                                                   enabled);
+}
+
+template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+inline sdw::Array<sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>
+ComputeWriter::declImageArray(std::string const& name, uint32_t binding,
+                               uint32_t set, uint32_t dimension)
+{
+	return sdw::ComputeWriter::declImageArray<FormatT, AccessT, DimT,
+	                                           ArrayedT, DepthT, MsT>(
+	    name, binding, set, dimension);
+}
+
+template <ast::type::ImageFormat FormatT, ast::type::AccessKind AccessT,
+          ast::type::ImageDim DimT, bool ArrayedT, bool DepthT, bool MsT>
+inline sdw::Optional<
+    sdw::Array<sdw::ImageT<FormatT, AccessT, DimT, ArrayedT, DepthT, MsT>>>
+ComputeWriter::declImageArray(std::string const& name, uint32_t binding,
+                               uint32_t set, uint32_t dimension, bool enabled)
+{
+	return sdw::ComputeWriter::declImageArray<FormatT, AccessT, DimT,
+	                                           ArrayedT, DepthT, MsT>(
+	    name, binding, set, dimension, enabled);
+}
+/**@}*/
+#pragma endregion
 }  // namespace cdm

@@ -1,5 +1,7 @@
 #include "PipelineFactory.hpp"
 
+#include "MyShaderWriter.hpp"
+
 #include <iostream>
 
 namespace cdm

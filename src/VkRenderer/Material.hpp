@@ -1,6 +1,5 @@
 #pragma once
 
-#include "MyShaderWriter.hpp"
 #include "PbrShadingModel.hpp"
 #include "TextureInterface.hpp"
 #include "UniformBuffer.hpp"

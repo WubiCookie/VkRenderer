@@ -28,6 +28,7 @@ bool reset = true;
 
 namespace cdm
 {
+
 void LightTransport::Config::copyTo(void* ptr)
 {
 	std::memcpy(ptr, this, sizeof(*this));
@@ -69,6 +70,7 @@ VkPushConstantRange LightTransport::PushConstants::getRange()
 }
 
 static float smoothness = 0.01f;
+static float sigma = 1.0f;
 
 LightTransport::LightTransport(RenderWindow& renderWindow)
     : rw(renderWindow),
@@ -145,7 +147,7 @@ LightTransport::LightTransport(RenderWindow& renderWindow)
 	//*/
 }
 
-LightTransport::~LightTransport() {}
+LightTransport::~LightTransport() = default;
 
 static int i = VERTEX_BATCH_COUNT;
 static int b = VERTEX_BATCH_COUNT + 1;
@@ -187,35 +189,35 @@ void LightTransport::render(CommandBuffer& cb)
 	{
 		if (i > 0)
 		{
-			fillRaysBuffer();
+			initRayVerticesBatch();
 
-			cb.debugMarkerBegin("compute", 0.7f, 1.0f, 0.6f);
-			cb.bindPipeline(m_tracePipeline);
-			cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE,
-			                     m_tracePipelineLayout, 0,
-			                     m_traceDescriptorSet);
+			// cb.debugMarkerBegin("compute", 0.7f, 1.0f, 0.6f);
+			// cb.bindPipeline(m_tracePipeline);
+			// cb.bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE,
+			//                     m_tracePipelineLayout, 0,
+			//                     m_traceDescriptorSet);
 
-			std::uniform_real_distribution<float> urd(0.0f, 1.0f);
-			m_pc.init = 0;
-			m_pc.rng = urd(gen);
-			m_pc.smoothness = smoothness;
-			m_pc.bumpsCount = BUMPS;
-			cb.pushConstants(m_tracePipelineLayout,
-			                 VK_SHADER_STAGE_COMPUTE_BIT, 0, &m_pc);
-
-			// int32_t k = 0;
-			// cb.pushConstants(m_tracePipelineLayout,
-			// VK_SHADER_STAGE_COMPUTE_BIT, 0, &k);
 			// std::uniform_real_distribution<float> urd(0.0f, 1.0f);
-			// float rng = urd(gen);
+			// m_pc.init = 0;
+			// m_pc.rng = urd(gen);
+			// m_pc.smoothness = smoothness;
+			// m_pc.bumpsCount = BUMPS;
 			// cb.pushConstants(m_tracePipelineLayout,
-			// VK_SHADER_STAGE_COMPUTE_BIT, sizeof(int32_t), &rng);
-			// cb.pushConstants(m_tracePipelineLayout,
-			// VK_SHADER_STAGE_COMPUTE_BIT, sizeof(int32_t) + sizeof(float),
-			// &smoothness);
-			cb.dispatch(VERTEX_BUFFER_LINE_COUNT / THREAD_COUNT);
-			// cb.dispatch(1);
-			cb.debugMarkerEnd();
+			//                 VK_SHADER_STAGE_COMPUTE_BIT, 0, &m_pc);
+
+			//// int32_t k = 0;
+			//// cb.pushConstants(m_tracePipelineLayout,
+			//// VK_SHADER_STAGE_COMPUTE_BIT, 0, &k);
+			//// std::uniform_real_distribution<float> urd(0.0f, 1.0f);
+			//// float rng = urd(gen);
+			//// cb.pushConstants(m_tracePipelineLayout,
+			//// VK_SHADER_STAGE_COMPUTE_BIT, sizeof(int32_t), &rng);
+			//// cb.pushConstants(m_tracePipelineLayout,
+			//// VK_SHADER_STAGE_COMPUTE_BIT, sizeof(int32_t) + sizeof(float),
+			//// &smoothness);
+			// cb.dispatch(VERTEX_BUFFER_LINE_COUNT / THREAD_COUNT);
+			//// cb.dispatch(1);
+			// cb.debugMarkerEnd();
 
 			i--;
 			j++;
@@ -309,7 +311,7 @@ void LightTransport::imgui(CommandBuffer& cb)
 
 		bool changed = false;
 
-		changed |= ImGui::SliderFloat("smoothness", &smoothness, 0.001f, 0.5f,
+		changed |= ImGui::SliderFloat("smoothness", &smoothness, 0.001f, 1.0f,
 		                              "%.3f", 1.2f);
 		changed |=
 		    ImGui::SliderFloat("angle", &m_angle, -constants<float>::Pi(),
@@ -318,6 +320,8 @@ void LightTransport::imgui(CommandBuffer& cb)
 		                              constants<float>::Pi(), "%.3f");
 		changed |=
 		    ImGui::SliderFloat("sourceSize", &m_sourceSize, 0.0f, 50.0f);
+
+		changed |= ImGui::DragFloat("sigma", &sigma, 0.001f);
 
 		// changed |=
 		//    ImGui::SliderFloat("sphereRefraction",
@@ -468,7 +472,7 @@ void LightTransport::standaloneDraw()
 		//	raysVector[i].frequency = freq;
 		//
 		//	raysVector[i].waveLength = 3.0e8f * 1.0e9f /
-		//raysVector[i].frequency;
+		// raysVector[i].frequency;
 		//
 		//	// freq += freqStep;
 		//}
@@ -501,7 +505,7 @@ void LightTransport::standaloneDraw()
 		//            sizeof(*raysVector.data()) * RAYS_COUNT);
 		// m_raysBuffer.unmap();
 
-		fillRaysBuffer();
+		initRayVerticesBatch();
 
 		i = VERTEX_BATCH_COUNT;
 		b = VERTEX_BATCH_COUNT + 1;
@@ -560,14 +564,14 @@ void LightTransport::standaloneDraw()
 		cb.begin();
 		cb.debugMarkerBegin("reset", 1.0f, 0.7f, 0.6f);
 
-		auto prop = vk.getPhysicalDeviceFormatProperties(
-		    VK_FORMAT_R32G32B32A32_SFLOAT);
-		std::cout << "\nlinear:  "
-		          << vk::feature_to_string(prop.linearTilingFeatures)
-		          << std::endl;
-		std::cout << "optimal: "
-		          << vk::feature_to_string(prop.optimalTilingFeatures)
-		          << std::endl;
+		// auto prop = vk.getPhysicalDeviceFormatProperties(
+		//    VK_FORMAT_R32G32B32A32_SFLOAT);
+		// std::cout << "\nlinear:  "
+		//          << vk::feature_to_string(prop.linearTilingFeatures)
+		//          << std::endl;
+		// std::cout << "optimal: "
+		//          << vk::feature_to_string(prop.optimalTilingFeatures)
+		//          << std::endl;
 
 		TextureFactory f(vk);
 
@@ -715,7 +719,7 @@ void LightTransport::fillVertexBuffer()
 	for (auto& line : lines)
 	{
 		radian theta(urd(gen) / 8.0f + 3.14f - (3.14f / 8.0f));
-		vector2 dir{ cos(theta), sin(theta) };
+		vector2 dir{ theta.cos(), theta.sin() };
 
 		line.A.pos = { 0.5, 0 };
 		line.B.pos = dir * 2.0f + line.A.pos;
@@ -751,17 +755,17 @@ void LightTransport::fillRaysBuffer()
 	{
 		radian theta(urdAngle(gen) + m_angle);
 		// radian theta(urd(gen));
-		vector2 dir{ cos(theta), sin(theta) };
+		vector2 dir{ theta.cos(), theta.sin() };
 
 		radian alpha(urd(gen));
 		float r = urdcol(gen);
 
 		// ray.position = { 1, height / 2.0f };
-		ray.position = { widthf / 2.0f + cos(alpha) * r * m_sourceSize,
-			             height / 2.0f + sin(alpha) * r * m_sourceSize };
+		ray.position = { widthf / 2.0f + alpha.cos() * r * m_sourceSize,
+			             height / 2.0f + alpha.sin() * r * m_sourceSize };
 		ray.direction.x = dir.x;
 		ray.direction.y = dir.y;
-		ray.polarDirection = theta;
+		ray.polarDirection = float(theta);
 		ray.rng = urdcol(gen);
 		// ray.frequency = urdcol(gen);
 	}
@@ -769,6 +773,179 @@ void LightTransport::fillRaysBuffer()
 	RayIteration* data = m_raysBuffer.map<RayIteration>();
 	std::copy(rays.begin(), rays.end(), data);
 	m_raysBuffer.unmap();
+}
+
+void LightTransport::initRayVerticesBatch()
+{
+	std::uniform_real_distribution<float> urd(0.0f,
+	                                          2.0f * constants<float>::Pi());
+	std::uniform_real_distribution<float> urdcol(0.0f, 1.0f);
+	std::uniform_real_distribution<float> urd2(-1.0f, 1.0f);
+	std::uniform_real_distribution<float> urdAngle(-m_aperture, m_aperture);
+	// std::normal_distribution<float> nd(mean, sigma);
+
+	auto sampleVisibleNormal = [&](float s, float xi, float thetaMin,
+	                               float thetaMax) {
+		auto a = tanh(thetaMin / (2.0f * s)); /// TODO: s could be 0 here!
+		auto b = tanh(thetaMax / (2.0f * s));
+		return 2.0f * s * atanh(a + (b - a) * xi);
+		// writer.returnStmt(2.0_f * s * atanh((1.0_f - xi) * a + xi * b));
+	};
+
+	auto sampleRoughMirror = [&](vector2 w_o, const float& s) {
+		auto thetaMin =
+		    std::max(asin(w_o.x), 0.0f) - (constants<float>::Pi() / 2.0f);
+		auto thetaMax =
+		    std::min(asin(w_o.x), 0.0f) + (constants<float>::Pi() / 2.0f);
+
+		auto thetaM =
+		    sampleVisibleNormal(1.0f - s, urd2(gen), thetaMin, thetaMax);
+
+		vector2 m(sin(thetaM), cos(thetaM));
+
+		return m * (dot(w_o, m) * 2.0f) - w_o;
+
+		// radian randomAngle(urd2(gen) * (1.0f - s));
+		// vector2 normal{ randomAngle.cos(), randomAngle.sin() };
+		//
+		// return (w_o - 2 * dot(w_o, normal) * normal).get_normalized();
+	};
+
+	auto smoothnessToAlpha = [&](float smoothness) {
+		float roughness = std::max(1.0f - smoothness, (float)1e-3);
+		float x = std::log(roughness);
+		return 1.62142f + 0.819955f * x + 0.1734f * x * x +
+		       0.0171201f * x * x * x + 0.000640711f * x * x * x * x;
+	};
+
+	auto samplePerfectMirror = [&](vector2 w_o) -> vector2 {
+		return { -w_o.x, w_o.y };
+	};
+
+	auto intersectPlane = [&](vector2 a, vector2 b, vector2 pos, vector2 dir,
+	                          float& tMin, float& tMax, vector2& normal) {
+		auto sT = b - a;
+		auto sN = vector2(-sT.y, sT.x);
+
+		auto t = dot(sN, a - pos) / dot(sN, dir);
+		auto u = dot(sT, pos + dir * t - a);
+
+		if (t < tMin || t >= tMax || u < 0.0 || u > dot(sT, sT))
+		{
+			return;
+		}
+
+		tMax = t;
+		normal = sN.get_normalized();
+	};
+
+	// std::vector<CPU_RayIteration> rays(VERTEX_BUFFER_LINE_COUNT);
+	std::vector<Line> lines;
+	lines.reserve(VERTEX_BUFFER_LINE_COUNT * BUMPS);
+
+	// for (auto& ray : rays)
+	for (size_t rayIndex = 0; rayIndex < VERTEX_BUFFER_LINE_COUNT; rayIndex++)
+	{
+		CPU_RayIteration ray;
+		{
+			radian theta(urdAngle(gen) + m_angle);
+			radian alpha(urd(gen));
+			float r = urdcol(gen);
+
+			ray.dir = { theta.cos(), theta.sin() };
+			ray.pos = { widthf / 2.0f + alpha.cos() * r * m_sourceSize,
+				        height / 2.0f + alpha.sin() * r * m_sourceSize };
+		}
+
+		for (size_t i = 0; i < BUMPS; i++)
+		{
+			// auto oldPos = ray.pos;
+
+			float tMin = 1.0e-4f;
+			float tMax = 1.0e30f;
+			vector2 normal;
+
+			auto a = vector2(0.0f, 0.0f);
+			auto b = vector2(widthf, 0.0f);
+			auto c = vector2(widthf, heightf);
+			auto d = vector2(0.0f, heightf);
+
+			intersectPlane(a, b, ray.pos, ray.dir, tMin, tMax, normal);
+			intersectPlane(b, c, ray.pos, ray.dir, tMin, tMax, normal);
+			intersectPlane(c, d, ray.pos, ray.dir, tMin, tMax, normal);
+			intersectPlane(d, a, ray.pos, ray.dir, tMin, tMax, normal);
+
+			if (tMax == 1.0e30f)
+			{
+				Line l;
+				l.A.pos = ray.pos;
+				l.B.pos = ray.pos + ray.dir * tMax;
+
+				l.A.dir = ray.dir;
+				l.B.dir = ray.dir;
+
+				lines.push_back(l);
+			}
+			else
+			{
+				Line l;
+				l.A.pos = ray.pos;
+				l.B.pos = ray.pos + ray.dir * tMax;
+
+				l.A.dir = ray.dir;
+				l.B.dir = ray.dir;
+
+				l.A.col = vector4(1, 1, 1, 1);
+				l.B.col = vector4(1, 1, 1, 1);
+				lines.push_back(l);
+
+				ray.pos = l.B.pos;
+
+				// raysSsbo[rayIndex].position = rayVerticesSsbo[i].posB;
+
+				radian polarNormal(radian(atan2(normal.y, normal.x)));
+
+				radian polarDirection = ray.dir.angle(vector2(), ray.dir);
+				// polar_direction2d polarDirection =
+				// ray.dir.angle(vector2(), ray.dir);
+
+				// polarDirection = atan2(rayDirection.y(), rayDirection.x());
+				// polarDirection = raysSsbo[rayIndex].polarDirection;
+
+				// polarDirection.rotate(polarNormal.angle);
+				// polarDirection = polarDirection + polarNormal;
+				// polarDirection.wrap();
+
+				vector2 cartesianDirection{ polarDirection.cos(),
+					                        polarDirection.sin() };
+
+				vector2 newDirection;
+
+				//if (smoothness == 1.0f)
+				//	newDirection = samplePerfectMirror(cartesianDirection);
+				//else
+					newDirection =
+					    sampleRoughMirror(cartesianDirection, smoothness);
+
+				// vector2 newDirection = samplePerfectMirror(
+				//    cartesianDirection);
+
+				polarDirection = radian(atan2(newDirection.y, newDirection.x));
+				// polarDirection.rotate(-polarNormal.angle);
+				// polarDirection = polarDirection - polarNormal;
+				// polarDirection.wrap();
+
+				ray.dir = vector2(polarDirection.cos(), polarDirection.sin());
+				// raysSsbo[rayIndex].polarDirection = polarDirection;
+
+				// raysSsbo[rayIndex].rng = r;
+			}
+		}
+	}
+
+	Line* data = m_vertexBuffer.map<Line>();
+	std::copy(lines.begin(), lines.end(), data);
+	m_vertexBuffer.unmap();
 }
 
 void LightTransport::setSampleAndRandomize(float s)

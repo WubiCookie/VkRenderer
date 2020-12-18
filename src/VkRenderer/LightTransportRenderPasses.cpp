@@ -95,11 +95,11 @@ void LightTransport::createRenderPasses()
 		vk.debugMarkerSetObjectName(m_renderPass.get(), "renderPass");
 	}
 #pragma endregion
-	
+
 #pragma region blit renderpass
 	{
 		vk::AttachmentDescription colorAttachment;
-		colorAttachment.format = VkFormat::VK_FORMAT_B8G8R8A8_UNORM;
+		colorAttachment.format = VkFormat::VK_FORMAT_R8G8B8A8_UNORM;
 		//colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		//colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -173,7 +173,7 @@ void LightTransport::createRenderPasses()
 		vk.debugMarkerSetObjectName(m_blitRenderPass.get(), "blitRenderPass");
 	}
 #pragma endregion
-	
+
 	/*
 #pragma region ray renderpass
 	{

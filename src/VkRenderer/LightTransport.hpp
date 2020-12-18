@@ -2,6 +2,7 @@
 
 #include "VulkanDevice.hpp"
 
+#include "MyShaderWriter.hpp"
 #include "Buffer.hpp"
 #include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
@@ -9,9 +10,6 @@
 #include "Texture2D.hpp"
 
 #include "cdm_maths.hpp"
-
-#include <ShaderWriter/Intrinsics/Intrinsics.hpp>
-#include <ShaderWriter/Source.hpp>
 
 #include <memory>
 #include <random>
@@ -21,15 +19,22 @@
 constexpr size_t THREAD_COUNT = 16;
 //constexpr size_t THREAD_COUNT = 8;
 constexpr size_t VERTEX_BUFFER_LINE_COUNT = 4096*4;
+//constexpr size_t VERTEX_BUFFER_LINE_COUNT = 256;
 //constexpr size_t VERTEX_BUFFER_LINE_COUNT = 1;
-constexpr size_t VERTEX_BATCH_COUNT = 2048*64;
+//constexpr size_t VERTEX_BATCH_COUNT = 2048*64;
 //constexpr size_t VERTEX_BATCH_COUNT = 2048*1;
-//constexpr size_t VERTEX_BATCH_COUNT = 8;
-constexpr size_t BUMPS = 3;
+constexpr size_t VERTEX_BATCH_COUNT = 128;
+constexpr size_t BUMPS = 2;
 constexpr float HDR_SCALE = 1.0f;
 
 namespace cdm
 {
+struct CPU_RayIteration
+{
+	vector2 pos;
+	vector2 dir;
+};
+
 struct RayIteration
 {
 	struct Vec2
@@ -51,13 +56,13 @@ struct RayIteration
 	float polarDirection;
 
 	// Color		Wavelength	Frequency
-	// Violet	380–450 nm	680–790 THz
-	// Blue		450–485 nm	620–680 THz
-	// Cyan		485–500 nm	600–620 THz
-	// Green	500–565 nm	530–600 THz
-	// Yellow	565–590 nm	510–530 THz
-	// Orange	590–625 nm	480–510 THz
-	// Red		625–740 nm	405–480 THz
+	// Violet	380?450 nm	680?790 THz
+	// Blue		450?485 nm	620?680 THz
+	// Cyan		485?500 nm	600?620 THz
+	// Green	500?565 nm	530?600 THz
+	// Yellow	565?590 nm	510?530 THz
+	// Orange	590?625 nm	480?510 THz
+	// Red		625?740 nm	405?480 THz
 	float waveLength = 625.0f;
 	//float amplitude = 1.0f;
 	//float phase = 0.0f;
@@ -98,6 +103,8 @@ class LightTransport final
 	Buffer m_raysBuffer;
 	Buffer m_vertexBuffer;
 	//Buffer m_computeUbo;
+
+	//std::vector<CPU_RayIteration> m_CPU_RayIteration;
 
 	Texture2D m_outputImage;
 	Texture2D m_outputImageHDR;
@@ -188,6 +195,8 @@ private:
 
 	void fillVertexBuffer();
 	void fillRaysBuffer();
+
+	void initRayVerticesBatch();
 
 public:
 	LightTransport(RenderWindow& renderWindow);

@@ -1,5 +1,7 @@
 #include "UniformBuffer.hpp"
 
+#include "MyShaderWriter.hpp"
+
 namespace cdm
 {
 UniformBuffer::UniformBuffer(const VulkanDevice& vulkanDevice,

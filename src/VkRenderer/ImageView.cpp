@@ -26,7 +26,7 @@ void ImageView::setImage(Image& image_)
 {
 	m_image = image_;
 	m_format = image_.format();
-	
+
 	setCreationTime();
 }
 
@@ -34,7 +34,7 @@ void ImageView::setImage(Image& image_, VkFormat format)
 {
 	m_image = image_;
 	m_format = format;
-	
+
 	setCreationTime();
 }
 
@@ -54,6 +54,8 @@ bool ImageView::outdated() const
 void ImageView::recreate()
 {
 	auto& vk = device();
+
+	vk.destroy(m_imageView);
 
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = m_image.get().image();

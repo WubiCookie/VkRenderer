@@ -1,5 +1,6 @@
 #include "Scene.hpp"
 
+#include "MyShaderWriter.hpp"
 #include "CommandBuffer.hpp"
 #include "RenderWindow.hpp"
 #include "SceneObject.hpp"

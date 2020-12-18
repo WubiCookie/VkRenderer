@@ -1,5 +1,6 @@
 #include "TextureFactory.hpp"
 
+#include "MyShaderWriter.hpp"
 #include "CommandBuffer.hpp"
 #include "StagingBuffer.hpp"
 

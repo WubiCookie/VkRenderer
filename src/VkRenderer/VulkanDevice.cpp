@@ -90,7 +90,7 @@ VulkanDeviceBase::VulkanDeviceBase(bool layers) noexcept : m_layers(layers)
 	if (layers)
 	{
 		validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-		// validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
+		 validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
 		// validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 		// validationLayers.push_back("VK_LAYER_LUNARG_api_dump");
 

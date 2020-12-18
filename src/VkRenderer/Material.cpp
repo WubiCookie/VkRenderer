@@ -1,4 +1,5 @@
 #include "Material.hpp"
+#include "MyShaderWriter.hpp"
 #include "CommandBuffer.hpp"
 #include "RenderPass.hpp"
 #include "RenderWindow.hpp"

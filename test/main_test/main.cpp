@@ -14,16 +14,16 @@
 #include <vector>
 
 //#define STB_IMAGE_WRITE_IMPLEMENTATION 1
-#include "stb_image.h"
-#include "stb_image_write.h"
+//#include "stb_image.h"
+//#include "stb_image_write.h"
 
-#include "BrdfLut.hpp"
-#include "BrdfLutGenerator.hpp"
-#include "EquirectangularToCubemap.hpp"
-#include "EquirectangularToIrradianceMap.hpp"
-#include "IrradianceMap.hpp"
-#include "PrefilterCubemap.hpp"
-#include "PrefilteredCubemap.hpp"
+//#include "BrdfLut.hpp"
+//#include "BrdfLutGenerator.hpp"
+//#include "EquirectangularToCubemap.hpp"
+//#include "EquirectangularToIrradianceMap.hpp"
+//#include "IrradianceMap.hpp"
+//#include "PrefilterCubemap.hpp"
+//#include "PrefilteredCubemap.hpp"
 
 using namespace cdm;
 
@@ -239,8 +239,8 @@ int main()
 		// rw.acquireNextImage(fence.get());
 		// rw.present();
 
-		//Mandelbulb mandelbulb(rw);
-		ShaderBall shaderBall(rw);
+		Mandelbulb mandelbulb(rw);
+		//ShaderBall shaderBall(rw);
 		//LightTransport lightTransport(rw);
 
 		auto start = std::chrono::steady_clock::now();
@@ -362,7 +362,7 @@ int main()
 
 			rw.pollEvents();
 
-			//*
+			/*
 			shaderBall.cameraTr.rotation =
 			    quaternion(vector3(0, 1, 0), degree(float(rotationX))) *
 			    quaternion(vector3(1, 0, 0), degree(float(rotationY)));
@@ -398,8 +398,8 @@ int main()
 			// vk.wait(fence.get());
 			// vk.resetFence(fence.get());
 
-			// mandelbulb.standaloneDraw();
-			 shaderBall.standaloneDraw();
+			 mandelbulb.standaloneDraw();
+			 //shaderBall.standaloneDraw();
 			//lightTransport.standaloneDraw();
 
 			// rw.acquireNextImage(fence.get());

@@ -24,7 +24,7 @@ void LightTransport::createBuffers()
 	m_vertexBuffer = Buffer(
 	    vk, sizeof(Line) * VERTEX_BUFFER_LINE_COUNT * BUMPS,
 	    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-	    VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	    VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 #pragma endregion
 
 #pragma region ray compute UBO

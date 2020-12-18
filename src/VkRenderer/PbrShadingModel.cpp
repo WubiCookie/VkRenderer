@@ -1,5 +1,6 @@
 #include "PbrShadingModel.hpp"
 
+#include "MyShaderWriter.hpp"
 #include "CommandBuffer.hpp"
 #include "CommandBufferPool.hpp"
 #include "Material.hpp"
@@ -12,8 +13,8 @@ namespace shader
 {
 struct ShadingModelData : public StructInstance
 {
-	ShadingModelData(ast::Shader* shader, ast::expr::ExprPtr expr)
-	    : StructInstance{ shader, std::move(expr) },
+	ShadingModelData(sdw::ShaderWriter& writer, ast::expr::ExprPtr expr)
+	    : StructInstance{ writer, std::move(expr) },
 	      pointLightsCount{ getMember<UInt>("pointLightsCount") },
 	      directionalLightsCount{ getMember<UInt>("directionalLightsCount") }
 	{
@@ -50,8 +51,8 @@ private:
 
 struct PointLights : public StructInstance
 {
-	PointLights(ast::Shader* shader, ast::expr::ExprPtr expr)
-	    : StructInstance{ shader, std::move(expr) },
+	PointLights(sdw::ShaderWriter& writer, ast::expr::ExprPtr expr)
+	    : StructInstance{ writer, std::move(expr) },
 	      position{ getMember<Vec3>("position") },
 	      color{ getMember<Vec4>("color") },
 	      intensity{ getMember<Float>("intensity") }
@@ -90,8 +91,8 @@ private:
 
 struct DirectionalLights : public StructInstance
 {
-	DirectionalLights(ast::Shader* shader, ast::expr::ExprPtr expr)
-	    : StructInstance{ shader, std::move(expr) },
+	DirectionalLights(sdw::ShaderWriter& writer, ast::expr::ExprPtr expr)
+	    : StructInstance{ writer, std::move(expr) },
 	      direction{ getMember<Vec3>("direction") },
 	      color{ getMember<Vec4>("color") },
 	      intensity{ getMember<Float>("intensity") }
