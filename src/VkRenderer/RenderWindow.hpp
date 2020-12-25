@@ -158,10 +158,10 @@ enum class MouseButton : int
 	_6,
 	_7,
 	_8,
+	COUNT,
 	Left = _1,
 	Right,
 	Middle,
-	COUNT
 };
 
 enum class Action : int

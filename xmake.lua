@@ -1,36 +1,15 @@
-add_repositories("my-repo myrepo")
+-- if is_arch("x64") then
 
---add_packagedirs("packages")
---add_requires("shaderwriter")
-add_requires("shaderwriter")
---add_requires("shaderwriter", {static = false})
+set_arch("x64")
 
---add_requires("glfw", {shared=false, build_tests=false})
---add_requires("imgui", {debug=true})
-add_requires("assimp")
+add_requires("assimp", "glfw")
 
 set_project("VkRenderer")
 
-add_rules("mode.debug", "mode.release", "mode.releasedbg", "c++")
-
-if is_plat("windows") then
-
-	-- link libcmt.lib
-	add_cxflags("-MT")
-
-	-- no msvcrt.lib
-	add_ldflags("-nodefaultlib:\"msvcrt.lib\"")
-end
-
--- if (is_plat("windows")) then
--- 	add_cxflags(is_mode("debug") and "/MTd" or "/MT")
--- 	add_cxxflags(is_mode("debug") and "/MTd" or "/MT")
--- 	--add_cxxflags("/bigobj", "/ZI", "/Zc:__cplusplus", "/Zc:referenceBinding", "/Zc:throwingNew")
--- 	--add_cxxflags("/FC")
--- end
-
--- add_cxflags("/MP")
--- add_cxxflags("/MP")
+-- add_rules("mode.debug", "mode.release", "mode.releasedbg", "c++")
+add_rules("mode.debug", "mode.release", "mode.releasedbg")
+-- add_rules("mode.debug", "mode.release")
+-- add_rules("mode.release")
 
 target("imgui")
 	set_default(false)
@@ -55,8 +34,10 @@ target("imgui")
 		"third_party/include",
 		"third_party/imgui/examples",
 		"$(env VULKAN_SDK)/Include", { public = true })
+target_end()
 
---[[
+
+-- [[
 target("sdwShaderAST")
 	set_default(false)
 	set_kind("static")
@@ -65,7 +46,8 @@ target("sdwShaderAST")
 	add_headerfiles("external/ShaderWriter/include/ShaderAST/**.hpp", "external/ShaderWriter/include/ShaderAST/**.inl")
 	add_includedirs("external/ShaderWriter/include/ShaderAST", { public = true })
 	add_includedirs("external/ShaderWriter/include", { public = true })
-	add_defines("ShaderAST_Static")
+	add_defines("ShaderAST_Static", { public = true })
+target_end()
 
 target("sdwShaderWriter")
 	set_default(false)
@@ -75,7 +57,8 @@ target("sdwShaderWriter")
 	add_headerfiles("external/ShaderWriter/include/ShaderWriter/**.hpp", "external/ShaderWriter/include/ShaderWriter/**.inl")
 	add_includedirs("external/ShaderWriter/include/ShaderWriter", { public = true })
 	add_includedirs("external/ShaderWriter/include", { public = true })
-	add_defines("ShaderWriter_Static")
+	add_defines("ShaderWriter_Static", { public = true })
+target_end()
 
 target("sdwCompilerSpirV")
 	set_default(false)
@@ -85,46 +68,80 @@ target("sdwCompilerSpirV")
 	add_headerfiles("external/ShaderWriter/include/CompilerSpirV/**.hpp", "external/ShaderWriter/include/CompilerSpirV/**.inl")
 	add_includedirs("external/ShaderWriter/include/CompilerSpirV", { public = true })
 	add_includedirs("external/ShaderWriter/include", { public = true })
-	add_defines("CompilerSpirV_Static")
+	add_defines("CompilerSpirV_Static", { public = true })
+target_end()
+--]]
 
+--[[
 target("shaderwriter")
 	on_build(function (target)
 		if is_mode("debug") then
-			os.exec("cmake -B$(buildir)/buildShaderWriter -Sexternal/ShaderWriter -DPROJECTS_OUTPUT_DIR='$(buildir)/buildShaderWriter' -DPROJECTS_USE_PRECOMPILED_HEADERS=OFF -DPROJECTS_USE_PRETTY_PRINTING=OFF -DPROJECTS_PACKAGE_WIX=OFF -DSDW_BUILD_EXPORTER_GLSL=OFF -DSDW_BUILD_EXPORTER_HLSL=OFF -DSDW_BUILD_EXPORTER_SPIRV_STATIC=ON -DSDW_BUILD_VULKAN_LAYER=OFF -DCMAKE_BUILD_TYPE='Debug' -DCMAKE_CXX_FLAGS_DEBUG='/MTd /Zi /Ob0 /Od /RTC1' -DCMAKE_C_FLAGS_DEBUG='/MTd /Zi /Ob0 /Od /RTC1'")
-			os.exec("cmake --build $(buildir)/buildShaderWriter --config Debug")
+			os.exec("cmake -B$(buildir)/../buildShaderWriter -Sexternal/ShaderWriter -DPROJECTS_OUTPUT_DIR='$(buildir)/../buildShaderWriter' -DPROJECTS_USE_PRECOMPILED_HEADERS=OFF -DPROJECTS_USE_PRETTY_PRINTING=OFF -DPROJECTS_PACKAGE_WIX=OFF -DSDW_BUILD_EXPORTER_GLSL=OFF -DSDW_BUILD_EXPORTER_HLSL=OFF -DSDW_BUILD_EXPORTER_SPIRV_STATIC=ON -DSDW_BUILD_VULKAN_LAYER=OFF -DCMAKE_BUILD_TYPE='Debug' -DCMAKE_CXX_FLAGS_DEBUG='/i /Ob0 /Od /RTC1' -DCMAKE_C_FLAGS_DEBUG='/Zi /Ob0 /Od /RTC1'")
+			os.exec("cmake --build $(buildir)/../buildShaderWriter --config Debug")
 		end
 		if is_mode("release") then
-			os.exec("cmake -B$(buildir)/buildShaderWriter -Sexternal/ShaderWriter -DPROJECTS_OUTPUT_DIR='$(buildir)/buildShaderWriter' -DPROJECTS_USE_PRECOMPILED_HEADERS=OFF -DPROJECTS_USE_PRETTY_PRINTING=OFF -DPROJECTS_PACKAGE_WIX=OFF -DSDW_BUILD_EXPORTER_GLSL=OFF -DSDW_BUILD_EXPORTER_HLSL=OFF -DSDW_BUILD_EXPORTER_SPIRV_STATIC=ON -DSDW_BUILD_VULKAN_LAYER=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_FLAGS_RELEASE='/MT /O2 /Ob2 /DNDEBUG' -DCMAKE_C_FLAGS_RELEASE='/MT /O2 /Ob2 /DNDEBUG'")
-			os.exec("cmake --build $(buildir)/buildShaderWriter --config Release")
+			os.exec("cmake -B$(buildir)/../buildShaderWriter -Sexternal/ShaderWriter -DPROJECTS_OUTPUT_DIR='$(buildir)/../buildShaderWriter' -DPROJECTS_USE_PRECOMPILED_HEADERS=OFF -DPROJECTS_USE_PRETTY_PRINTING=OFF -DPROJECTS_PACKAGE_WIX=OFF -DSDW_BUILD_EXPORTER_GLSL=OFF -DSDW_BUILD_EXPORTER_HLSL=OFF -DSDW_BUILD_EXPORTER_SPIRV_STATIC=ON -DSDW_BUILD_VULKAN_LAYER=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_FLAGS_RELEASE='/O2 /Ob2 /DNDEBUG' -DCMAKE_C_FLAGS_RELEASE='/O2 /Ob2 /DNDEBUG'")
+			os.exec("cmake --build $(buildir)/../buildShaderWriter --config Release")
 		end
-		if is_mode("release") then
-			os.exec("cmake -B$(buildir)/buildShaderWriter -Sexternal/ShaderWriter -DPROJECTS_OUTPUT_DIR='$(buildir)/buildShaderWriter' -DPROJECTS_USE_PRECOMPILED_HEADERS=OFF -DPROJECTS_USE_PRETTY_PRINTING=OFF -DPROJECTS_PACKAGE_WIX=OFF -DSDW_BUILD_EXPORTER_GLSL=OFF -DSDW_BUILD_EXPORTER_HLSL=OFF -DSDW_BUILD_EXPORTER_SPIRV_STATIC=ON -DSDW_BUILD_VULKAN_LAYER=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_FLAGS_RELEASE='/MT /O2 /Ob2 /DNDEBUG' -DCMAKE_C_FLAGS_RELEASE='/MT /O2 /Ob2 /DNDEBUG'")
-			os.exec("cmake --build $(buildir)/buildShaderWriter --config RelWithDebInfo")
+		if is_mode("releasedbg") then
+			os.exec("cmake -B$(buildir)/../buildShaderWriter -Sexternal/ShaderWriter -DPROJECTS_OUTPUT_DIR='$(buildir)/../buildShaderWriter' -DPROJECTS_USE_PRECOMPILED_HEADERS=OFF -DPROJECTS_USE_PRETTY_PRINTING=OFF -DPROJECTS_PACKAGE_WIX=OFF -DSDW_BUILD_EXPORTER_GLSL=OFF -DSDW_BUILD_EXPORTER_HLSL=OFF -DSDW_BUILD_EXPORTER_SPIRV_STATIC=ON -DSDW_BUILD_VULKAN_LAYER=OFF -DCMAKE_BUILD_TYPE='RelWithDebInfo' -DCMAKE_CXX_FLAGS_RELWITHDEBINFO='/O2 /Ob2 /DNDEBUG' -DCMAKE_C_FLAGS_RELWITHDEBINFO='/O2 /Ob2 /DNDEBUG'")
+			os.exec("cmake --build $(buildir)/../buildShaderWriter --config RelWithDebInfo")
 		end
 	end)
 
 	if is_mode("debug") then
-		add_linkdirs("$(buildir)/buildShaderWriter/binaries/x64/Debug/lib/")
+		add_linkdirs("$(buildir)/../buildShaderWriter/binaries/x64/Debug/lib/")
 		add_links("sdwCompilerSpirVd", { public = true })
 		add_links("sdwShaderASTd", { public = true })
 		add_links("sdwShaderWriterd", { public = true })
 	end
 	if is_mode("release") then
-		add_linkdirs("$(buildir)/buildShaderWriter/binaries/x64/Release/lib/")
+		add_linkdirs("$(buildir)/../buildShaderWriter/binaries/x64/Release/lib/")
 		add_links("sdwCompilerSpirV", { public = true })
 		add_links("sdwShaderAST", { public = true })
 		add_links("sdwShaderWriter", { public = true })
 	end
-	if is_mode("release") then
-		add_linkdirs("$(buildir)/buildShaderWriter/binaries/x64/RelWithDebInfo/lib/")
+	if is_mode("releasedbg") then
+		add_linkdirs("$(buildir)/../buildShaderWriter/binaries/x64/RelWithDebInfo/lib/")
 		add_links("sdwCompilerSpirV", { public = true })
 		add_links("sdwShaderAST", { public = true })
 		add_links("sdwShaderWriter", { public = true })
 	end
 --]]
 
+--[[
+package("shaderwriter")
+
+	set_homepage("https://github.com/DragonJoker/ShaderWriter")
+	set_description("Library used to write shaders from C++, and export them in either GLSL, HLSL or SPIR-V.")
+
+	set_urls("https://github.com/DragonJoker/ShaderWriter.git")
+	add_versions("1.0", "a5ef99ff141693ef28cee0e464500888cabc65ad")
+
+	add_deps("cmake")
+
+	add_links("sdwShaderWriter", "sdwCompilerHlsl", "sdwCompilerGlsl", "sdwCompilerSpirV", "sdwShaderAST")
+
+	on_install("windows", "macosx", "linux", function (package)
+		local configs =
+		{
+			"-DSDW_BUILD_TESTS=OFF",
+			"-DSDW_BUILD_EXPORTERS=ON",
+			"-DSDW_BUILD_STATIC_SDW=".. (package:config("shared") and "OFF" or "ON"),
+			"-DSDW_BUILD_EXPORTER_GLSL_STATIC=".. (package:config("shared") and "OFF" or "ON"),
+			"-DSDW_BUILD_EXPORTER_HLSL_STATIC=".. (package:config("shared") and "OFF" or "ON"),
+			"-DSDW_BUILD_EXPORTER_SPIRV_STATIC=".. (package:config("shared") and "OFF" or "ON"),
+			"-DSDW_GENERATE_SOURCE=OFF",
+			"-DPROJECTS_USE_PRECOMPILED_HEADERS=OFF",
+			"-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release")
+		}
+		import("package.tools.cmake").install(package, configs)
+	end)
+--]]
 
 
+
+-- [[
 option("useSTB")
 	set_showmenu(true)
 	set_description("Use STB as a backend for TextureLoaderFrontend")
@@ -176,17 +193,20 @@ target("TextureLoaderFrontend")
 	)
 	add_files("src/TextureLoaderFrontend/TextureLoaderFrontend.cpp")
 	add_headerfiles("src/TextureLoaderFrontend/TextureLoaderFrontend.hpp")
-
+target_end()
+--]]
 
 
 target("VkRenderer")
 	set_default(false)
 	set_kind("static")
 	set_languages("cxx17")
-	add_packages("glfw", "imgui", "assimp")
-	add_packages("shaderwriter")
-	--add_deps("sdwShaderAST", "sdwShaderWriter", "sdwCompilerSpirV", "TextureLoaderFrontend", "shaderwriter")
-	add_deps("TextureLoaderFrontend", "imgui")
+	add_packages("glfw")
+	-- add_packages("shaderwriter")
+	-- add_deps("shaderwriter")
+	add_deps("sdwShaderAST", "sdwShaderWriter", "sdwCompilerSpirV")
+	-- add_deps("TextureLoaderFrontend", "imgui")
+	add_deps("imgui")
 	add_includedirs(
 		"third_party/include",
 		"third_party/imgui/examples",
@@ -194,21 +214,11 @@ target("VkRenderer")
 		"src/VkRenderer",
 		"src/VkRenderer/Materials", {public = true}
 	)
-	--add_includedirs("external/ShaderWriter/include", { public = true })
-	--add_includedirs("C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter/master/7001040a8533492597b595810d0adc4e/include")
-	--add_linkdirs("$(buildir)/buildShaderWriter/binaries/x64/Release/lib/")
-	--add_links("sdwCompilerSpirV")
-	--add_links("sdwShaderAST")
-	--add_links("sdwShaderWriter")
+
 	add_headerfiles("src/third_party/**.h")
 	add_files("src/third_party/**.cpp")
-	--add_files("src/VkRenderer/**.cpp")
-	--add_headerfiles("src/VkRenderer/**.h")
-	--add_headerfiles("src/VkRenderer/**.hpp")
 
 	add_files(
-		"src/VkRenderer/Materials/CustomMaterial.cpp",
-		"src/VkRenderer/Materials/DefaultMaterial.cpp",
 		"src/VkRenderer/BrdfLut.cpp",
 		"src/VkRenderer/BrdfLutGenerator.cpp",
 		"src/VkRenderer/Buffer.cpp",
@@ -221,44 +231,34 @@ target("VkRenderer")
 		"src/VkRenderer/EquirectangularToIrradianceMap.cpp",
 		"src/VkRenderer/Framebuffer.cpp",
 		"src/VkRenderer/Image.cpp",
-		"src/VkRenderer/TextureFactory.cpp",
 		"src/VkRenderer/ImageView.cpp",
 		"src/VkRenderer/IrradianceMap.cpp",
-		"src/VkRenderer/LightTransport.cpp",
-		"src/VkRenderer/LightTransportRenderPasses.cpp",
-		"src/VkRenderer/LightTransportShaderModules.cpp",
-		"src/VkRenderer/LightTransportDescriptorsObjects.cpp",
-		"src/VkRenderer/LightTransportPipelines.cpp",
-		"src/VkRenderer/LightTransportBuffers.cpp",
-		"src/VkRenderer/LightTransportImages.cpp",
-		"src/VkRenderer/LightTransportFramebuffers.cpp",
-		"src/VkRenderer/LightTransportUpdateDescriptorSets.cpp",
-		"src/VkRenderer/Mandelbulb.cpp",
 		"src/VkRenderer/Material.cpp",
+		"src/VkRenderer/Materials/CustomMaterial.cpp",
+		"src/VkRenderer/Materials/DefaultMaterial.cpp",
 		"src/VkRenderer/Model.cpp",
 		"src/VkRenderer/MyShaderWriter.cpp",
 		"src/VkRenderer/PbrShadingModel.cpp",
 		"src/VkRenderer/PipelineFactory.cpp",
 		"src/VkRenderer/PrefilterCubemap.cpp",
 		"src/VkRenderer/PrefilteredCubemap.cpp",
+		"src/VkRenderer/RenderApplication.cpp",
 		"src/VkRenderer/Renderer.cpp",
 		"src/VkRenderer/RenderPass.cpp",
 		"src/VkRenderer/RenderWindow.cpp",
 		"src/VkRenderer/Scene.cpp",
 		"src/VkRenderer/SceneObject.cpp",
-		"src/VkRenderer/ShaderBall.cpp",
 		"src/VkRenderer/Skybox.cpp",
 		"src/VkRenderer/StagingBuffer.cpp",
 		"src/VkRenderer/StandardMesh.cpp",
 		"src/VkRenderer/Texture1D.cpp",
 		"src/VkRenderer/Texture2D.cpp",
+		"src/VkRenderer/TextureFactory.cpp",
 		"src/VkRenderer/UniformBuffer.cpp",
 		"src/VkRenderer/VertexInputHelper.cpp",
 		"src/VkRenderer/VulkanDevice.cpp"
 	)
 	add_headerfiles(
-		"src/VkRenderer/Materials/CustomMaterial.hpp",
-		"src/VkRenderer/Materials/DefaultMaterial.hpp",
 		"src/VkRenderer/BrdfLut.hpp",
 		"src/VkRenderer/BrdfLutGenerator.hpp",
 		"src/VkRenderer/Buffer.hpp",
@@ -272,12 +272,11 @@ target("VkRenderer")
 		"src/VkRenderer/EquirectangularToIrradianceMap.hpp",
 		"src/VkRenderer/Framebuffer.hpp",
 		"src/VkRenderer/Image.hpp",
-		"src/VkRenderer/TextureFactory.hpp",
 		"src/VkRenderer/ImageView.hpp",
 		"src/VkRenderer/IrradianceMap.hpp",
-		"src/VkRenderer/LightTransport.hpp",
-		"src/VkRenderer/Mandelbulb.hpp",
 		"src/VkRenderer/Material.hpp",
+		"src/VkRenderer/Materials/CustomMaterial.hpp",
+		"src/VkRenderer/Materials/DefaultMaterial.hpp",
 		"src/VkRenderer/Model.hpp",
 		"src/VkRenderer/MyShaderWriter.hpp",
 		"src/VkRenderer/MyShaderWriter.inl",
@@ -285,17 +284,18 @@ target("VkRenderer")
 		"src/VkRenderer/PipelineFactory.hpp",
 		"src/VkRenderer/PrefilterCubemap.hpp",
 		"src/VkRenderer/PrefilteredCubemap.hpp",
+		"src/VkRenderer/RenderApplication.hpp",
 		"src/VkRenderer/Renderer.hpp",
 		"src/VkRenderer/RenderPass.hpp",
 		"src/VkRenderer/RenderWindow.hpp",
 		"src/VkRenderer/Scene.hpp",
 		"src/VkRenderer/SceneObject.hpp",
-		"src/VkRenderer/ShaderBall.hpp",
 		"src/VkRenderer/Skybox.hpp",
 		"src/VkRenderer/StagingBuffer.hpp",
 		"src/VkRenderer/StandardMesh.hpp",
 		"src/VkRenderer/Texture1D.hpp",
 		"src/VkRenderer/Texture2D.hpp",
+		"src/VkRenderer/TextureFactory.hpp",
 		"src/VkRenderer/TextureInterface.hpp",
 		"src/VkRenderer/UniformBuffer.hpp",
 		"src/VkRenderer/VertexInputHelper.hpp",
@@ -303,22 +303,52 @@ target("VkRenderer")
 		"src/VkRenderer/VulkanDevice.inl",
 		"src/VkRenderer/VulkanHelperStructs.hpp"
 	)
-	--if is_mode("debug") then
-	--	add_linkdirs("$(buildir)/buildShaderWriter/binaries/x64/Debug/lib/")
-	--	add_links("sdwCompilerSpirVd")
-	--	add_links("sdwShaderASTd")
-	--	add_links("sdwShaderWriterd")
-	--end
-	--if is_mode("release") then
 
-	--end
-	--add_defines("ShaderAST_Static", "ShaderWriter_Static", "CompilerSpirV_Static")
+	-- add_includedirs("external/ShaderWriter/include", { public = true })
+	-- add_includedirs("C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter/master/7001040a8533492597b595810d0adc4e/include")
+	-- add_linkdirs("$(buildir)/../buildShaderWriter/binaries/x64/Release/lib/")
 
 
+	-- add_defines("CompilerSpirV_Static", "ShaderWriter_Static", "ShaderAST_Static")
+	-- add_links("CompilerSpirV", "ShaderWriter", "ShaderAST")
+target_end()
 
-target("MainTest")
+
+
+
+
+
+
+target("LightTransport")
 	set_kind("binary")
 	set_languages("cxx17")
 	add_deps("VkRenderer")
-	add_packages("shaderwriter")
-	add_files("test/main_test/main.cpp")
+	add_packages("imgui")
+	add_files("test/LightTransport/*.cpp")
+	add_headerfiles("test/LightTransport/*.hpp")
+target_end()
+
+target("Mandelbulb")
+	set_kind("binary")
+	set_languages("cxx17")
+	add_deps("VkRenderer")
+	add_packages("imgui")
+	add_files("test/Mandelbulb/*.cpp")
+	add_headerfiles("test/Mandelbulb/*.hpp")
+
+	if is_mode("debug") then
+		set_symbols("debug")
+		set_optimize("none")
+	end
+target_end()
+
+target("ShaderBall")
+	set_kind("binary")
+	set_languages("cxx17")
+	add_deps("VkRenderer")
+	add_packages("imgui", "assimp")
+	add_files("test/ShaderBall/*.cpp")
+	add_headerfiles("test/ShaderBall/*.hpp")
+target_end()
+
+-- end

@@ -11,89 +11,89 @@ namespace cdm
 {
 struct FrameCommandBuffer
 {
-	CommandBuffer commandBuffer;
-	UniqueFence fence;
-	UniqueSemaphore semaphore;
-	bool submitted = false;
-	bool available = true;
+    CommandBuffer commandBuffer;
+    UniqueFence fence;
+    UniqueSemaphore semaphore;
+    bool submitted = false;
+    bool available = true;
 
-	VkResult wait(uint64_t timeout = UINT64_MAX);
-	bool isAvailable();
-	VkResult submit(VkQueue queue);
+    VkResult wait(uint64_t timeout = UINT64_MAX);
+    bool isAvailable();
+    VkResult submit(VkQueue queue);
 };
 
 struct ResettableFrameCommandBuffer
 {
-	CommandBuffer commandBuffer;
-	UniqueFence fence;
-	UniqueSemaphore semaphore;
-	bool submitted = false;
+    CommandBuffer commandBuffer;
+    UniqueFence fence;
+    UniqueSemaphore semaphore;
+    bool submitted = false;
 
-	VkResult wait(uint64_t timeout = UINT64_MAX);
-	void reset();
-	bool isAvailable();
-	VkResult submit(VkQueue queue);
+    VkResult wait(uint64_t timeout = UINT64_MAX);
+    void reset();
+    bool isAvailable();
+    VkResult submit(VkQueue queue);
 };
 
 class CommandBufferPool final
 {
-	std::reference_wrapper<const VulkanDevice> m_device;
-	VkCommandPoolCreateFlags m_flags = VkCommandPoolCreateFlags();
-	UniqueCommandPool m_commandPool;
+    std::reference_wrapper<const VulkanDevice> m_device;
+    VkCommandPoolCreateFlags m_flags = VkCommandPoolCreateFlags();
+    UniqueCommandPool m_commandPool;
 
-	std::vector<FrameCommandBuffer> m_frameCommandBuffers;
-	std::vector<StagingBuffer> m_registeredStagingBuffer;
+    std::vector<FrameCommandBuffer> m_frameCommandBuffers;
+    std::vector<StagingBuffer> m_registeredStagingBuffer;
 
 public:
-	CommandBufferPool(
-	    const VulkanDevice& vulkanDevice,
-	    VkCommandPoolCreateFlags flags = VkCommandPoolCreateFlags());
-	CommandBufferPool(const CommandBufferPool&) = default;
-	CommandBufferPool(CommandBufferPool&&) = default;
-	~CommandBufferPool();
+    CommandBufferPool(
+        const VulkanDevice& vulkanDevice,
+        VkCommandPoolCreateFlags flags = VkCommandPoolCreateFlags());
+    CommandBufferPool(const CommandBufferPool&) = default;
+    CommandBufferPool(CommandBufferPool&&) = default;
+    ~CommandBufferPool();
 
-	CommandBufferPool& operator=(const CommandBufferPool&) = default;
-	CommandBufferPool& operator=(CommandBufferPool&&) = default;
+    CommandBufferPool& operator=(const CommandBufferPool&) = default;
+    CommandBufferPool& operator=(CommandBufferPool&&) = default;
 
-	const VkCommandPool& commandPool() const { return m_commandPool.get(); }
-	const VulkanDevice& device() const { return m_device.get(); }
+    const VkCommandPool& commandPool() const { return m_commandPool.get(); }
+    const VulkanDevice& device() const { return m_device.get(); }
 
-	FrameCommandBuffer& getAvailableCommandBuffer();
-	void waitForAllCommandBuffers();
+    FrameCommandBuffer& getAvailableCommandBuffer();
+    void waitForAllCommandBuffers();
 
-	void reset();
+    void reset();
 
-	void registerResource(StagingBuffer stagingBuffer);
+    void registerResource(StagingBuffer stagingBuffer);
 };
 
 class ResettableCommandBufferPool final
 {
-	std::reference_wrapper<const VulkanDevice> m_device;
-	VkCommandPoolCreateFlags m_flags = VkCommandPoolCreateFlags();
-	UniqueCommandPool m_commandPool;
+    std::reference_wrapper<const VulkanDevice> m_device;
+    VkCommandPoolCreateFlags m_flags = VkCommandPoolCreateFlags();
+    UniqueCommandPool m_commandPool;
 
-	std::vector<ResettableFrameCommandBuffer> m_frameCommandBuffers;
+    std::vector<ResettableFrameCommandBuffer> m_frameCommandBuffers;
 
 public:
-	ResettableCommandBufferPool(
-	    const VulkanDevice& vulkanDevice,
-	    VkCommandPoolCreateFlags flags = VkCommandPoolCreateFlags());
-	ResettableCommandBufferPool(const ResettableCommandBufferPool&) = default;
-	ResettableCommandBufferPool(ResettableCommandBufferPool&&) = default;
-	~ResettableCommandBufferPool();
+    ResettableCommandBufferPool(
+        const VulkanDevice& vulkanDevice,
+        VkCommandPoolCreateFlags flags = VkCommandPoolCreateFlags());
+    ResettableCommandBufferPool(const ResettableCommandBufferPool&) = default;
+    ResettableCommandBufferPool(ResettableCommandBufferPool&&) = default;
+    ~ResettableCommandBufferPool();
 
-	ResettableCommandBufferPool& operator=(
-	    const ResettableCommandBufferPool&) = default;
-	ResettableCommandBufferPool& operator=(ResettableCommandBufferPool&&) =
-	    default;
+    ResettableCommandBufferPool& operator=(
+        const ResettableCommandBufferPool&) = default;
+    ResettableCommandBufferPool& operator=(ResettableCommandBufferPool&&) =
+        default;
 
-	const VkCommandPool& commandPool() const { return m_commandPool.get(); }
-	const VulkanDevice& device() const { return m_device.get(); }
+    const VkCommandPool& commandPool() const { return m_commandPool.get(); }
+    const VulkanDevice& device() const { return m_device.get(); }
 
-	ResettableFrameCommandBuffer& getAvailableCommandBuffer();
-	void waitForAllCommandBuffers();
+    ResettableFrameCommandBuffer& getAvailableCommandBuffer();
+    void waitForAllCommandBuffers();
 
-	void reset();
+    void reset();
 };
 }  // namespace cdm
 

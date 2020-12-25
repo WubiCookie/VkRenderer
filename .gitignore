@@ -4,6 +4,9 @@ assimp-build/
 glfw-build/
 bin/
 runtime_cache/
+.xmake/
+vsxmake*/
+CMakeFiles/
 
 *.exe
 *.log
