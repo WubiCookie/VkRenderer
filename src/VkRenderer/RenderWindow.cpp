@@ -1295,6 +1295,22 @@ void RenderWindow::size(int& width, int& height)
 	glfwGetWindowSize(p->window, &width, &height);
 }
 
+int RenderWindow::width()
+{
+	int w, _;
+	size(w, _);
+
+	return w;
+}
+
+int RenderWindow::height()
+{
+	int _, h;
+	size(_, h);
+
+	return h;
+}
+
 void RenderWindow::pos(int& xpos, int& ypos)
 {
 	glfwGetWindowPos(p->window, &xpos, &ypos);

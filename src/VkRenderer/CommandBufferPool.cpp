@@ -149,8 +149,9 @@ void CommandBufferPool::waitForAllCommandBuffers()
         if (frame.submitted)
             fences.push_back(frame.fence);
 
-    vk.wait(uint32_t(fences.size()), fences.data(), true);
-    vk.wait();
+    if (fences.empty() == false)
+        vk.wait(uint32_t(fences.size()), fences.data(), true);
+    //vk.wait();
 
     for (auto& frame : m_frameCommandBuffers)
         frame.submitted = false;

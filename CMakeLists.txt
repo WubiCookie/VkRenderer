@@ -7,445 +7,10 @@ cmake_minimum_required(VERSION 3.13.0)
 project(VkRenderer LANGUAGES C CXX ASM)
 
 # target
-add_library(sdwCompilerSpirV STATIC "")
-set_target_properties(sdwCompilerSpirV PROPERTIES OUTPUT_NAME "sdwCompilerSpirV")
-set_target_properties(sdwCompilerSpirV PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "build/windows/x64/release")
-target_include_directories(sdwCompilerSpirV PRIVATE
-    external/ShaderWriter/include/CompilerSpirV
-    external/ShaderWriter/include
-)
-target_include_directories(sdwCompilerSpirV INTERFACE
-    external/ShaderWriter/include/CompilerSpirV
-    external/ShaderWriter/include
-)
-target_compile_definitions(sdwCompilerSpirV PRIVATE
-    CompilerSpirV_Static
-)
-set_property(TARGET sdwCompilerSpirV PROPERTY CXX_STANDARD 17)
-target_compile_options(sdwCompilerSpirV PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
-)
-target_compile_features(sdwCompilerSpirV PRIVATE cxx_std_17)
-if(MSVC)
-    target_compile_options(sdwCompilerSpirV PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
-else()
-    target_compile_options(sdwCompilerSpirV PRIVATE -O3)
-endif()
-target_link_libraries(sdwCompilerSpirV PRIVATE
-    kernel32
-    ntdll
-)
-target_sources(sdwCompilerSpirV PRIVATE
-    external/ShaderWriter/source/CompilerSpirV/compileSpirV.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvBlock.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvExprAdapter.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvExprConfigFiller.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvExprEvaluator.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvExprVisitor.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvFunction.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvGetSwizzleComponents.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvHelpers.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvInstruction.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvMakeAccessChain.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvModule.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvOpHelpers.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvStmtAdapter.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvStmtConfigFiller.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvStmtRegister.cpp
-    external/ShaderWriter/source/CompilerSpirV/SpirvStmtVisitor.cpp
-    external/ShaderWriter/include/CompilerSpirV/compileSpirV.hpp
-    external/ShaderWriter/include/CompilerSpirV/spirv/GLSL.std.450.hpp
-    external/ShaderWriter/include/CompilerSpirV/spirv/spirv.hpp
-    external/ShaderWriter/include/CompilerSpirV/SpirvBlock.hpp
-    external/ShaderWriter/include/CompilerSpirV/SpirvFunction.hpp
-    external/ShaderWriter/include/CompilerSpirV/SpirvInstruction.hpp
-    external/ShaderWriter/include/CompilerSpirV/SpirvModule.hpp
-    external/ShaderWriter/include/CompilerSpirV/SpirvInstruction.inl
-)
-
-# target
-add_executable(Mandelbulb "")
-set_target_properties(Mandelbulb PROPERTIES OUTPUT_NAME "Mandelbulb")
-set_target_properties(Mandelbulb PROPERTIES RUNTIME_OUTPUT_DIRECTORY "build/windows/x64/release")
-add_dependencies(Mandelbulb VkRenderer)
-target_include_directories(Mandelbulb PRIVATE
-    third_party/include
-    third_party/imgui/examples
-    D:/VulkanSDK/1.2.154.1/Include
-    src/VkRenderer
-    src/VkRenderer/Materials
-    third_party/imgui
-    external/ShaderWriter/include/CompilerSpirV
-    external/ShaderWriter/include
-    external/ShaderWriter/include/ShaderWriter
-    external/ShaderWriter/include/ShaderAST
-)
-target_compile_definitions(Mandelbulb PRIVATE
-    CompilerSpirV_Static
-    ShaderWriter_Static
-    ShaderAST_Static
-)
-set_property(TARGET Mandelbulb PROPERTY CXX_STANDARD 17)
-target_compile_options(Mandelbulb PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
-)
-target_compile_features(Mandelbulb PRIVATE cxx_std_17)
-if(MSVC)
-    target_compile_options(Mandelbulb PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
-else()
-    target_compile_options(Mandelbulb PRIVATE -O3)
-endif()
-target_link_libraries(Mandelbulb PRIVATE
-    VkRenderer
-    glfw3
-    imgui
-    sdwCompilerSpirV
-    sdwShaderWriter
-    sdwShaderAST
-    user32
-    shell32
-    gdi32
-    kernel32
-    ntdll
-)
-target_link_directories(Mandelbulb PRIVATE
-    build/windows/x64/release
-    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
-)
-target_sources(Mandelbulb PRIVATE
-    test/Mandelbulb/Mandelbulb.cpp
-    test/Mandelbulb/Mandelbulb.hpp
-)
-
-# target
-add_library(imgui STATIC "")
-set_target_properties(imgui PROPERTIES OUTPUT_NAME "imgui")
-set_target_properties(imgui PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "build/windows/x64/release")
-target_include_directories(imgui PRIVATE
-    third_party/imgui
-    third_party/include
-    third_party/imgui/examples
-    D:/VulkanSDK/1.2.154.1/Include
-)
-target_include_directories(imgui INTERFACE
-    third_party/imgui
-    third_party/include
-    third_party/imgui/examples
-    D:/VulkanSDK/1.2.154.1/Include
-)
-target_include_directories(imgui PRIVATE
-    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/include
-)
-target_compile_definitions(imgui PRIVATE
-    GLFW_INCLUDE_NONE
-)
-set_property(TARGET imgui PROPERTY CXX_STANDARD 17)
-target_compile_options(imgui PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
-)
-target_compile_features(imgui PRIVATE cxx_std_17)
-if(MSVC)
-    target_compile_options(imgui PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
-else()
-    target_compile_options(imgui PRIVATE -O3)
-endif()
-target_link_libraries(imgui PRIVATE
-    glfw3
-    user32
-    shell32
-    gdi32
-    kernel32
-    ntdll
-)
-target_link_directories(imgui PRIVATE
-    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
-)
-target_sources(imgui PRIVATE
-    third_party/imgui/examples/imgui_impl_glfw.cpp
-    src/VkRenderer/my_imgui_impl_vulkan.cpp
-    third_party/imgui/imgui.cpp
-    third_party/imgui/imgui_draw.cpp
-    third_party/imgui/imgui_demo.cpp
-    third_party/imgui/imgui_widgets.cpp
-    third_party/imgui/imconfig.h
-    third_party/imgui/imgui.h
-    src/VkRenderer/my_imgui_impl_vulkan.h
-)
-
-# target
-add_executable(ShaderBall "")
-set_target_properties(ShaderBall PROPERTIES OUTPUT_NAME "ShaderBall")
-set_target_properties(ShaderBall PROPERTIES RUNTIME_OUTPUT_DIRECTORY "build/windows/x64/release")
-add_dependencies(ShaderBall VkRenderer)
-target_include_directories(ShaderBall PRIVATE
-    third_party/include
-    third_party/imgui/examples
-    D:/VulkanSDK/1.2.154.1/Include
-    src/VkRenderer
-    src/VkRenderer/Materials
-    third_party/imgui
-    external/ShaderWriter/include/CompilerSpirV
-    external/ShaderWriter/include
-    external/ShaderWriter/include/ShaderWriter
-    external/ShaderWriter/include/ShaderAST
-)
-target_include_directories(ShaderBall PRIVATE
-    C:/Users/Charles/AppData/Local/.xmake/packages/a/assimp/5.0.1/fa2058d81142429ab5cccba528638dd6/include
-)
-target_compile_definitions(ShaderBall PRIVATE
-    CompilerSpirV_Static
-    ShaderWriter_Static
-    ShaderAST_Static
-)
-set_property(TARGET ShaderBall PROPERTY CXX_STANDARD 17)
-target_compile_options(ShaderBall PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
-)
-target_compile_features(ShaderBall PRIVATE cxx_std_17)
-if(MSVC)
-    target_compile_options(ShaderBall PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
-else()
-    target_compile_options(ShaderBall PRIVATE -O3)
-endif()
-target_link_libraries(ShaderBall PRIVATE
-    assimp-vc142-mt
-    IrrXML
-    zlibstatic
-    VkRenderer
-    glfw3
-    imgui
-    sdwCompilerSpirV
-    sdwShaderWriter
-    sdwShaderAST
-    user32
-    shell32
-    gdi32
-    kernel32
-    ntdll
-)
-target_link_directories(ShaderBall PRIVATE
-    C:/Users/Charles/AppData/Local/.xmake/packages/a/assimp/5.0.1/fa2058d81142429ab5cccba528638dd6/lib
-    build/windows/x64/release
-    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
-)
-target_sources(ShaderBall PRIVATE
-    test/ShaderBall/ShaderBall.cpp
-    test/ShaderBall/ShaderBall.hpp
-)
-
-# target
-add_library(sdwShaderWriter STATIC "")
-set_target_properties(sdwShaderWriter PROPERTIES OUTPUT_NAME "sdwShaderWriter")
-set_target_properties(sdwShaderWriter PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "build/windows/x64/release")
-target_include_directories(sdwShaderWriter PRIVATE
-    external/ShaderWriter/include/ShaderWriter
-    external/ShaderWriter/include
-)
-target_include_directories(sdwShaderWriter INTERFACE
-    external/ShaderWriter/include/ShaderWriter
-    external/ShaderWriter/include
-)
-target_compile_definitions(sdwShaderWriter PRIVATE
-    ShaderWriter_Static
-)
-set_property(TARGET sdwShaderWriter PROPERTY CXX_STANDARD 17)
-target_compile_options(sdwShaderWriter PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
-)
-target_compile_features(sdwShaderWriter PRIVATE cxx_std_17)
-if(MSVC)
-    target_compile_options(sdwShaderWriter PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
-else()
-    target_compile_options(sdwShaderWriter PRIVATE -O3)
-endif()
-target_link_libraries(sdwShaderWriter PRIVATE
-    kernel32
-    ntdll
-)
-target_sources(sdwShaderWriter PRIVATE
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/Bool.cpp
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/Double.cpp
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/Float.cpp
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/Image.cpp
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/Int.cpp
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/SampledImage.cpp
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/Sampler.cpp
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/UInt.cpp
-    external/ShaderWriter/source/ShaderWriter/BaseTypes/Void.cpp
-    external/ShaderWriter/source/ShaderWriter/CompositeTypes/ArraySsbo.cpp
-    external/ShaderWriter/source/ShaderWriter/CompositeTypes/Builtins.cpp
-    external/ShaderWriter/source/ShaderWriter/CompositeTypes/Pcb.cpp
-    external/ShaderWriter/source/ShaderWriter/CompositeTypes/PerVertex.cpp
-    external/ShaderWriter/source/ShaderWriter/CompositeTypes/Ssbo.cpp
-    external/ShaderWriter/source/ShaderWriter/CompositeTypes/Struct.cpp
-    external/ShaderWriter/source/ShaderWriter/CompositeTypes/StructInstance.cpp
-    external/ShaderWriter/source/ShaderWriter/CompositeTypes/Ubo.cpp
-    external/ShaderWriter/source/ShaderWriter/Helpers.cpp
-    external/ShaderWriter/source/ShaderWriter/Intrinsics/IntrinsicFunctions.cpp
-    external/ShaderWriter/source/ShaderWriter/Intrinsics/Intrinsics.cpp
-    external/ShaderWriter/source/ShaderWriter/ShaderWriterPch.cpp
-    external/ShaderWriter/source/ShaderWriter/ShaderWriterPrerequisites.cpp
-    external/ShaderWriter/source/ShaderWriter/Value.cpp
-    external/ShaderWriter/source/ShaderWriter/Writer.cpp
-    external/ShaderWriter/source/ShaderWriter/WriterDebug.cpp
-    external/ShaderWriter/source/ShaderWriter/WriterInt.cpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/ArithmeticValue.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Array.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Bool.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Double.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Float.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Image.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Int.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/IntegerValue.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/SampledImage.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Sampler.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/UInt.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Void.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/ArraySsbo.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Builtins.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Function.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/FunctionParam.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Pcb.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/PerVertex.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Ssbo.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Struct.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/StructInstance.hpp
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Ubo.hpp
-    external/ShaderWriter/include/ShaderWriter/Helpers.hpp
-    external/ShaderWriter/include/ShaderWriter/Intrinsics/IntrinsicFunctions.hpp
-    external/ShaderWriter/include/ShaderWriter/Intrinsics/Intrinsics.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat2.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat2x3.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat2x4.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat3.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat3x2.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat3x4.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat4.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat4x2.hpp
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat4x3.hpp
-    external/ShaderWriter/include/ShaderWriter/MaybeOptional/MaybeOptional.hpp
-    external/ShaderWriter/include/ShaderWriter/Optional/Optional.hpp
-    external/ShaderWriter/include/ShaderWriter/Optional/OptionalUbo.hpp
-    external/ShaderWriter/include/ShaderWriter/ShaderWriterPch.hpp
-    external/ShaderWriter/include/ShaderWriter/ShaderWriterPrerequisites.hpp
-    external/ShaderWriter/include/ShaderWriter/Source.hpp
-    external/ShaderWriter/include/ShaderWriter/Value.hpp
-    external/ShaderWriter/include/ShaderWriter/VecTypes/Swizzle.hpp
-    external/ShaderWriter/include/ShaderWriter/VecTypes/Vec2.hpp
-    external/ShaderWriter/include/ShaderWriter/VecTypes/Vec3.hpp
-    external/ShaderWriter/include/ShaderWriter/VecTypes/Vec4.hpp
-    external/ShaderWriter/include/ShaderWriter/Writer.hpp
-    external/ShaderWriter/include/ShaderWriter/WriterDebug.hpp
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/ArithmeticValue.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Array.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Bool.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Double.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Float.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Image.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Int.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/IntegerValue.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/SampledImage.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Sampler.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/UInt.inl
-    external/ShaderWriter/include/ShaderWriter/BaseTypes/Void.inl
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/ArraySsbo.inl
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Function.inl
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/FunctionParam.inl
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Pcb.inl
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Ssbo.inl
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Struct.inl
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/StructInstance.inl
-    external/ShaderWriter/include/ShaderWriter/CompositeTypes/Ubo.inl
-    external/ShaderWriter/include/ShaderWriter/Helpers.inl
-    external/ShaderWriter/include/ShaderWriter/Intrinsics/Intrinsics.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat2.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat2x3.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat2x4.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat3.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat3x2.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat3x4.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat4.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat4x2.inl
-    external/ShaderWriter/include/ShaderWriter/MatTypes/Mat4x3.inl
-    external/ShaderWriter/include/ShaderWriter/MaybeOptional/MaybeOptional.inl
-    external/ShaderWriter/include/ShaderWriter/Optional/Optional.inl
-    external/ShaderWriter/include/ShaderWriter/Optional/OptionalUbo.inl
-    external/ShaderWriter/include/ShaderWriter/ShaderWriterPrerequisites.inl
-    external/ShaderWriter/include/ShaderWriter/Value.inl
-    external/ShaderWriter/include/ShaderWriter/VecTypes/Swizzle.inl
-    external/ShaderWriter/include/ShaderWriter/VecTypes/Vec2.inl
-    external/ShaderWriter/include/ShaderWriter/VecTypes/Vec3.inl
-    external/ShaderWriter/include/ShaderWriter/VecTypes/Vec4.inl
-    external/ShaderWriter/include/ShaderWriter/Writer.inl
-)
-
-# target
-add_executable(LightTransport "")
-set_target_properties(LightTransport PROPERTIES OUTPUT_NAME "LightTransport")
-set_target_properties(LightTransport PROPERTIES RUNTIME_OUTPUT_DIRECTORY "build/windows/x64/release")
-add_dependencies(LightTransport VkRenderer)
-target_include_directories(LightTransport PRIVATE
-    third_party/include
-    third_party/imgui/examples
-    D:/VulkanSDK/1.2.154.1/Include
-    src/VkRenderer
-    src/VkRenderer/Materials
-    third_party/imgui
-    external/ShaderWriter/include/CompilerSpirV
-    external/ShaderWriter/include
-    external/ShaderWriter/include/ShaderWriter
-    external/ShaderWriter/include/ShaderAST
-)
-target_compile_definitions(LightTransport PRIVATE
-    CompilerSpirV_Static
-    ShaderWriter_Static
-    ShaderAST_Static
-)
-set_property(TARGET LightTransport PROPERTY CXX_STANDARD 17)
-target_compile_options(LightTransport PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
-)
-target_compile_features(LightTransport PRIVATE cxx_std_17)
-if(MSVC)
-    target_compile_options(LightTransport PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
-else()
-    target_compile_options(LightTransport PRIVATE -O3)
-endif()
-target_link_libraries(LightTransport PRIVATE
-    VkRenderer
-    glfw3
-    imgui
-    sdwCompilerSpirV
-    sdwShaderWriter
-    sdwShaderAST
-    user32
-    shell32
-    gdi32
-    kernel32
-    ntdll
-)
-target_link_directories(LightTransport PRIVATE
-    build/windows/x64/release
-    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
-)
-target_sources(LightTransport PRIVATE
-    test/LightTransport/LightTransport.cpp
-    test/LightTransport/LightTransportBuffers.cpp
-    test/LightTransport/LightTransportDescriptorsObjects.cpp
-    test/LightTransport/LightTransportFramebuffers.cpp
-    test/LightTransport/LightTransportImages.cpp
-    test/LightTransport/LightTransportPipelines.cpp
-    test/LightTransport/LightTransportRenderPasses.cpp
-    test/LightTransport/LightTransportShaderModules.cpp
-    test/LightTransport/LightTransportUpdateDescriptorSets.cpp
-    test/LightTransport/LightTransport.hpp
-)
-
-# target
 add_library(VkRenderer STATIC "")
 set_target_properties(VkRenderer PROPERTIES OUTPUT_NAME "VkRenderer")
 set_target_properties(VkRenderer PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "build/windows/x64/release")
-add_dependencies(VkRenderer sdwShaderAST sdwShaderWriter sdwCompilerSpirV imgui)
+add_dependencies(VkRenderer imgui)
 target_include_directories(VkRenderer PRIVATE
     third_party/include
     third_party/imgui/examples
@@ -453,10 +18,6 @@ target_include_directories(VkRenderer PRIVATE
     src/VkRenderer
     src/VkRenderer/Materials
     third_party/imgui
-    external/ShaderWriter/include/CompilerSpirV
-    external/ShaderWriter/include
-    external/ShaderWriter/include/ShaderWriter
-    external/ShaderWriter/include/ShaderAST
 )
 target_include_directories(VkRenderer INTERFACE
     third_party/include
@@ -467,15 +28,15 @@ target_include_directories(VkRenderer INTERFACE
 )
 target_include_directories(VkRenderer PRIVATE
     C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/include
+    C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter1/1.0/7001040a8533492597b595810d0adc4e/include
 )
 target_compile_definitions(VkRenderer PRIVATE
     GLFW_INCLUDE_NONE
-    CompilerSpirV_Static
-    ShaderWriter_Static
-    ShaderAST_Static
 )
 set_property(TARGET VkRenderer PROPERTY CXX_STANDARD 17)
 target_compile_options(VkRenderer PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:-MT>
     $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
 )
 target_compile_features(VkRenderer PRIVATE cxx_std_17)
@@ -486,10 +47,12 @@ else()
 endif()
 target_link_libraries(VkRenderer PRIVATE
     glfw3
-    imgui
-    sdwCompilerSpirV
     sdwShaderWriter
+    sdwCompilerHlsl
+    sdwCompilerGlsl
+    sdwCompilerSpirV
     sdwShaderAST
+    imgui
     user32
     shell32
     gdi32
@@ -498,7 +61,11 @@ target_link_libraries(VkRenderer PRIVATE
 )
 target_link_directories(VkRenderer PRIVATE
     C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
+    C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter1/1.0/7001040a8533492597b595810d0adc4e/lib
     build/windows/x64/release
+)
+target_link_options(VkRenderer PRIVATE
+    -nodefaultlib:msvcrt.lib
 )
 target_sources(VkRenderer PRIVATE
     src/third_party/imgui_impl_glfw.cpp
@@ -588,304 +155,67 @@ target_sources(VkRenderer PRIVATE
 )
 
 # target
-add_library(sdwShaderAST STATIC "")
-set_target_properties(sdwShaderAST PROPERTIES OUTPUT_NAME "sdwShaderAST")
-set_target_properties(sdwShaderAST PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "build/windows/x64/release")
-target_include_directories(sdwShaderAST PRIVATE
-    external/ShaderWriter/include/ShaderAST
-    external/ShaderWriter/include
+add_executable(SpatialPartitionning "")
+set_target_properties(SpatialPartitionning PROPERTIES OUTPUT_NAME "SpatialPartitionning")
+set_target_properties(SpatialPartitionning PROPERTIES RUNTIME_OUTPUT_DIRECTORY "build/windows/x64/release")
+add_dependencies(SpatialPartitionning VkRenderer imgui)
+target_include_directories(SpatialPartitionning PRIVATE
+    third_party/include
+    third_party/imgui/examples
+    D:/VulkanSDK/1.2.154.1/Include
+    src/VkRenderer
+    src/VkRenderer/Materials
+    third_party/imgui
 )
-target_include_directories(sdwShaderAST INTERFACE
-    external/ShaderWriter/include/ShaderAST
-    external/ShaderWriter/include
+target_include_directories(SpatialPartitionning PRIVATE
+    C:/Users/Charles/AppData/Local/.xmake/packages/t/tinyobjloader/1.0.7/2f36d3c32e7742e1b8da29e4d9bc6b37/include
+    C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter1/1.0/7001040a8533492597b595810d0adc4e/include
 )
-target_compile_definitions(sdwShaderAST PRIVATE
+target_compile_definitions(SpatialPartitionning PRIVATE
+    CompilerSpirV_Static
+    ShaderWriter_Static
     ShaderAST_Static
 )
-set_property(TARGET sdwShaderAST PROPERTY CXX_STANDARD 17)
-target_compile_options(sdwShaderAST PRIVATE
+set_property(TARGET SpatialPartitionning PROPERTY CXX_STANDARD 17)
+target_compile_options(SpatialPartitionning PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:-MT>
     $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
 )
-target_compile_features(sdwShaderAST PRIVATE cxx_std_17)
+target_compile_features(SpatialPartitionning PRIVATE cxx_std_17)
 if(MSVC)
-    target_compile_options(sdwShaderAST PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
+    target_compile_options(SpatialPartitionning PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
 else()
-    target_compile_options(sdwShaderAST PRIVATE -O3)
+    target_compile_options(SpatialPartitionning PRIVATE -O3)
 endif()
-target_link_libraries(sdwShaderAST PRIVATE
+target_link_libraries(SpatialPartitionning PRIVATE
+    tinyobjloader
+    sdwShaderWriter
+    sdwCompilerHlsl
+    sdwCompilerGlsl
+    sdwCompilerSpirV
+    sdwShaderAST
+    VkRenderer
+    glfw3
+    imgui
+    user32
+    shell32
+    gdi32
     kernel32
     ntdll
 )
-target_sources(sdwShaderAST PRIVATE
-    external/ShaderWriter/source/ShaderAST/Debug/DebugCommon.cpp
-    external/ShaderWriter/source/ShaderAST/Debug/DebugExprVisitor.cpp
-    external/ShaderWriter/source/ShaderAST/Debug/DebugStmtVisitor.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/Expr.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprAdd.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprAddAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprAggrInit.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprAlias.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprAndAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprArrayAccess.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprBinary.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprBitAnd.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprBitNot.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprBitOr.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprBitXor.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprCast.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprComma.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprCompositeConstruct.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprDivide.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprDivideAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprEqual.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprFnCall.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprGreater.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprGreaterEqual.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprIdentifier.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprImageAccessCall.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprInit.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprIntrinsicCall.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprLess.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprLessEqual.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprList.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprLiteral.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprLogAnd.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprLogNot.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprLogOr.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprLShift.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprLShiftAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprMbrSelect.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprMinus.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprMinusAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprModulo.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprModuloAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprNotEqual.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprOrAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprPostDecrement.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprPostIncrement.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprPreDecrement.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprPreIncrement.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprQuestion.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprRShift.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprRShiftAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprSwitchCase.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprSwitchTest.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprSwizzle.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprTextureAccessCall.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprTimes.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprTimesAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprUnary.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprUnaryMinus.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprUnaryPlus.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/ExprXorAssign.cpp
-    external/ShaderWriter/source/ShaderAST/Expr/SwizzleKind.cpp
-    external/ShaderWriter/source/ShaderAST/Shader.cpp
-    external/ShaderWriter/source/ShaderAST/ShaderASTPch.cpp
-    external/ShaderWriter/source/ShaderAST/ShaderASTPrerequisites.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/PreprocDefine.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/PreprocElif.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/PreprocElse.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/PreprocEndif.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/PreprocExtension.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/PreprocIf.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/PreprocIfDef.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/PreprocVersion.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/Stmt.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtBreak.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtComment.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtCompound.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtConstantBufferDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtContainer.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtContinue.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtDiscard.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtDoWhile.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtElse.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtElseIf.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtFor.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtFragmentLayout.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtFunctionDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtIf.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtImageDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtInOutVariableDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtInputComputeLayout.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtInputGeometryLayout.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtLoop.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtOutputGeometryLayout.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtPerVertexDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtPushConstantsBufferDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtReturn.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtSampledImageDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtSamplerDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtShaderBufferDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtShaderStructBufferDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtSimple.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtSpecialisationConstantDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtStructureDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtSwitch.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtSwitchCase.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtVariableDecl.cpp
-    external/ShaderWriter/source/ShaderAST/Stmt/StmtWhile.cpp
-    external/ShaderWriter/source/ShaderAST/Type/ImageConfiguration.cpp
-    external/ShaderWriter/source/ShaderAST/Type/Type.cpp
-    external/ShaderWriter/source/ShaderAST/Type/TypeArray.cpp
-    external/ShaderWriter/source/ShaderAST/Type/TypeCache.cpp
-    external/ShaderWriter/source/ShaderAST/Type/TypeFunction.cpp
-    external/ShaderWriter/source/ShaderAST/Type/TypeImage.cpp
-    external/ShaderWriter/source/ShaderAST/Type/TypeSampledImage.cpp
-    external/ShaderWriter/source/ShaderAST/Type/TypeSampler.cpp
-    external/ShaderWriter/source/ShaderAST/Type/TypeStruct.cpp
-    external/ShaderWriter/source/ShaderAST/Var/Variable.cpp
-    external/ShaderWriter/source/ShaderAST/Visitors/CloneExpr.cpp
-    external/ShaderWriter/source/ShaderAST/Visitors/CloneStmt.cpp
-    external/ShaderWriter/source/ShaderAST/Visitors/ExprSpecialiser.cpp
-    external/ShaderWriter/source/ShaderAST/Visitors/GetExprName.cpp
-    external/ShaderWriter/source/ShaderAST/Visitors/GetOutermostExpr.cpp
-    external/ShaderWriter/source/ShaderAST/Visitors/StmtSimplifier.cpp
-    external/ShaderWriter/source/ShaderAST/Visitors/StmtSpecialiser.cpp
-    external/ShaderWriter/include/ShaderAST/BoInfo.hpp
-    external/ShaderWriter/include/ShaderAST/Debug/DebugCommon.hpp
-    external/ShaderWriter/include/ShaderAST/Debug/DebugExprVisitor.hpp
-    external/ShaderWriter/include/ShaderAST/Debug/DebugStmtVisitor.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/EnumImageAccess.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/EnumIntrinsic.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/EnumTextureAccess.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/Expr.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprAdd.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprAddAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprAggrInit.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprAlias.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprAndAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprArrayAccess.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprBinary.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprBitAnd.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprBitNot.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprBitOr.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprBitXor.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprCast.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprComma.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprCompositeConstruct.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprDivide.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprDivideAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprEqual.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprFnCall.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprGreater.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprGreaterEqual.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprIdentifier.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprImageAccessCall.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprInit.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprIntrinsicCall.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLess.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLessEqual.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprList.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLiteral.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLogAnd.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLogNot.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLogOr.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLShift.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLShiftAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprMbrSelect.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprMinus.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprMinusAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprModulo.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprModuloAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprNotEqual.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprOrAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprPostDecrement.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprPostIncrement.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprPreDecrement.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprPreIncrement.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprQuestion.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprRShift.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprRShiftAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprSwitchCase.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprSwitchTest.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprSwizzle.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprTextureAccessCall.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprTimes.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprTimesAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprUnary.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprUnaryMinus.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprUnaryPlus.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprVisitor.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprXorAssign.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/GetImageAccessName.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/GetIntrinsicName.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/GetTextureAccessName.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/IntrinsicCallHelpers.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/MakeImageAccess.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/MakeIntrinsic.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/MakeTextureAccess.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/SwizzleKind.hpp
-    external/ShaderWriter/include/ShaderAST/Shader.hpp
-    external/ShaderWriter/include/ShaderAST/ShaderASTPch.hpp
-    external/ShaderWriter/include/ShaderAST/ShaderASTPrerequisites.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/PreprocDefine.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/PreprocElif.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/PreprocElse.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/PreprocEndif.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/PreprocExtension.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/PreprocIf.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/PreprocIfDef.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/PreprocVersion.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/Stmt.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtBreak.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtComment.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtCompound.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtConstantBufferDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtContainer.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtContinue.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtDiscard.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtDoWhile.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtElse.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtElseIf.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtFor.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtFragmentLayout.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtFunctionDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtIf.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtImageDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtInOutVariableDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtInputComputeLayout.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtInputGeometryLayout.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtList.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtLoop.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtOutputGeometryLayout.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtPerVertexDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtPushConstantsBufferDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtReturn.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtSampledImageDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtSamplerDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtShaderBufferDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtShaderStructBufferDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtSimple.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtSpecialisationConstantDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtStructureDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtSwitch.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtSwitchCase.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtVariableDecl.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtVisitor.hpp
-    external/ShaderWriter/include/ShaderAST/Stmt/StmtWhile.hpp
-    external/ShaderWriter/include/ShaderAST/Type/ImageConfiguration.hpp
-    external/ShaderWriter/include/ShaderAST/Type/Type.hpp
-    external/ShaderWriter/include/ShaderAST/Type/TypeArray.hpp
-    external/ShaderWriter/include/ShaderAST/Type/TypeCache.hpp
-    external/ShaderWriter/include/ShaderAST/Type/TypeFunction.hpp
-    external/ShaderWriter/include/ShaderAST/Type/TypeImage.hpp
-    external/ShaderWriter/include/ShaderAST/Type/TypeSampledImage.hpp
-    external/ShaderWriter/include/ShaderAST/Type/TypeSampler.hpp
-    external/ShaderWriter/include/ShaderAST/Type/TypeStruct.hpp
-    external/ShaderWriter/include/ShaderAST/Var/Variable.hpp
-    external/ShaderWriter/include/ShaderAST/Var/VariableList.hpp
-    external/ShaderWriter/include/ShaderAST/Visitors/CloneExpr.hpp
-    external/ShaderWriter/include/ShaderAST/Visitors/CloneStmt.hpp
-    external/ShaderWriter/include/ShaderAST/Visitors/ExprSpecialiser.hpp
-    external/ShaderWriter/include/ShaderAST/Visitors/GetExprName.hpp
-    external/ShaderWriter/include/ShaderAST/Visitors/GetOutermostExpr.hpp
-    external/ShaderWriter/include/ShaderAST/Visitors/StmtSimplifier.hpp
-    external/ShaderWriter/include/ShaderAST/Visitors/StmtSpecialiser.hpp
-    external/ShaderWriter/include/ShaderAST/Expr/ExprLiteral.inl
-    external/ShaderWriter/include/ShaderAST/Type/ImageConfiguration.inl
+target_link_directories(SpatialPartitionning PRIVATE
+    C:/Users/Charles/AppData/Local/.xmake/packages/t/tinyobjloader/1.0.7/2f36d3c32e7742e1b8da29e4d9bc6b37/lib
+    C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter1/1.0/7001040a8533492597b595810d0adc4e/lib
+    build/windows/x64/release
+    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
+)
+target_link_options(SpatialPartitionning PRIVATE
+    -nodefaultlib:msvcrt.lib
+)
+target_sources(SpatialPartitionning PRIVATE
+    test/SpatialPartitionning/SpatialPartitionning.cpp
+    test/SpatialPartitionning/SpatialPartitionning.hpp
 )
 
 # target
@@ -900,6 +230,8 @@ target_include_directories(TextureLoaderFrontend INTERFACE
 )
 set_property(TARGET TextureLoaderFrontend PROPERTY CXX_STANDARD 17)
 target_compile_options(TextureLoaderFrontend PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:-MT>
     $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
 )
 target_compile_features(TextureLoaderFrontend PRIVATE cxx_std_17)
@@ -912,8 +244,238 @@ target_link_libraries(TextureLoaderFrontend PRIVATE
     kernel32
     ntdll
 )
+target_link_options(TextureLoaderFrontend PRIVATE
+    -nodefaultlib:msvcrt.lib
+)
 target_sources(TextureLoaderFrontend PRIVATE
     src/TextureLoaderFrontend/TextureLoaderFrontend.cpp
     src/TextureLoaderFrontend/TextureLoaderFrontend.hpp
+)
+
+# target
+add_library(imgui STATIC "")
+set_target_properties(imgui PROPERTIES OUTPUT_NAME "imgui")
+set_target_properties(imgui PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "build/windows/x64/release")
+target_include_directories(imgui PRIVATE
+    third_party/imgui
+    third_party/include
+    third_party/imgui/examples
+    D:/VulkanSDK/1.2.154.1/Include
+)
+target_include_directories(imgui INTERFACE
+    third_party/imgui
+    third_party/include
+    third_party/imgui/examples
+    D:/VulkanSDK/1.2.154.1/Include
+)
+target_include_directories(imgui PRIVATE
+    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/include
+)
+target_compile_definitions(imgui PRIVATE
+    GLFW_INCLUDE_NONE
+)
+set_property(TARGET imgui PROPERTY CXX_STANDARD 17)
+target_compile_options(imgui PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
+)
+target_compile_features(imgui PRIVATE cxx_std_17)
+if(MSVC)
+    target_compile_options(imgui PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
+else()
+    target_compile_options(imgui PRIVATE -O3)
+endif()
+target_link_libraries(imgui PRIVATE
+    glfw3
+    user32
+    shell32
+    gdi32
+    kernel32
+    ntdll
+)
+target_link_directories(imgui PRIVATE
+    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
+)
+target_link_options(imgui PRIVATE
+    -nodefaultlib:msvcrt.lib
+)
+target_sources(imgui PRIVATE
+    third_party/imgui/examples/imgui_impl_glfw.cpp
+    src/VkRenderer/my_imgui_impl_vulkan.cpp
+    third_party/imgui/imgui.cpp
+    third_party/imgui/imgui_draw.cpp
+    third_party/imgui/imgui_demo.cpp
+    third_party/imgui/imgui_widgets.cpp
+    third_party/imgui/imconfig.h
+    third_party/imgui/imgui.h
+    src/VkRenderer/my_imgui_impl_vulkan.h
+)
+
+# target
+add_executable(Mandelbulb "")
+set_target_properties(Mandelbulb PROPERTIES OUTPUT_NAME "Mandelbulb")
+set_target_properties(Mandelbulb PROPERTIES RUNTIME_OUTPUT_DIRECTORY "build/windows/x64/release")
+add_dependencies(Mandelbulb VkRenderer)
+target_include_directories(Mandelbulb PRIVATE
+    third_party/include
+    third_party/imgui/examples
+    D:/VulkanSDK/1.2.154.1/Include
+    src/VkRenderer
+    src/VkRenderer/Materials
+    third_party/imgui
+)
+set_property(TARGET Mandelbulb PROPERTY CXX_STANDARD 17)
+target_compile_options(Mandelbulb PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
+)
+target_compile_features(Mandelbulb PRIVATE cxx_std_17)
+if(MSVC)
+    target_compile_options(Mandelbulb PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
+else()
+    target_compile_options(Mandelbulb PRIVATE -O3)
+endif()
+target_link_libraries(Mandelbulb PRIVATE
+    VkRenderer
+    glfw3
+    sdwShaderWriter
+    sdwCompilerHlsl
+    sdwCompilerGlsl
+    sdwCompilerSpirV
+    sdwShaderAST
+    imgui
+    user32
+    shell32
+    gdi32
+    kernel32
+    ntdll
+)
+target_link_directories(Mandelbulb PRIVATE
+    build/windows/x64/release
+    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
+    C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter1/1.0/7001040a8533492597b595810d0adc4e/lib
+)
+target_link_options(Mandelbulb PRIVATE
+    -nodefaultlib:msvcrt.lib
+)
+target_sources(Mandelbulb PRIVATE
+    test/Mandelbulb/Mandelbulb.cpp
+    test/Mandelbulb/Mandelbulb.hpp
+)
+
+# target
+add_executable(ShaderBall "")
+set_target_properties(ShaderBall PROPERTIES OUTPUT_NAME "ShaderBall")
+set_target_properties(ShaderBall PROPERTIES RUNTIME_OUTPUT_DIRECTORY "build/windows/x64/release")
+add_dependencies(ShaderBall VkRenderer)
+target_include_directories(ShaderBall PRIVATE
+    third_party/include
+    third_party/imgui/examples
+    D:/VulkanSDK/1.2.154.1/Include
+    src/VkRenderer
+    src/VkRenderer/Materials
+    third_party/imgui
+)
+set_property(TARGET ShaderBall PROPERTY CXX_STANDARD 17)
+target_compile_options(ShaderBall PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
+)
+target_compile_features(ShaderBall PRIVATE cxx_std_17)
+if(MSVC)
+    target_compile_options(ShaderBall PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
+else()
+    target_compile_options(ShaderBall PRIVATE -O3)
+endif()
+target_link_libraries(ShaderBall PRIVATE
+    VkRenderer
+    glfw3
+    sdwShaderWriter
+    sdwCompilerHlsl
+    sdwCompilerGlsl
+    sdwCompilerSpirV
+    sdwShaderAST
+    imgui
+    user32
+    shell32
+    gdi32
+    kernel32
+    ntdll
+)
+target_link_directories(ShaderBall PRIVATE
+    build/windows/x64/release
+    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
+    C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter1/1.0/7001040a8533492597b595810d0adc4e/lib
+)
+target_link_options(ShaderBall PRIVATE
+    -nodefaultlib:msvcrt.lib
+)
+target_sources(ShaderBall PRIVATE
+    test/ShaderBall/ShaderBall.cpp
+    test/ShaderBall/ShaderBall.hpp
+)
+
+# target
+add_executable(LightTransport "")
+set_target_properties(LightTransport PROPERTIES OUTPUT_NAME "LightTransport")
+set_target_properties(LightTransport PROPERTIES RUNTIME_OUTPUT_DIRECTORY "build/windows/x64/release")
+add_dependencies(LightTransport VkRenderer)
+target_include_directories(LightTransport PRIVATE
+    third_party/include
+    third_party/imgui/examples
+    D:/VulkanSDK/1.2.154.1/Include
+    src/VkRenderer
+    src/VkRenderer/Materials
+    third_party/imgui
+)
+set_property(TARGET LightTransport PROPERTY CXX_STANDARD 17)
+target_compile_options(LightTransport PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:-MT>
+    $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
+)
+target_compile_features(LightTransport PRIVATE cxx_std_17)
+if(MSVC)
+    target_compile_options(LightTransport PRIVATE $<$<CONFIG:Release>:-Ox -fp:fast>)
+else()
+    target_compile_options(LightTransport PRIVATE -O3)
+endif()
+target_link_libraries(LightTransport PRIVATE
+    VkRenderer
+    glfw3
+    sdwShaderWriter
+    sdwCompilerHlsl
+    sdwCompilerGlsl
+    sdwCompilerSpirV
+    sdwShaderAST
+    imgui
+    user32
+    shell32
+    gdi32
+    kernel32
+    ntdll
+)
+target_link_directories(LightTransport PRIVATE
+    build/windows/x64/release
+    C:/Users/Charles/AppData/Local/.xmake/packages/g/glfw/3.3.2/85d7f0dad6b842278d2366be1aa3a6b6/lib
+    C:/Users/Charles/AppData/Local/.xmake/packages/s/shaderwriter1/1.0/7001040a8533492597b595810d0adc4e/lib
+)
+target_link_options(LightTransport PRIVATE
+    -nodefaultlib:msvcrt.lib
+)
+target_sources(LightTransport PRIVATE
+    test/LightTransport/LightTransport.cpp
+    test/LightTransport/LightTransportBuffers.cpp
+    test/LightTransport/LightTransportDescriptorsObjects.cpp
+    test/LightTransport/LightTransportFramebuffers.cpp
+    test/LightTransport/LightTransportImages.cpp
+    test/LightTransport/LightTransportPipelines.cpp
+    test/LightTransport/LightTransportRenderPasses.cpp
+    test/LightTransport/LightTransportShaderModules.cpp
+    test/LightTransport/LightTransportUpdateDescriptorSets.cpp
+    test/LightTransport/LightTransport.hpp
 )
 

@@ -2827,7 +2827,7 @@ inline polar_direction2d& polar_direction2d::wrap()
 	int s = sign(float(angle));
 	while (angle > constants<radian>::Pi() ||
 		angle <= -constants<radian>::Pi())
-		angle -= constants<radian>::Pi() * s;
+		angle -= constants<radian>::Pi() * float(s);
 	return *this;
 }
 inline polar_direction2d polar_direction2d::get_wrapped()

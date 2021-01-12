@@ -64,7 +64,7 @@ int RenderApplication::run()
 		//start = std::chrono::steady_clock::now();
 
 		pollEvents();
-
+		update();
 		draw();
 	}
 

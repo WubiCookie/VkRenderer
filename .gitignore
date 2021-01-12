@@ -7,6 +7,8 @@ runtime_cache/
 .xmake/
 vsxmake*/
 CMakeFiles/
+vsxmake2019/
+vs2019/
 
 *.exe
 *.log

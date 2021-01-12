@@ -51,8 +51,9 @@ public:
 	}
 
 protected:
-	virtual void draw(){};
 	virtual void pollEvents();
+	virtual void update(){};
+	virtual void draw(){};
 
 	virtual void onMouseDown(MouseButton button){};
 	virtual void onMouseUp(MouseButton button){};

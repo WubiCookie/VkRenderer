@@ -2,7 +2,114 @@
 
 set_arch("x64")
 
-add_requires("assimp", "glfw")
+if is_plat("windows") then
+    if is_mode("release") then
+        add_cxflags("-MT")
+    elseif is_mode("debug") then
+        add_cxflags("-MTd")
+    end
+    -- add_syslinks("ws2_32")
+    add_ldflags("-nodefaultlib:msvcrt.lib")
+end
+
+package("shaderwriter1")
+
+    set_homepage("https://github.com/DragonJoker/ShaderWriter")
+    set_description("Library used to write shaders from C++, and export them in either GLSL, HLSL or SPIR-V.")
+
+    set_urls("https://github.com/DragonJoker/ShaderWriter.git")
+    add_versions("1.0", "a5ef99ff141693ef28cee0e464500888cabc65ad")
+
+    add_deps("cmake")
+
+    add_links("sdwShaderWriter", "sdwCompilerHlsl", "sdwCompilerGlsl", "sdwCompilerSpirV", "sdwShaderAST")
+
+    on_install("windows", "macosx", "linux", function (package)
+        local configs =
+        {
+            "-DSDW_BUILD_TESTS=OFF",
+            "-DSDW_BUILD_EXPORTERS=ON",
+            "-DSDW_BUILD_STATIC_SDW=".. (package:config("shared") and "OFF" or "ON"),
+            "-DSDW_BUILD_EXPORTER_GLSL_STATIC=".. (package:config("shared") and "OFF" or "ON"),
+            "-DSDW_BUILD_EXPORTER_HLSL_STATIC=".. (package:config("shared") and "OFF" or "ON"),
+            "-DSDW_BUILD_EXPORTER_SPIRV_STATIC=".. (package:config("shared") and "OFF" or "ON"),
+            "-DSDW_GENERATE_SOURCE=OFF",
+            "-DPROJECTS_USE_PRECOMPILED_HEADERS=OFF",
+            "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"),
+            "-DCMAKE_CXX_FLAGS='/DWIN32 /D_WINDOWS /W3 /GR /EHsc /MP'",
+            "-DCMAKE_CXX_FLAGS_DEBUG='/MTd /Zi /Ob0 /Od /RTC1'",
+            "-DCMAKE_CXX_FLAGS_MINSIZEREL='/MT /O1 /Ob1 /DNDEBUG'",
+            "-DCMAKE_CXX_FLAGS_RELEASE='/MT /O2 /Ob2 /DNDEBUG'",
+            "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO='/MT /Zi /O2 /Ob1 /DNDEBUG'",
+            "-DCMAKE_C_FLAGS='/DWIN32 /D_WINDOWS /W3 /MP'",
+            "-DCMAKE_C_FLAGS_DEBUG='/MTd /Zi /Ob0 /Od /RTC1'",
+            "-DCMAKE_C_FLAGS_MINSIZEREL='/MT /O1 /Ob1 /DNDEBUG'",
+            "-DCMAKE_C_FLAGS_RELEASE='/MT /O2 /Ob2 /DNDEBUG'",
+            "-DCMAKE_C_FLAGS_RELWITHDEBINFO='/MT /Zi /O2 /Ob1 /DNDEBUG'"
+        }
+        import("package.tools.cmake").install(package, configs)
+    end)
+
+    on_test(function (package)
+        assert(package:check_cxxsnippets({test = [[
+            // #include <CompilerGlsl/compileGlsl.hpp>
+            // #include <CompilerSpirV/compileSpirV.hpp>
+            // #include <ShaderWriter/Intrinsics/Intrinsics.hpp>
+            // #include <ShaderWriter/Source.hpp>
+            static void test()
+            {
+                sdw::VertexWriter writer;
+            }
+        ]]}, {configs = {languages = "c++17"}, includes = {"CompilerGlsl/compileGlsl.hpp", "CompilerSpirV/compileSpirV.hpp", "ShaderWriter/Intrinsics/Intrinsics.hpp", "ShaderWriter/Source.hpp"}}))
+    end)
+package_end()
+--]]
+
+
+add_requires("shaderwriter1",  {debug = is_mode("debug"), vs_runtime = "MT"})
+
+--[[package("tinyobjloader")
+
+    set_homepage("https://github.com/tinyobjloader/tinyobjloader")
+    set_description("Tiny but powerful single file wavefront obj loader")
+    set_license("MIT")
+
+    add_urls("https://github.com/tinyobjloader/tinyobjloader/archive/v$(version).tar.gz",
+             "https://github.com/tinyobjloader/tinyobjloader.git")
+    add_versions("1.0.7", "b9d08b675ba54b9cb00ffc99eaba7616d0f7e6f6b8947a7e118474e97d942129")
+
+    add_configs("double", {description = "Use double precision floating numbers.", default = false, type = "boolean"})
+
+    on_install("macosx", "linux", "windows", "mingw", "android", "iphoneos", function (package)
+        local kind = package:config("shared") and "shared" or "static"
+        io.writefile("xmake.lua", string.format([[
+            add_rules("mode.debug", "mode.release")
+            target("tinyobjloader")
+                set_kind("%s")
+                %s
+                add_files("tiny_obj_loader.cc")
+                add_headerfiles("tiny_obj_loader.h")
+        ] ], kind, (package:config("double") and "add_defines(\"TINYOBJLOADER_USE_DOUBLE\")" or "")))
+        import("package.tools.xmake").install(package)
+    end)
+
+    on_test(function (package)
+        assert(package:check_cxxsnippets({test = [[
+            #include <vector>
+            void test() {
+                tinyobj::attrib_t attrib;
+                std::vector<tinyobj::shape_t> shapes;
+                std::vector<tinyobj::material_t> materials;
+            }
+        ] ]}, {configs = {languages = "c++11"}, includes = "tiny_obj_loader.h"}))
+    end)
+package_end()
+--]]
+
+
+-- add_requires("assimp", {debug = is_mode("debug"), config = { shared = false, no_export = true, build_tests = false }})
+add_requires("tinyobjloader", {debug = is_mode("debug"), vs_runtime = "MT"})
+add_requires("glfw",          {debug = is_mode("debug"), vs_runtime = "MT"})
 
 set_project("VkRenderer")
 
@@ -37,7 +144,7 @@ target("imgui")
 target_end()
 
 
--- [[
+--[[
 target("sdwShaderAST")
 	set_default(false)
 	set_kind("static")
@@ -201,10 +308,10 @@ target("VkRenderer")
 	set_default(false)
 	set_kind("static")
 	set_languages("cxx17")
-	add_packages("glfw")
-	-- add_packages("shaderwriter")
+	-- add_packages("glfw")
 	-- add_deps("shaderwriter")
-	add_deps("sdwShaderAST", "sdwShaderWriter", "sdwCompilerSpirV")
+	-- add_deps("sdwShaderAST", "sdwShaderWriter", "sdwCompilerSpirV")
+	add_packages("glfw", "shaderwriter1")
 	-- add_deps("TextureLoaderFrontend", "imgui")
 	add_deps("imgui")
 	add_includedirs(
@@ -318,6 +425,20 @@ target_end()
 
 
 
+
+target("SpatialPartitionning")
+	set_kind("binary")
+	set_languages("cxx17")
+	add_deps("VkRenderer")
+	add_packages("tinyobjloader")
+	add_packages("shaderwriter1")
+	add_defines("CompilerSpirV_Static")
+	add_defines("ShaderWriter_Static")
+	add_defines("ShaderAST_Static")
+	add_deps("imgui")
+	add_files("test/SpatialPartitionning/*.cpp")
+	add_headerfiles("test/SpatialPartitionning/*.hpp")
+target_end()
 
 target("LightTransport")
 	set_kind("binary")

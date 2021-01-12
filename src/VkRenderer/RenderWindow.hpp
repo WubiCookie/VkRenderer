@@ -224,6 +224,8 @@ public:
 	bool visible();
 
 	void size(int& width, int& height);
+	int width();
+	int height();
 	void pos(int& xpos, int& ypos);
 	void framebufferSize(int& width, int& height);
 
