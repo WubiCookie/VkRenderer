@@ -90,8 +90,14 @@ struct RenderWindowPrivate
 	std::vector<PFN_keyCallback> keyCallbacks;
 	std::vector<PFN_mouseButtonCallback> mouseButtonCallbacks;
 	std::vector<PFN_mousePosCallback> mousePosCallbacks;
+	std::vector<PFN_mouseWheelCallback> mouseWheelCallbacks;
 
 	std::array<ButtonState, int(MouseButton::COUNT)> mouseButtonsStates;
+
+	int previousWidth;
+	int previousHeight;
+	int width;
+	int height;
 
 	double swapchainCreationTime = 0.0;
 
@@ -108,6 +114,9 @@ struct RenderWindowPrivate
 	                                int mods);
 
 	static void mousePosCallback(GLFWwindow* window, double x, double y);
+
+	static void mouseWheelCallback(GLFWwindow* window, double xoffset,
+	                               double yoffset);
 
 	static void framebufferSizeCallback(GLFWwindow* window, int width,
 	                                    int height);
@@ -367,6 +376,7 @@ RenderWindowPrivate::RenderWindowPrivate(int width, int height, bool layers)
 	glfwSetKeyCallback(window, keyCallback);
 	glfwSetMouseButtonCallback(window, mouseButtonCallback);
 	glfwSetCursorPosCallback(window, mousePosCallback);
+	glfwSetScrollCallback(window, mouseWheelCallback);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	glfwSetWindowIconifyCallback(window, iconifyCallback);
 	glfwSetWindowMaximizeCallback(window, maximizeCallback);
@@ -952,6 +962,17 @@ void RenderWindowPrivate::mousePosCallback(GLFWwindow* window, double x,
 			cb(x, y);
 }
 
+void RenderWindowPrivate::mouseWheelCallback(GLFWwindow* window,
+                                             double xoffset, double yoffset)
+{
+	RenderWindowPrivate* rwp =
+	    (RenderWindowPrivate*)glfwGetWindowUserPointer(window);
+
+	if (rwp)
+		for (auto cb : rwp->mouseWheelCallbacks)
+			cb(xoffset, yoffset);
+}
+
 void RenderWindowPrivate::framebufferSizeCallback(GLFWwindow* window,
                                                   int width, int height)
 {
@@ -964,7 +985,13 @@ void RenderWindowPrivate::framebufferSizeCallback(GLFWwindow* window,
 
 void RenderWindowPrivate::framebufferSizeCallback(int width, int height)
 {
-	/// TODO rebuild swapchain
+	this->width = width;
+	this->height = height;
+
+	if (width == 0 || height == 0)
+		return;
+
+	recreateSwapchain(width, height);
 }
 
 void RenderWindowPrivate::iconifyCallback(GLFWwindow* window, int iconified)
@@ -999,7 +1026,7 @@ RenderWindow::RenderWindow(int width, int height, bool layers)
 {
 }
 
-RenderWindow::~RenderWindow() {}
+RenderWindow::~RenderWindow() = default;
 
 void RenderWindow::pollEvents()
 {
@@ -1010,6 +1037,9 @@ void RenderWindow::pollEvents()
 		else if (btn == ButtonState::Pressed)
 			btn = ButtonState::Pressing;
 	}
+
+	p->previousWidth = p->width;
+	p->previousHeight = p->height;
 
 	glfwPollEvents();
 }
@@ -1344,6 +1374,11 @@ bool RenderWindow::maximized()
 	return glfwGetWindowAttrib(p->window, GLFW_MAXIMIZED);
 }
 
+bool RenderWindow::resized()
+{
+	return p->previousWidth != p->width || p->previousHeight != p->height;
+}
+
 void RenderWindow::focus() { glfwFocusWindow(p->window); }
 
 bool RenderWindow::focused()
@@ -1404,6 +1439,25 @@ void RenderWindow::unregisterMousePosCallback(
 	//	                       p->mousePosCallbacks.end(), mousePosCallback);
 	//	if (found != p->mousePosCallbacks.end())
 	//		p->mousePosCallbacks.erase(found);
+	//}
+}
+
+void RenderWindow::registerMouseWheelCallback(
+    PFN_mouseWheelCallback mouseWheelCallback)
+{
+	if (mouseWheelCallback)
+		p->mouseWheelCallbacks.push_back(mouseWheelCallback);
+}
+
+void RenderWindow::unregisterMouseWheelCallback(
+    PFN_mouseWheelCallback mouseWheelCallback)
+{
+	// if (mouseWheelCallback)
+	//{
+	//	auto found = std::find(p->mouseWheelCallbacks.begin(),
+	//	                       p->mouseWheelCallbacks.end(), mouseWheelCallback);
+	//	if (found != p->mouseWheelCallbacks.end())
+	//		p->mouseWheelCallbacks.erase(found);
 	//}
 }
 

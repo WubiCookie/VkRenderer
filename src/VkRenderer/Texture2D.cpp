@@ -32,11 +32,14 @@ Texture2D::Texture2D(const VulkanDevice& vulkanDevice,
 
 	VmaAllocationInfo allocInfo{};
 
-	vmaCreateImage(vk.allocator(), &imageInfo, &alloceInfo, &m_image.get(),
+	auto result = vmaCreateImage(vk.allocator(), &imageInfo, &alloceInfo, &m_image.get(),
 	               &m_allocation.get(), &allocInfo);
 
-	if (m_image == false)
-		throw std::runtime_error("could not create image");
+	//using namespace std::string_literals;
+
+	if (m_image == false) throw std::runtime_error(
+		    "could not create image: " +
+		    std::string(cdm::vk::result_to_string(result)));
 
 	m_width = imageInfo.extent.width;
 	m_height = imageInfo.extent.height;

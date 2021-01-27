@@ -182,6 +182,7 @@ enum class ButtonState : int
 using PFN_keyCallback = std::function<void(Key, int, Action, int)>;
 using PFN_mouseButtonCallback = std::function<void(MouseButton, Action, int)>;
 using PFN_mousePosCallback = std::function<void(double, double)>;
+using PFN_mouseWheelCallback = std::function<void(double, double)>;
 
 class RenderWindow
 {
@@ -237,6 +238,7 @@ public:
 	void restore();
 	bool iconified();
 	bool maximized();
+	bool resized();
 
 	void focus();
 	bool focused();
@@ -251,6 +253,10 @@ public:
 
 	void registerMousePosCallback(PFN_mousePosCallback mousePosCallback);
 	void unregisterMousePosCallback(PFN_mousePosCallback mousePosCallback);
+
+	void registerMouseWheelCallback(PFN_mouseWheelCallback mouseWheelCallback);
+	void unregisterMouseWheelCallback(
+	    PFN_mouseWheelCallback mouseWheelCallback);
 
 	const VulkanDevice& device() const;
 

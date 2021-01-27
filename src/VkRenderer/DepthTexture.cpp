@@ -11,8 +11,7 @@ DepthTexture::DepthTexture(RenderWindow& renderWindow, VkImageUsageFlags usage,
                            VmaMemoryUsage memoryUsage,
                            VkMemoryPropertyFlags requiredFlags,
                            uint32_t mipLevels, VkSampleCountFlagBits samples)
-    : DepthTexture(renderWindow, renderWindow.swapchainExtent().width,
-                   renderWindow.swapchainExtent().height,
+    : DepthTexture(renderWindow, renderWindow.width(), renderWindow.height(),
                    renderWindow.depthImageFormat(), VK_IMAGE_TILING_OPTIMAL,
                    usage | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                    memoryUsage, requiredFlags, mipLevels, samples)
@@ -54,11 +53,12 @@ DepthTexture::DepthTexture(RenderWindow& renderWindow, uint32_t imageWidth,
 
 	VmaAllocationInfo allocInfo{};
 
-	vmaCreateImage(vk.allocator(), &info, &imageAllocCreateInfo,
-	               &m_image.get(), &m_allocation.get(), &allocInfo);
+	auto res = vmaCreateImage(vk.allocator(), &info, &imageAllocCreateInfo,
+	                          &m_image.get(), &m_allocation.get(), &allocInfo);
 
 	if (m_image == false)
-		throw std::runtime_error("could not create image");
+		throw std::runtime_error("could not create image: " +
+		                         std::string(cdm::vk::result_to_string(res)));
 
 	m_width = imageWidth;
 	m_height = imageHeight;

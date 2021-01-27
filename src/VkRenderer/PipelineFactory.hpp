@@ -64,6 +64,15 @@ public:
 	void setDepthBiasClamp(float clamp);
 	void setDepthBiasSlopeFactor(float factor);
 
+	void setDepthTestEnable(bool enable);
+	void setDepthWriteEnable(bool enable);
+	void setDepthCompareOp(VkCompareOp op);
+	void setDepthBoundsTestEnable(bool enable);
+	void setMinDepthBounds(float bound);
+	void setMaxDepthBounds(float bound);
+	void setDepthBounds(float minBound, float maxBound);
+	void setStencilTestEnable(bool enable);
+
 	void setSampleShadingEnable(bool enable);
 	void setRasterizationSamples(VkSampleCountFlagBits sample);
 	void setMinSampleShading(float minSampleShading);

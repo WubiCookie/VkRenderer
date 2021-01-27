@@ -26,6 +26,7 @@ Written by Charles Seizilles de Mazancourt
 #define CDM_MATHS_HPP
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -54,6 +55,7 @@ struct matrix3;
 struct matrix3x4;
 struct matrix4x3;
 struct matrix4;
+struct perspective;
 struct euler_angles;
 struct quaternion;
 struct cartesian_direction2d;
@@ -67,6 +69,7 @@ struct circle;
 //struct aa_ellipse;
 struct ray2d;
 struct ray3d;
+struct aabb;
 struct transform2d;
 struct transform3d;
 struct uniform_transform2d;
@@ -347,6 +350,7 @@ struct vector3
 	static vector3 nlerp(const vector3& begin, const vector3& end, float percent);
 	float distance_from(const vector3& v) const;
 	static float distance_between(const vector3& v1, const vector3& v2);
+	static float distance_squared_between(const vector3& v1, const vector3& v2);
 	static vector3 from_to(const vector3& from, const vector3& to);
 	vector3 to(const vector3& v) const;
 	radian angle(const vector3& v) const;
@@ -624,6 +628,8 @@ struct matrix4
 		float m03, float m13, float m23, float m33);
 	matrix4(const matrix2& m);
 	matrix4(const matrix3& m);
+	matrix4(const matrix4& m) = default;
+	matrix4(const perspective& p);
 	matrix4(const transform3d& t);
 	matrix4(const uniform_transform3d& t);
 	matrix4(const unscaled_transform3d& t);
@@ -633,7 +639,7 @@ struct matrix4
 	static matrix4 rotation(const euler_angles& r);
 	static matrix4 rotation(const quaternion& q);
 	static matrix4 translation(const vector3& t);
-	static matrix4 perspective(const radian& angle, float ratio, float near_plane, float far_plane);
+	static matrix4 scale(const vector3& t);
 	static matrix4 look_at(const vector3& from, const vector3& to, const vector3& up = { 0.0f, 1.0f, 0.0f });
 	static matrix4 orthographic(float left, float right, float top, float bottom, float near, float far);
 	static matrix4 rotation_around_x(const radian& angle);
@@ -659,6 +665,44 @@ struct matrix4
 	matrix3x4 operator*(const matrix3x4& m) const;
 	matrix4 operator*(const matrix4& m) const;
 };
+
+struct perspective
+{
+private:
+	radian m_angle = degree(90.0f);
+	float m_ratio = 1.0f;
+	float m_inv_ratio = 1.0f;
+	float m_near = 0.01f;
+	float m_far = 10000.0f;
+	float m_invTanHalfFovy = 1.0f / (m_angle / 2.0f).tan();
+
+public:
+	void set_angle(radian angle);
+	radian get_angle() const;
+
+	void set_ratio(float ratio);
+	float get_ratio() const;
+
+	void set_near(float near_plane);
+	float get_near() const;
+
+	void set_far(float far_plane);
+	float get_far() const;
+
+	matrix4 to_matrix4() const;
+
+	friend matrix4 operator*(const matrix4& m, const perspective& p);
+	friend matrix4 operator*(const perspective& p, const matrix4& m);
+
+	friend matrix4 operator*(const unscaled_transform3d& t, const perspective& p);
+	friend matrix4 operator*(const perspective& p, const unscaled_transform3d& t);
+};
+
+matrix4 operator*(const matrix4& m, const perspective& p);
+matrix4 operator*(const perspective& p, const matrix4& m);
+
+matrix4 operator*(const unscaled_transform3d& t, const perspective& p);
+matrix4 operator*(const perspective& p, const unscaled_transform3d& t);
 
 struct euler_angles
 {
@@ -886,6 +930,20 @@ inline bool collides(const ray3d& r, const plane& p, vector3& intersection);
 inline bool collides(const plane& p, const ray3d& r);
 inline bool collides(const plane& p, const ray3d& r, vector3& intersection);
 
+struct aabb
+{
+	vector3 min;
+	vector3 max;
+
+	bool contains(vector3 p) const;
+	vector3 get_center() const;
+
+	aabb operator+(aabb rhs) const;
+};
+
+inline bool collides(aabb b, ray3d r);
+inline bool collides(const aabb& b1, const aabb& b2);
+
 struct transform2d
 {
 	vector2 position;
@@ -963,6 +1021,9 @@ struct unscaled_transform3d
 	unscaled_transform3d& translate_absolute(const vector3& t);
 	unscaled_transform3d& translate_relative(const vector3& t);
 	unscaled_transform3d& rotate(const quaternion& r);
+
+	unscaled_transform3d& inverse();
+	unscaled_transform3d get_inversed() const;
 
 	matrix4 to_matrix() const;
 
@@ -1340,6 +1401,7 @@ inline vector3 vector3::lerp(const vector3& begin, const vector3& end, float per
 inline vector3 vector3::nlerp(const vector3& begin, const vector3& end, float percent) { return lerp(begin, end, percent).get_normalized(); }
 inline float vector3::distance_from(const vector3& v) const { return distance_between(*this, v); }
 inline float vector3::distance_between(const vector3& v1, const vector3& v2) { return (v1 - v2).norm(); }
+inline float vector3::distance_squared_between(const vector3& v1, const vector3& v2) { return (v1 - v2).norm_squared(); }
 inline vector3 vector3::from_to(const vector3& from, const vector3& to) { return {to.x - from.x, to.y - from.y, to.z - from.z}; }
 inline vector3 vector3::to(const vector3& v) const { return from_to(*this, v); }
 inline radian vector3::angle(const vector3& v) const
@@ -2194,6 +2256,7 @@ inline matrix4::matrix4(const matrix3& m) :
 		0.0f,  0.0f,  0.0f,  1.0f
 	)
 {}
+inline matrix4::matrix4(const perspective& p) { *this = p.to_matrix4(); }
 inline matrix4::matrix4(const transform3d& t)
 {
 	float xx = t.rotation.x * t.rotation.x;
@@ -2254,17 +2317,7 @@ inline matrix4 matrix4::identity() { return {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
 inline matrix4 matrix4::rotation(const euler_angles& r) { return matrix3::rotation(r); }
 inline matrix4 matrix4::rotation(const quaternion& q) { return matrix3::rotation(q); }
 inline matrix4 matrix4::translation(const vector3& t) { return {1.0f, 0.0f, 0.0f, t.x, 0.0f, 1.0f, 0.0f, t.y, 0.0f, 0.0f, 1.0f, t.z, 0.0f, 0.0f, 0.0f, 1.0f}; }
-inline matrix4 matrix4::perspective(const radian& angle, float ratio, float near_plane, float far_plane)
-{
-	float tanHalfFovy = (angle / 2.0f).tan();
-
-	return {
-		1.0f / (ratio * tanHalfFovy), 0.0f,                  0.0f,                                 0.0f,
-		0.0f,                         -1.0f / (tanHalfFovy), 0.0f,                                 0.0f,
-		0.0f,                         0.0f,                  far_plane / (near_plane - far_plane), -(far_plane * near_plane) / (far_plane - near_plane),
-		0.0f,                         0.0f,                  -1.0f,                                0.0f
-	};
-}
+inline matrix4 matrix4::scale(const vector3& s) { return {s.x, 0.0f, 0.0f, 0.0f, 0.0f, s.y, 0.0f, 0.0f, 0.0f, 0.0f, s.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}; }
 inline matrix4 matrix4::look_at(const vector3& from, const vector3& to, const vector3& up)
 {
 	vector3 forward = (from - to).get_normalized();
@@ -2623,6 +2676,164 @@ inline matrix4 matrix4::operator*(const matrix4& m) const
 	};
 }
 
+inline void perspective::set_angle(radian angle)
+{
+	m_angle = angle;
+	m_invTanHalfFovy = 1.0f / (angle / 2.0f).tan();
+}
+inline radian perspective::get_angle() const { return m_angle; }
+inline void perspective::set_ratio(float ratio)
+{
+	m_ratio = ratio;
+	m_inv_ratio = 1.0f / m_ratio;
+}
+inline float perspective::get_ratio() const { return m_ratio; }
+inline void perspective::set_near(float near_plane) { m_near = near_plane; }
+inline float perspective::get_near() const { return m_near; }
+inline void perspective::set_far(float far_plane) { m_far = far_plane; }
+inline float perspective::get_far() const { return m_far; }
+inline matrix4 perspective::to_matrix4() const
+{
+	return {
+		m_inv_ratio * m_invTanHalfFovy, 0.0f,              0.0f,                     0.0f,
+		0.0f,                           -m_invTanHalfFovy, 0.0f,                     0.0f,
+		0.0f,                           0.0f,              m_far / (m_near - m_far), -(m_far * m_near) / (m_far - m_near),
+		0.0f,                           0.0f,              -1.0f,                    0.0f
+	};
+}
+
+inline matrix4 operator*(const matrix4& m, const perspective& p)
+{
+	float a = p.m_inv_ratio * p.m_invTanHalfFovy;
+	float b = -p.m_invTanHalfFovy;
+	float c = p.m_far / (p.m_near - p.m_far);
+	float d = -(p.m_far * p.m_near) / (p.m_far - p.m_near);
+	return {
+		a * m.m00,
+		b * m.m10,
+		c * m.m20 - m.m30,
+		d * m.m20,
+
+		a * m.m01,
+		b * m.m11,
+		c * m.m21 - m.m31,
+		d * m.m21,
+
+		a * m.m02,
+		b * m.m12,
+		c * m.m22 - m.m32,
+		d * m.m22,
+
+		a * m.m03,
+		b * m.m13,
+		c * m.m23 - m.m33,
+		d * m.m23
+	};
+}
+inline matrix4 operator*(const perspective& p, const matrix4& m)
+{
+	float a = p.m_inv_ratio * p.m_invTanHalfFovy;
+	float b = -p.m_invTanHalfFovy;
+	float c = p.m_far / (p.m_near - p.m_far);
+	float d = -(p.m_far * p.m_near) / (p.m_far - p.m_near);
+	return {
+		m.m00 * a,
+		m.m10 * a,
+		m.m20 * a,
+		m.m30 * a,
+
+		m.m01 * b,
+		m.m11 * b,
+		m.m21 * b,
+		m.m31 * b,
+
+		m.m02 * c + m.m03 * d,
+		m.m12 * c + m.m13 * d,
+		m.m22 * c + m.m23 * d,
+		m.m32 * c + m.m33 * d,
+
+		-m.m02,
+		-m.m12,
+		-m.m22,
+		-m.m32
+	};
+}
+
+inline matrix4 operator*(const unscaled_transform3d& t, const perspective& p)
+{
+	float a = p.m_inv_ratio * p.m_invTanHalfFovy;
+	float b = -p.m_invTanHalfFovy;
+	float c = p.m_far / (p.m_near - p.m_far);
+	float d = -(p.m_far * p.m_near) / (p.m_far - p.m_near);
+	float xx = t.rotation.x * t.rotation.x;
+	float yy = t.rotation.y * t.rotation.y;
+	float zz = t.rotation.z * t.rotation.z;
+	float wx = t.rotation.w * t.rotation.x;
+	float wy = t.rotation.w * t.rotation.y;
+	float wz = t.rotation.w * t.rotation.z;
+	float xy = t.rotation.x * t.rotation.y;
+	float xz = t.rotation.x * t.rotation.z;
+	float yz = t.rotation.y * t.rotation.z;
+	return {
+		a * (1.0f - 2.0f * (yy + zz)),
+		b * (2.0f * (xy - wz)),
+		c * (2.0f * (xz + wy)) - t.position.x,
+		d * (2.0f * (xz + wy)),
+
+		a * (2.0f * (xy + wz)),
+		b * (1.0f - 2.0f * (xx + zz)),
+		c * (2.0f * (yz - wx)) - t.position.y,
+		d * (2.0f * (yz - wx)),
+
+		a * (2.0f * (xz - wy)),
+		b * (2.0f * (yz + wx)),
+		c * (1.0f - 2.0f * (xx + yy)) - t.position.z,
+		d * (1.0f - 2.0f * (xx + yy)),
+
+		0.0f,
+		0.0f,
+		-1.0f,
+		0.0f
+	};
+}
+inline matrix4 operator*(const perspective& p, const unscaled_transform3d& t)
+{
+	float a = p.m_inv_ratio * p.m_invTanHalfFovy;
+	float b = -p.m_invTanHalfFovy;
+	float c = p.m_far / (p.m_near - p.m_far);
+	float d = -(p.m_far * p.m_near) / (p.m_far - p.m_near);
+	float xx = t.rotation.x * t.rotation.x;
+	float yy = t.rotation.y * t.rotation.y;
+	float zz = t.rotation.z * t.rotation.z;
+	float wx = t.rotation.w * t.rotation.x;
+	float wy = t.rotation.w * t.rotation.y;
+	float wz = t.rotation.w * t.rotation.z;
+	float xy = t.rotation.x * t.rotation.y;
+	float xz = t.rotation.x * t.rotation.z;
+	float yz = t.rotation.y * t.rotation.z;
+	return {
+		(1.0f - 2.0f * (yy + zz)) * a,
+		(2.0f * (xy - wz)) * a,
+		(2.0f * (xz + wy)) * a,
+		t.position.x * a,
+
+		(2.0f * (xy + wz)) * b,
+		(1.0f - 2.0f * (xx + zz)) * b,
+		(2.0f * (yz - wx)) * b,
+		t.position.y * b,
+
+		(2.0f * (xz - wy)) * c,
+		(2.0f * (yz + wx)) * c,
+		(1.0f - 2.0f * (xx + yy)) * c,
+		t.position.z * c + d,
+
+		-(2.0f * (xz - wy)),
+		-(2.0f * (yz + wx)),
+		-(1.0f - 2.0f * (xx + yy)),
+		-t.position.z
+	};
+}
+
 inline euler_angles::euler_angles(const radian& x_, const radian& y_, const radian& z_) : x(x_), y(y_), z(z_) {}
 
 inline quaternion::quaternion(float x_, float y_, float z_, float w_) : x(x_), y(y_), z(z_), w(w_) {}
@@ -2925,6 +3136,93 @@ inline bool collides(const ray3d& r, const plane& p, vector3& intersection)
 inline bool collides(const plane& p, const ray3d& r) { return collides(r, p); }
 inline bool collides(const plane& p, const ray3d& r, vector3& intersection) { return collides(r, p, intersection); }
 
+inline bool aabb::contains(vector3 p) const
+{
+	return p.x >= min.x && p.x <= max.x &&
+		   p.y >= min.y && p.y <= max.y &&
+	       p.z >= min.z && p.z <= max.z;
+}
+inline vector3 aabb::get_center() const { return (max + min) / 2.0f; }
+
+inline aabb aabb::operator+(aabb rhs) const
+{
+	aabb res;
+	res.min.x = std::min(min.x, rhs.min.x);
+	res.min.y = std::min(min.y, rhs.min.y);
+	res.min.z = std::min(min.z, rhs.min.z);
+	res.max.x = std::max(max.x, rhs.max.x);
+	res.max.y = std::max(max.y, rhs.max.y);
+	res.max.z = std::max(max.z, rhs.max.z);
+
+	return res;
+}
+
+inline bool collides(aabb b, ray3d r)
+{
+	vector3 inv
+	{
+		1.0f / r.direction.x,
+		1.0f / r.direction.y,
+		1.0f / r.direction.z
+	};
+
+	float t1 = (b.min.x - r.origin.x) * inv.x;
+	float t2 = (b.max.x - r.origin.x) * inv.x;
+
+	float tmin = std::min(t1, t2);
+	float tmax = std::max(t1, t2);
+
+	t1 = (b.min.y - r.origin.y) * inv.y;
+	t2 = (b.max.y - r.origin.y) * inv.y;
+
+	tmin = std::max(tmin, std::min(t1, t2));
+	tmax = std::min(tmax, std::max(t1, t2));
+
+	t1 = (b.min.z - r.origin.z) * inv.z;
+	t2 = (b.max.z - r.origin.z) * inv.z;
+
+	tmin = std::max(tmin, std::min(t1, t2));
+	tmax = std::min(tmax, std::max(t1, t2));
+
+	return tmax >= tmin;
+}
+inline bool collides(const aabb& b1, const aabb& b2)
+{
+	if (b1.contains(b2.min))
+		return true;
+	if (b1.contains(b2.max))
+		return true;
+	if (b2.contains(b1.min))
+		return true;
+	if (b2.contains(b1.max))
+		return true;
+
+	std::array<vector3, 6> otherPoints;
+	otherPoints[0] = { b1.min.x, b1.min.y, b1.max.z };
+	otherPoints[1] = { b1.min.x, b1.max.y, b1.min.z };
+	otherPoints[2] = { b1.max.x, b1.min.y, b1.min.z };
+	otherPoints[3] = { b1.min.x, b1.max.y, b1.max.z };
+	otherPoints[4] = { b1.max.x, b1.min.y, b1.max.z };
+	otherPoints[5] = { b1.max.x, b1.max.y, b1.min.z };
+
+	for (auto& p : otherPoints)
+		if (b2.contains(p))
+			return true;
+
+	otherPoints[0] = { b2.min.x, b2.min.y, b2.max.z };
+	otherPoints[1] = { b2.min.x, b2.max.y, b2.min.z };
+	otherPoints[2] = { b2.max.x, b2.min.y, b2.min.z };
+	otherPoints[3] = { b2.min.x, b2.max.y, b2.max.z };
+	otherPoints[4] = { b2.max.x, b2.min.y, b2.max.z };
+	otherPoints[5] = { b2.max.x, b2.max.y, b2.min.z };
+
+	for (auto& p : otherPoints)
+		if (b1.contains(p))
+			return true;
+
+	return false;
+}
+
 inline transform2d::transform2d(const vector2& position_, const normalized<complex>& rotation_, const vector2& scale_) :
 	position(position_),
 	rotation(rotation_),
@@ -3042,6 +3340,19 @@ inline unscaled_transform3d& unscaled_transform3d::rotate(const quaternion& r)
 {
 	rotation = r * rotation;
 	return *this;
+}
+
+inline unscaled_transform3d& unscaled_transform3d::inverse()
+{
+	rotation.inverse();
+	position = rotation * -position;
+	return *this;
+}
+inline unscaled_transform3d unscaled_transform3d::get_inversed() const
+{
+	unscaled_transform3d res = *this;
+	res.inverse();
+	return res;
 }
 
 inline matrix4 unscaled_transform3d::to_matrix() const
@@ -3162,4 +3473,3 @@ inline cdm::degree operator""_deg(long double d) { return cdm::degree(static_cas
 inline cdm::degree operator""_deg(unsigned long long int i) { return cdm::degree(static_cast<float>(i)); }
 
 #endif // CDM_MATHS_HPP
-

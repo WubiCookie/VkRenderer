@@ -698,7 +698,11 @@ Cubemap PrefilterCubemap::computeCubemap(Cubemap& inputCubemap)
 
     auto pool = CommandBufferPool(vk, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 
-    matrix4 proj = matrix4::perspective(90_deg, 1.0f, 0.1f, 10.0f);
+	perspective proj;
+	proj.set_angle(90_deg);
+	proj.set_ratio(1.0f);
+	proj.set_near(0.1f);
+	proj.set_far(10.0f);
 
     std::array views{
         matrix4::look_at({ 0, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }),

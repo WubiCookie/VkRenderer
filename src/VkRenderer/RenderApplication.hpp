@@ -17,8 +17,11 @@ class RenderApplication
 	double m_mousePosX;
 	double m_mousePosY;
 
-	double m_mouseDeltaX;
-	double m_mouseDeltaY;
+	double m_mouseDeltaX = 0.0;
+	double m_mouseDeltaY = 0.0;
+
+	double m_mouseWheelX = 0.0;
+	double m_mouseWheelY = 0.0;
 
 protected:
 	RenderWindow& renderWindow;
@@ -49,9 +52,15 @@ public:
 		x = m_mouseDeltaX;
 		y = m_mouseDeltaY;
 	}
+	void getMouseWheel(double& xoffset, double& yoffset)
+	{
+		xoffset = m_mouseWheelX;
+		yoffset = m_mouseWheelY;
+	}
 
 protected:
 	virtual void pollEvents();
+	virtual void resize(uint32_t width, uint32_t height){};
 	virtual void update(){};
 	virtual void draw(){};
 
@@ -59,6 +68,7 @@ protected:
 	virtual void onMouseUp(MouseButton button){};
 	virtual void onMouseMove(double x, double y, double deltaX,
 	                         double deltaY){};
+	virtual void onMouseWheel(double xoffset, double yoffset){};
 	virtual void onKeyDown(Key key){};
 	virtual void onKeyUp(Key key){};
 };

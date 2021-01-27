@@ -21,15 +21,15 @@ RenderApplication::RenderApplication(RenderWindow& rw, int argc,
 
 	rw.registerMouseButtonCallback(
 	    [this](MouseButton button, Action action, int mods) {
-			m_mouseButtonStates[int(button)] = ButtonState(action);
+		    m_mouseButtonStates[int(button)] = ButtonState(action);
 
-			if (action == Action::Press)
+		    if (action == Action::Press)
 			    this->onMouseDown(button);
 		    else if (action == Action::Release)
 			    this->onMouseUp(button);
 	    });
 
-	rw.registerMousePosCallback([this](double x, double y) { 
+	rw.registerMousePosCallback([this](double x, double y) {
 		m_mouseDeltaX = m_mousePosX - x;
 		m_mouseDeltaY = m_mousePosY - y;
 		m_mousePosX = x;
@@ -39,6 +39,13 @@ RenderApplication::RenderApplication(RenderWindow& rw, int argc,
 		                  m_mouseDeltaY);
 	});
 
+	rw.registerMouseWheelCallback([this](double xoffset, double yoffset) {
+		m_mouseWheelX = xoffset;
+		m_mouseWheelY = yoffset;
+
+		this->onMouseWheel(xoffset, yoffset);
+	});
+
 	rw.registerKeyCallback(
 	    [this](Key key, int scancode, Action action, int mods) {
 		    m_keyStates[int(key)] = ButtonState(action);
@@ -46,24 +53,32 @@ RenderApplication::RenderApplication(RenderWindow& rw, int argc,
 		    if (action == Action::Press)
 			    this->onKeyDown(key);
 		    else if (action == Action::Release)
-			    this->onKeyUp(key);		    
+			    this->onKeyUp(key);
 	    });
 }
 
 int RenderApplication::run()
 {
-	//auto start = std::chrono::steady_clock::now();
-	//auto end = std::chrono::steady_clock::now();
-	//std::chrono::duration<double> elapsed_seconds = end - start;
+	// auto start = std::chrono::steady_clock::now();
+	// auto end = std::chrono::steady_clock::now();
+	// std::chrono::duration<double> elapsed_seconds = end - start;
 
 	while (!renderWindow.shouldClose())
 	{
-		//end = std::chrono::steady_clock::now();
-		//elapsed_seconds = end - start;
-		//deltaTime = elapsed_seconds.count();
-		//start = std::chrono::steady_clock::now();
+		// end = std::chrono::steady_clock::now();
+		// elapsed_seconds = end - start;
+		// deltaTime = elapsed_seconds.count();
+		// start = std::chrono::steady_clock::now();
 
 		pollEvents();
+
+		if (renderWindow.width() == 0 || renderWindow.height() == 0)
+			continue;
+
+		if (renderWindow.resized())
+			resize(uint32_t(renderWindow.width()),
+			       uint32_t(renderWindow.height()));
+
 		update();
 		draw();
 	}
@@ -94,6 +109,8 @@ void RenderApplication::pollEvents()
 
 	m_mouseDeltaX = 0.0;
 	m_mouseDeltaY = 0.0;
+	m_mouseWheelX = 0.0;
+	m_mouseWheelY = 0.0;
 
 	renderWindow.pollEvents();
 }

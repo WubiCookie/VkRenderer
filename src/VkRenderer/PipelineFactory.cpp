@@ -7,8 +7,8 @@
 namespace cdm
 {
 GraphicsPipelineFactory::GraphicsPipelineFactory(
-	const VulkanDevice& vulkanDevice)
-	: m_vulkanDevice(vulkanDevice)
+    const VulkanDevice& vulkanDevice)
+    : m_vulkanDevice(vulkanDevice)
 {
 	m_inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	m_inputAssembly.primitiveRestartEnable = false;
@@ -65,14 +65,14 @@ GraphicsPipelineFactory::GraphicsPipelineFactory(
 }
 
 void GraphicsPipelineFactory::setShaderModules(VkShaderModule vertexModule,
-	VkShaderModule fragmentModule)
+                                               VkShaderModule fragmentModule)
 {
 	m_vertexModule = vertexModule;
 	m_fragmentModule = fragmentModule;
 }
 
 void GraphicsPipelineFactory::setVertexInputHelper(
-	VertexInputHelper vertexInputHelper)
+    VertexInputHelper vertexInputHelper)
 {
 	m_vertexInputHelper = std::move(vertexInputHelper);
 }
@@ -137,13 +137,54 @@ void GraphicsPipelineFactory::setDepthBiasSlopeFactor(float factor)
 	m_rasterizer.depthBiasSlopeFactor = factor;
 }
 
+void GraphicsPipelineFactory::setDepthTestEnable(bool enable)
+{
+	m_depthStencil.depthTestEnable = enable;
+}
+
+void GraphicsPipelineFactory::setDepthWriteEnable(bool enable)
+{
+	m_depthStencil.depthWriteEnable = enable;
+}
+
+void GraphicsPipelineFactory::setDepthCompareOp(VkCompareOp op)
+{
+	m_depthStencil.depthCompareOp = op;
+}
+
+void GraphicsPipelineFactory::setDepthBoundsTestEnable(bool enable)
+{
+	m_depthStencil.depthBoundsTestEnable = enable;
+}
+
+void GraphicsPipelineFactory::setMinDepthBounds(float bound)
+{
+	m_depthStencil.minDepthBounds = bound;
+}
+
+void GraphicsPipelineFactory::setMaxDepthBounds(float bound)
+{
+	m_depthStencil.maxDepthBounds = bound;
+}
+
+void GraphicsPipelineFactory::setDepthBounds(float minBound, float maxBound)
+{
+	setMinDepthBounds(minBound);
+	setMaxDepthBounds(maxBound);
+}
+
+void GraphicsPipelineFactory::setStencilTestEnable(bool enable)
+{
+	m_depthStencil.stencilTestEnable = enable;
+}
+
 void GraphicsPipelineFactory::setSampleShadingEnable(bool enable)
 {
 	m_multisampling.sampleShadingEnable = enable;
 }
 
 void GraphicsPipelineFactory::setRasterizationSamples(
-	VkSampleCountFlagBits sample)
+    VkSampleCountFlagBits sample)
 {
 	m_multisampling.rasterizationSamples = sample;
 }
@@ -164,7 +205,7 @@ void GraphicsPipelineFactory::setAlphaToOneEnable(bool enable)
 }
 
 void GraphicsPipelineFactory::addColorBlendAttachmentState(
-	const vk::PipelineColorBlendAttachmentState& state)
+    const vk::PipelineColorBlendAttachmentState& state)
 {
 	m_colorBlendAttachments.push_back(state);
 }
@@ -190,9 +231,9 @@ void GraphicsPipelineFactory::setBlendConstant(float constant[4])
 }
 
 void GraphicsPipelineFactory::setBlendConstant(float constantR,
-	float constantG,
-	float constantB,
-	float constantA)
+                                               float constantG,
+                                               float constantB,
+                                               float constantA)
 {
 	m_colorBlending.blendConstants[0] = constantR;
 	m_colorBlending.blendConstants[1] = constantG;
@@ -206,8 +247,8 @@ void GraphicsPipelineFactory::setViewport(const vk::Viewport& viewport)
 }
 
 void GraphicsPipelineFactory::setViewport(float x, float y, float width,
-	float height, float minDepth,
-	float maxDepth)
+                                          float height, float minDepth,
+                                          float maxDepth)
 {
 	m_viewport.x = x;
 	m_viewport.y = y;
@@ -223,7 +264,7 @@ void GraphicsPipelineFactory::setScissor(const vk::Rect2D& scissor)
 }
 
 void GraphicsPipelineFactory::setScissor(int32_t x, int32_t y, uint32_t width,
-	uint32_t height)
+                                         uint32_t height)
 {
 	m_scissor.offset.x = x;
 	m_scissor.offset.y = y;
@@ -250,20 +291,20 @@ void GraphicsPipelineFactory::setLayout(VkPipelineLayout layout)
 
 std::pair<UniquePipelineLayout, std::vector<UniqueDescriptorSetLayout>>
 GraphicsPipelineFactory::createLayout(
-	const VertexShaderHelperResult& vertexHelperResult,
-	const FragmentShaderHelperResult& fragmentHelperResult,
-	const std::vector<VkPushConstantRange>& pushConstants)
+    const VertexShaderHelperResult& vertexHelperResult,
+    const FragmentShaderHelperResult& fragmentHelperResult,
+    const std::vector<VkPushConstantRange>& pushConstants)
 {
 	const auto& vk = m_vulkanDevice.get();
 
 	std::pair<UniquePipelineLayout, std::vector<UniqueDescriptorSetLayout>>
-		res;
+	    res;
 
 	const auto& vertexDescriptors = vertexHelperResult.descriptors;
 	const auto& fragmentDescriptors = fragmentHelperResult.descriptors;
 
 	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>
-		mapped;
+	    mapped;
 
 	for (const auto& vertexDescriptor : vertexDescriptors)
 		mapped[vertexDescriptor.first].push_back(vertexDescriptor.second);
@@ -285,7 +326,7 @@ GraphicsPipelineFactory::createLayout(
 
 		if (!added)
 			mapped[fragmentDescriptor.first].push_back(
-				fragmentDescriptor.second);
+			    fragmentDescriptor.second);
 	}
 
 	for (auto& pair : mapped)
@@ -309,7 +350,7 @@ GraphicsPipelineFactory::createLayout(
 	info.pSetLayouts = layouts.data();
 	info.pushConstantRangeCount = uint32_t(pushConstants.size());
 	info.pPushConstantRanges =
-		pushConstants.empty() ? nullptr : pushConstants.data();
+	    pushConstants.empty() ? nullptr : pushConstants.data();
 
 	res.first = vk.createPipelineLayout(info);
 
@@ -365,7 +406,7 @@ UniqueGraphicsPipeline GraphicsPipelineFactory::createPipeline()
 	pipelineInfo.pDepthStencilState = &m_depthStencil;
 	pipelineInfo.pColorBlendState = &m_colorBlending;
 	pipelineInfo.pDynamicState =
-		m_dynamicStates.empty() ? nullptr : &dynamicState;
+	    m_dynamicStates.empty() ? nullptr : &dynamicState;
 	pipelineInfo.layout = m_layout;
 	pipelineInfo.renderPass = m_renderPass;
 	pipelineInfo.subpass = m_subpass;
@@ -376,8 +417,10 @@ UniqueGraphicsPipeline GraphicsPipelineFactory::createPipeline()
 }
 
 ComputePipelineFactory::ComputePipelineFactory(
-	const VulkanDevice& vulkanDevice) : m_vulkanDevice(vulkanDevice)
-{}
+    const VulkanDevice& vulkanDevice)
+    : m_vulkanDevice(vulkanDevice)
+{
+}
 
 void ComputePipelineFactory::setShaderModule(VkShaderModule computeModule)
 {
@@ -390,23 +433,24 @@ void ComputePipelineFactory::setLayout(VkPipelineLayout layout)
 }
 
 std::pair<UniquePipelineLayout, std::vector<UniqueDescriptorSetLayout>>
-ComputePipelineFactory::createLayout(const ComputeShaderHelperResult& computeHelperResult,
-	const std::vector<VkPushConstantRange>& pushConstants)
+ComputePipelineFactory::createLayout(
+    const ComputeShaderHelperResult& computeHelperResult,
+    const std::vector<VkPushConstantRange>& pushConstants)
 {
 	const auto& vk = m_vulkanDevice.get();
 
 	std::pair<UniquePipelineLayout, std::vector<UniqueDescriptorSetLayout>>
-		res;
+	    res;
 
 	const auto& descriptors = computeHelperResult.descriptors;
 
 	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>
-		mapped;
+	    mapped;
 
 	for (const auto& d : descriptors)
 		mapped[d.first].push_back(d.second);
 
-	//for (const auto& fragmentDescriptor : fragmentDescriptors)
+	// for (const auto& fragmentDescriptor : fragmentDescriptors)
 	//{
 	//	auto& v = mapped[fragmentDescriptor.first];
 
@@ -447,7 +491,7 @@ ComputePipelineFactory::createLayout(const ComputeShaderHelperResult& computeHel
 	info.pSetLayouts = layouts.data();
 	info.pushConstantRangeCount = uint32_t(pushConstants.size());
 	info.pPushConstantRanges =
-		pushConstants.empty() ? nullptr : pushConstants.data();
+	    pushConstants.empty() ? nullptr : pushConstants.data();
 
 	res.first = vk.createPipelineLayout(info);
 
