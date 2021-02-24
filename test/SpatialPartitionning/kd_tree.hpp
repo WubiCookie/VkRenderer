@@ -24,9 +24,9 @@ struct Box
 inline bool intersection(Box b, ray3d r)
 {
 	vector3 inv;
-	inv.x = 1.0f / r.direction.x;
-	inv.y = 1.0f / r.direction.y;
-	inv.z = 1.0f / r.direction.z;
+	inv.x = 1.0f / r.direction->x;
+	inv.y = 1.0f / r.direction->y;
+	inv.z = 1.0f / r.direction->z;
 
 	float t1 = (b.min.x - r.origin.x) * inv.x;
 	float t2 = (b.max.x - r.origin.x) * inv.x;

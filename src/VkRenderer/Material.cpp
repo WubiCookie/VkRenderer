@@ -250,10 +250,9 @@ void MaterialInstance::pushOffset(CommandBuffer& cb, VkPipelineLayout layout)
 	cb.pushConstants(layout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, &offset);
 }
 
-Material::Material(RenderWindow& renderWindow, PbrShadingModel& shadingModel,
+Material::Material(PbrShadingModel& shadingModel,
                    uint32_t instancePoolSize)
-    : rw(&renderWindow),
-      m_shadingModel(&shadingModel),
+    : m_shadingModel(&shadingModel),
       m_instancePoolSize(instancePoolSize)
 {
 	m_instances.reserve(m_instancePoolSize);

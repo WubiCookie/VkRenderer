@@ -12,7 +12,6 @@
 namespace cdm
 {
 class CommandBuffer;
-class RenderWindow;
 
 class StandardMesh final
 {
@@ -34,7 +33,7 @@ public:
 	};
 
 private:
-	Movable<RenderWindow*> rw;
+	Movable<const VulkanDevice*> device;
 
 	uint32_t m_verticesCount = 0;
 	uint32_t m_indicesCount = 0;
@@ -45,7 +44,8 @@ private:
 
 public:
 	StandardMesh() = default;
-	StandardMesh(RenderWindow& rw, const std::vector<Vertex>& vertices,
+	StandardMesh(const VulkanDevice& vulkanDevice,
+	             const std::vector<Vertex>& vertices,
 	             const std::vector<uint32_t>& indices);
 	StandardMesh(const StandardMesh&) = delete;
 	StandardMesh(StandardMesh&&) = default;
@@ -57,19 +57,20 @@ public:
 	void draw(CommandBuffer& cb);
 	void drawPositions(CommandBuffer& cb);
 
-	//const std::vector<Vertex>& vertices() const noexcept { return m_vertices; }
-	//const std::vector<vector4>& positions() const noexcept
+	// const std::vector<Vertex>& vertices() const noexcept { return
+	// m_vertices; } const std::vector<vector4>& positions() const noexcept
 	//{
 	//	return m_positions;
 	//}
-	//const std::vector<uint32_t>& indices() const noexcept { return m_indices; }
+	// const std::vector<uint32_t>& indices() const noexcept { return
+	// m_indices; }
 
-	//uint32_t verticesCount() const noexcept { return m_verticesCount; }
-	//uint32_t indicesCount() const noexcept { return m_indicesCount; }
+	// uint32_t verticesCount() const noexcept { return m_verticesCount; }
+	// uint32_t indicesCount() const noexcept { return m_indicesCount; }
 
-	//const Buffer& vertexBuffer() const noexcept { return m_vertexBuffer; }
-	//const Buffer& positionBuffer() const noexcept { return m_positionBuffer; }
-	//const Buffer& indexBuffer() const noexcept { return m_indexBuffer; }
+	// const Buffer& vertexBuffer() const noexcept { return m_vertexBuffer; }
+	// const Buffer& positionBuffer() const noexcept { return m_positionBuffer;
+	// } const Buffer& indexBuffer() const noexcept { return m_indexBuffer; }
 
 	static VertexInputState vertexInputState();
 	static VertexInputState positionOnlyVertexInputState();

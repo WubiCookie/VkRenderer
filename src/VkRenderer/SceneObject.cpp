@@ -18,8 +18,7 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
       material(&material),
       renderPass(renderPass)
 {
-	auto& rw = material.material().renderWindow();
-	auto& vk = rw.device();
+	auto& vk = s.device();
 
 #pragma region vertexShader
 	{
@@ -123,9 +122,9 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 		auto fragDistance = writer.declInput<sdw::Float>("fragDistance", 4);
 
 		auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
-		auto fragID = writer.declOutput<UInt>("fragID", 1);
-		auto fragNormalDepth = writer.declOutput<Vec4>("fragNormalDepth", 2);
-		auto fragPos = writer.declOutput<Vec3>("fragPos", 3);
+		//auto fragID = writer.declOutput<UInt>("fragID", 1);
+		//auto fragNormalDepth = writer.declOutput<Vec4>("fragNormalDepth", 2);
+		//auto fragPos = writer.declOutput<Vec3>("fragPos", 3);
 
 		auto fragmentShaderBuildData =
 		    material.material().instantiateFragmentShaderBuildData();
@@ -148,12 +147,14 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 			materialInstanceId -= 1_u;
 			Locale(normal, normalize(fragNormal));
 			Locale(tangent, normalize(fragTangent));
+
 			fragColor = combinedMaterialFragmentFunction(
 			    materialInstanceId, fragPosition, fragUV, normal, tangent);
-			fragID = modelPcb.getModelId();
-			fragNormalDepth.xyz() = fragNormal;
-			fragNormalDepth.w() = fragDistance;
-			fragPos = fragPosition;
+
+			//fragID = modelPcb.getModelId();
+			//fragNormalDepth.xyz() = fragNormal;
+			//fragNormalDepth.w() = fragDistance;
+			//fragPos = fragPosition;
 		});
 
 		std::vector<uint32_t> bytecode =
@@ -250,7 +251,8 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	// rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
 	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	//rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.cullMode = VK_CULL_MODE_NONE;
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = false;
 	rasterizer.depthBiasConstantFactor = 0.0f;
@@ -260,7 +262,7 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 	/// TODO get from render pass
 	vk::PipelineMultisampleStateCreateInfo multisampling;
 	multisampling.sampleShadingEnable = false;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 	multisampling.minSampleShading = 1.0f;
 	multisampling.pSampleMask = nullptr;
 	multisampling.alphaToCoverageEnable = false;
@@ -335,9 +337,10 @@ SceneObject::Pipeline::Pipeline(Scene& s, StandardMesh& mesh,
 	// colorHDRBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	std::array colorBlendAttachments{ colorBlendAttachment,
-		                              objectIDBlendAttachment,
-		                              normalDepthBlendAttachment,
-		                              positionhBlendAttachment };
+		                              //objectIDBlendAttachment,
+		                              //normalDepthBlendAttachment,
+		                              //positionhBlendAttachment
+	};
 
 	/// TODO get from render pass
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
@@ -423,8 +426,7 @@ SceneObject::ShadowmapPipeline::ShadowmapPipeline(Scene& s, StandardMesh& mesh,
       material(&material),
       renderPass(renderPass)
 {
-	auto& rw = material.material().renderWindow();
-	auto& vk = rw.device();
+	auto& vk = s.device();
 
 #pragma region vertexShader
 	{

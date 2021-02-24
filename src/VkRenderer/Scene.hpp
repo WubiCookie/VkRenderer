@@ -1,12 +1,14 @@
 #pragma once
 
-#include "MyShaderWriter.hpp"
 #include "Buffer.hpp"
+#include "MyShaderWriter.hpp"
 #include "Texture2D.hpp"
+#include "VulkanDevice.hpp"
 #include "cdm_maths.hpp"
 
 #include <array>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 namespace cdm
@@ -20,7 +22,7 @@ public:
 	static constexpr uint32_t MaxSceneObjectCountPerPool = 256;
 
 private:
-	std::reference_wrapper<RenderWindow> rw;
+	std::reference_wrapper<const VulkanDevice> m_device;
 
 	std::vector<std::unique_ptr<SceneObject>> m_sceneObjects;
 
@@ -79,7 +81,7 @@ private:
 	/// TODO: `RenderQueue`s
 
 public:
-	Scene(RenderWindow& renderWindow);
+	Scene(const VulkanDevice& vulkanDevice);
 	Scene(const Scene&) = delete;
 	Scene(Scene&&) = default;
 	~Scene() = default;
@@ -96,6 +98,9 @@ public:
 	float param2 = 2.0f;
 	float param3 = 3.0f;
 	matrix3 LTDM = matrix3::identity();
+
+	const VulkanDevice& device() { return m_device; }
+	const VulkanDevice& device() const { return m_device; }
 
 	const VkDescriptorSetLayout& descriptorSetLayout() const
 	{

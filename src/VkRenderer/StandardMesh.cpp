@@ -1,18 +1,18 @@
 #include "StandardMesh.hpp"
 
 #include "CommandBuffer.hpp"
-#include "RenderWindow.hpp"
+#include "CommandBufferPool.hpp"
 
 #include <stdexcept>
 
 namespace cdm
 {
-StandardMesh::StandardMesh(RenderWindow& renderWindow,
+StandardMesh::StandardMesh(const VulkanDevice& vulkanDevice,
                            const std::vector<Vertex>& vertices,
                            const std::vector<uint32_t>& indices)
-    : rw(&renderWindow)
+    : device(&vulkanDevice)
 {
-	auto& vk = rw.get()->device();
+	auto& vk = *device;
 
 	std::vector<vector4> positions;
 
@@ -20,7 +20,11 @@ StandardMesh::StandardMesh(RenderWindow& renderWindow,
 	for (const auto& vertex : vertices)
 		positions.push_back(vector4(vertex.position, 1.0f));
 
-	CommandBuffer copyCB(vk, rw.get()->oneTimeCommandPool());
+	ResettableCommandBufferPool pool(
+	    vk, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	auto& frame = pool.getAvailableCommandBuffer();
+
+	CommandBuffer& copyCB = frame.commandBuffer;
 
 #pragma region vertexBuffer
 	m_verticesCount = vertices.size();

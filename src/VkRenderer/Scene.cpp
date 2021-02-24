@@ -1,7 +1,7 @@
 #include "Scene.hpp"
 
-#include "MyShaderWriter.hpp"
 #include "CommandBuffer.hpp"
+#include "MyShaderWriter.hpp"
 #include "RenderWindow.hpp"
 #include "SceneObject.hpp"
 #include "TextureFactory.hpp"
@@ -10,9 +10,9 @@
 
 namespace cdm
 {
-Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
+Scene::Scene(const VulkanDevice& vulkanDevice) : m_device(vulkanDevice)
 {
-	auto& vk = renderWindow.device();
+	auto& vk = m_device.get();
 
 	m_sceneUniformBuffer =
 	    Buffer(vk, sizeof(SceneUboStruct), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -116,6 +116,7 @@ Scene::Scene(RenderWindow& renderWindow) : rw(renderWindow)
 
 #pragma region descriptor set
 	m_descriptorSet = vk.allocate(m_descriptorPool, m_descriptorSetLayout);
+	vk.debugMarkerSetObjectName(m_descriptorSet.get(), "scene descriptor set");
 
 	if (!m_descriptorSet)
 	{

@@ -13,8 +13,10 @@ struct DefaultMaterialData;
 
 namespace cdm
 {
+struct VulkanDevice;
 class DefaultMaterial : public Material
 {
+	Movable<const VulkanDevice*> device;
 	Buffer m_uniformBuffer;
 
 	struct alignas(16) UBOStruct
@@ -45,7 +47,8 @@ class DefaultMaterial : public Material
 
 public:
 	DefaultMaterial() = default;
-	DefaultMaterial(RenderWindow& rw, PbrShadingModel& shadingModel,
+	DefaultMaterial(const VulkanDevice& vulkanDevice,
+	                PbrShadingModel& shadingModel,
 	                uint32_t instancePoolSize = 0);
 	DefaultMaterial(const DefaultMaterial&) = delete;
 	DefaultMaterial(DefaultMaterial&&) = default;

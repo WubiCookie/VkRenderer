@@ -438,6 +438,7 @@ target_end()
 
 
 target("SpatialPartitionning")
+	set_targetdir("bin")
 	set_kind("binary")
 	set_languages("cxx17")
 	add_deps("VkRenderer")

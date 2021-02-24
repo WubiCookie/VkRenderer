@@ -18,7 +18,7 @@ namespace cdm
 {
 class Skybox final
 {
-	std::reference_wrapper<RenderWindow> rw;
+	Movable<RenderWindow*> rw;
 
 	VkRenderPass m_renderPass;
 	VkViewport m_viewport;
@@ -36,7 +36,7 @@ class Skybox final
 
 	Buffer m_ubo;
 
-	Cubemap& m_cubemap;
+	Movable<Cubemap*> m_cubemap;
 
 public:
 	struct Config
@@ -56,9 +56,15 @@ private:
 	// CommandBuffer cb;// (vk, rw.oneTimeCommandPool());
 
 public:
+	Skybox() = default;
 	Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 	       VkViewport viewport, Cubemap& m_cubemap);
+	Skybox(const Skybox&) = default;
+	Skybox(Skybox&&) = default;
 	~Skybox();
+
+	Skybox& operator=(const Skybox&) = default;
+	Skybox& operator=(Skybox&&) = default;
 
 	void setMatrices(matrix4 projection, matrix4 view);
 

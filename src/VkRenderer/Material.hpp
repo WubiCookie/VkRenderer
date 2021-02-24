@@ -15,8 +15,6 @@
 
 namespace cdm
 {
-class RenderWindow;
-class RenderPass;
 class CommandBuffer;
 class Material;
 class MaterialInstance;
@@ -145,7 +143,7 @@ protected:
 		assert(false);
 	}
 	virtual void setTextureParameter(const std::string& name,
-		uint32_t instanceIndex, Texture2D& a)
+	                                 uint32_t instanceIndex, Texture2D& a)
 	{
 		assert(false);
 	}
@@ -164,7 +162,7 @@ class MaterialInstance final : public MaterialInterface
 
 	std::reference_wrapper<Material> m_material;
 
-	//Movable<uint32_t, 0ull> m_instanceOffset;
+	// Movable<uint32_t, 0ull> m_instanceOffset;
 	uint32_t m_instanceOffset = 0;
 
 	MaterialInstance(Material& material, uint32_t instanceOffset);
@@ -209,7 +207,6 @@ class Material : public MaterialInterface
 {
 	friend MaterialInstance;
 
-	Movable<RenderWindow*> rw;
 	Movable<PbrShadingModel*> m_shadingModel;
 
 	std::vector<MaterialInstance> m_instances;
@@ -232,8 +229,7 @@ public:
 	};
 
 	Material() = default;
-	Material(RenderWindow& rw, PbrShadingModel& shadingModel,
-	         uint32_t instancePoolSize = 0);
+	Material(PbrShadingModel& shadingModel, uint32_t instancePoolSize = 0);
 	Material(const Material&) = delete;
 	Material(Material&&) = default;
 	~Material() = default;
@@ -262,7 +258,6 @@ public:
 	virtual std::unique_ptr<FragmentShaderBuildDataBase>
 	instantiateFragmentShaderBuildData();
 
-	RenderWindow& renderWindow() { return *rw; }
 	PbrShadingModel& shadingModel() { return *m_shadingModel; }
 	uint32_t instancePoolSize() const noexcept { return m_instancePoolSize; }
 
@@ -288,11 +283,11 @@ protected:
 	using MaterialInterface::setMat2Parameter;
 	using MaterialInterface::setMat3Parameter;
 	using MaterialInterface::setMat4Parameter;
+	using MaterialInterface::setTextureParameter;
 	using MaterialInterface::setUintParameter;
 	using MaterialInterface::setVec2Parameter;
 	using MaterialInterface::setVec3Parameter;
 	using MaterialInterface::setVec4Parameter;
-	using MaterialInterface::setTextureParameter;
 	using MaterialInterface::uintParameter;
 	using MaterialInterface::vec2Parameter;
 	using MaterialInterface::vec3Parameter;

@@ -25,12 +25,12 @@ void Skybox::Config::copyTo(void* ptr)
 
 Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
                VkViewport viewport, Cubemap& cubemap)
-    : rw(renderWindow),
+    : rw(&renderWindow),
       m_renderPass(renderPass),
       m_viewport(viewport),
-      m_cubemap(cubemap)
+      m_cubemap(&cubemap)
 {
-    auto& vk = rw.get().device();
+    auto& vk = rw.get()->device();
 
     LogRRID log(vk);
 
@@ -102,9 +102,9 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
         auto fragPosition = writer.declInput<Vec3>("fragPosition", 0);
 
         auto fragColor = writer.declOutput<Vec4>("fragColor", 0);
-        auto fragID = writer.declOutput<UInt>("fragID", 1);
-        auto fragNormalDepth = writer.declOutput<Vec4>("fragNormalDepth", 2);
-        auto fragPos = writer.declOutput<Vec3>("fragPos", 3);
+        //auto fragID = writer.declOutput<UInt>("fragID", 1);
+        //auto fragNormalDepth = writer.declOutput<Vec4>("fragNormalDepth", 2);
+        //auto fragPos = writer.declOutput<Vec3>("fragPos", 3);
 
         auto environmentMap =
             writer.declSampledImage<FImgCubeRgba32>("environmentMap", 1, 0);
@@ -121,9 +121,9 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
             envColor = pow(envColor, vec4(1.0_f / 2.2_f));
 
             fragColor = envColor;
-            fragID = -1_u;
-            fragNormalDepth = vec4(0.0_f);
-            fragPos = fragPosition;
+            //fragID = -1_u;
+            //fragNormalDepth = vec4(0.0_f);
+            //fragPos = fragPosition;
         });
 
         std::vector<uint32_t> bytecode =
@@ -196,7 +196,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 
     StagingBuffer verticesStagingBuffer(vk, vertices.data(), vertices.size());
 
-    CommandBuffer copyCB(vk, rw.get().oneTimeCommandPool());
+    CommandBuffer copyCB(vk, rw.get()->oneTimeCommandPool());
     copyCB.begin();
     copyCB.copyBuffer(verticesStagingBuffer, m_vertexBuffer,
                       sizeof(*vertices.data()) * vertices.size());
@@ -358,7 +358,7 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 
     vk::PipelineMultisampleStateCreateInfo multisampling;
     multisampling.sampleShadingEnable = false;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
     multisampling.minSampleShading = 1.0f;
     multisampling.pSampleMask = nullptr;
     multisampling.alphaToCoverageEnable = false;
@@ -431,9 +431,10 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
     // colorHDRBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     std::array colorBlendAttachments{ colorBlendAttachment,
-                                      objectIDBlendAttachment,
-                                      normalDepthBlendAttachment,
-                                      positionBlendAttachment };
+                                      //objectIDBlendAttachment,
+                                      //normalDepthBlendAttachment,
+                                      //positionBlendAttachment
+    };
 
     vk::PipelineColorBlendStateCreateInfo colorBlending;
     colorBlending.logicOpEnable = false;
@@ -552,8 +553,8 @@ Skybox::Skybox(RenderWindow& renderWindow, VkRenderPass renderPass,
 
         VkDescriptorImageInfo imageInfo{};
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = m_cubemap.view();
-        imageInfo.sampler = m_cubemap.sampler();
+        imageInfo.imageView = m_cubemap.get()->view();
+		imageInfo.sampler = m_cubemap.get()->sampler();
 
         vk::WriteDescriptorSet textureWrite;
         textureWrite.descriptorCount = 1;

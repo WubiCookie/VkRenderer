@@ -90,7 +90,7 @@ VulkanDeviceBase::VulkanDeviceBase(bool layers) noexcept : m_layers(layers)
 	if (layers)
 	{
 		validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-		 validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
+		validationLayers.push_back("VK_LAYER_RENDERDOC_Capture");
 		// validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 		// validationLayers.push_back("VK_LAYER_LUNARG_api_dump");
 
@@ -942,6 +942,11 @@ VkDescriptorSet VulkanDeviceDestroyer::allocate(
 
 	VkDescriptorSet res = nullptr;
 	allocate(allocateInfo, &res);
+
+	static uint64_t count = 0;
+	debugMarkerSetObjectName(
+	    res, "unknown descriptor set #" + std::to_string(count++));
+
 	return res;
 }
 
